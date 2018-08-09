@@ -387,6 +387,7 @@ Property_Owner = function (x){
   d = SAP.Hierarchy %>% filter(`Cost Center` == x)
 
   #%Create a local copy of the data frame
+  
   b = collect(d)
   c = b$`Hierarchy Area`
   return(c)
