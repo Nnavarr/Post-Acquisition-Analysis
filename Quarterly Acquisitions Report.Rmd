@@ -30,6 +30,10 @@ library(R2HTML)
 library(CenterIS)
 
 library(supclust)
+
+library(jsonlite)
+
+
 ```
 
 
@@ -687,7 +691,12 @@ Quarterly Group Compilation
                       group14.data)
   
 # Export Data
-  write.csv(Data.Combined, 'C:\\Users\\1217543\\OneDrive\\R Projects\\Post Acquisition\\Post-Acquisition-Analysis\\Aggregate_IS_Data.csv')
+  #write.csv(Data.Combined, 'C:\\Users\\1217543\\OneDrive\\R Projects\\Post Acquisition\\Post-Acquisition-Analysis\\Aggregate_IS_Data.csv')
+  
+  
+# Json Conversion
+  
+  
   
   
   
@@ -1660,11 +1669,7 @@ The goal in this code chunk is to determine whether the list used above is the s
 ```
 
 
-# DY Graph Test
 
-```{r}
-
-```
 
 
 
