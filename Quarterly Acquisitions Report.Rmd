@@ -687,7 +687,9 @@ Quarterly Group Compilation
                       group14.data)
   
 # Export Data
-  write.csv(Data.Combined, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report72018.csv', append = FALSE)
+  write.csv(Data.Combined, 'C:\\Users\\1217543\\OneDrive\\R Projects\\Post Acquisition\\Post-Acquisition-Analysis\\Aggregate_IS_Data.csv')
+  
+  
   
 ```
 
