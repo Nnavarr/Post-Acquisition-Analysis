@@ -1,0 +1,13 @@
+name: Post-Acquisition-Analysis
+title: Post-Acquisition-Analysis
+username:
+account: nnavarr
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 397911
+bundleId: 1527390
+url: https://nnavarr.shinyapps.io/Post-Acquisition-Analysis/
+when: 1533854397.62383
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Aggregate_IS_Data.csv|Json Test.Rmd|plumber.R|Quarterly Acquisitions Report.Rmd|README.md

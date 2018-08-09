@@ -696,9 +696,9 @@ Quarterly Group Compilation
   
   
 # Test CSV Read
+  test <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95b3R2JF_arMzwrMm1JieduB064cBks5bdfwOwA%3D%3D")
   
-  
-  
+  test.2 <- read.csv(text = test)
   
   
   
