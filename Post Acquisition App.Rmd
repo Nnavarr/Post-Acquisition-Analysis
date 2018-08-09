@@ -1,0 +1,48 @@
+---
+title: "Post Acquisition Analysis"
+author: "Noe Navarro"
+date: "August 8, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(shiny)
+library(shinydashboard)
+
+library(dplyr)
+library(dbplyr)
+
+```
+
+
+## Shiny App Creation
+
+```{r Define Shiny App}
+
+# Define UI
+  ui <- fluidPage(
+    
+    # App Title ----
+      titlePanel("Test",
+                 
+                 
+                 
+                 
+                 
+        
+        
+      )
+    
+    
+  )
+
+
+
+```
+
