@@ -32,6 +32,7 @@ library(CenterIS)
 library(supclust)
 
 library(jsonlite)
+library(RCurl)
 
 
 ```
@@ -691,10 +692,11 @@ Quarterly Group Compilation
                       group14.data)
   
 # Export Data
-  #write.csv(Data.Combined, 'C:\\Users\\1217543\\OneDrive\\R Projects\\Post Acquisition\\Post-Acquisition-Analysis\\Aggregate_IS_Data.csv')
+  write.csv(Data.Combined, 'C:\\Users\\1217543\\OneDrive\\R Projects\\Post Acquisition\\Post-Acquisition-Analysis\\Aggregate_IS_Data.csv')
   
   
-# Json Conversion
+# Test CSV Read
+  
   
   
   

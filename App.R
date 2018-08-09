@@ -11,12 +11,12 @@ library(rjson)
 
 
 
-# Data included
-  includeMarkdown("Quarterly Acquisitions Report.rmd")
-
-
-
+# Data Import
   
+   # Aggregate Income Statement Data
+     aggregate.is.text <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95b3R2JF_arMzwrMm1JieduB064cBks5bdfwOwA%3D%3D")
+      aggregate.is.df <- read.csv(text = aggregate.is.text)
+
 
 
 # Dashboard Architecture ----
@@ -78,7 +78,7 @@ server <- function(input, output) {
    output$lineitem <- renderPlotly({
   
      
-      plot_ly(Data.Combined, x = ~Date, y = ~Value, mode = 'lines')
+      plot_ly(aggregate.is.df, x = ~Date, y = ~Value, mode = 'lines')
      
    })
 } 
