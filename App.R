@@ -49,6 +49,15 @@ library(RCurl)
   body <- dashboardBody(
     fluidRow(
       
+      
+      # Line Item Selection
+        fixedRow(
+          column(1, selectInput(inputId = "Group", label = "Acquisition Group", choices = aggregate.is.df$Group, selected = "FY15 Q4")
+        )
+        ),
+      
+      
+      
       # Row 1
         box(
           width = 12,
@@ -76,6 +85,13 @@ ui <- dashboardPage(header = header,
                     body = body)
    
  
+        
+        
+        
+        
+        
+#------------------------------------------------------------------------------        
+        
 
 
 # Define server logic required to draw a histogram
@@ -92,4 +108,7 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+
+
 
