@@ -1,22 +1,6 @@
----
-title: "Json Test"
-author: "Noe Navarro"
-date: "August 9, 2018"
-output: html_document
----
 
 
-```{r}
 
-library(dplyr)
-library(rjson)
-library(jsonlite)
-library(plumber)
-
-```
-
-
-```{r}
 
 # plumber.R
 
@@ -42,10 +26,10 @@ funtion(spec){
   title <- "All Species"
   
   # Filter if the species was specified 
-    if(!missing(spec)){
-      title <- paste0("Only the ' ", spec, "' Species")
-      myData <- subset(iris, Species == spec)
-    }
+  if(!missing(spec)){
+    title <- paste0("Only the ' ", spec, "' Species")
+    myData <- subset(iris, Species == spec)
+  }
   
   
   plot(myData$Sepal.Length, myData$Petal.Length,
@@ -54,9 +38,4 @@ funtion(spec){
 }
 
 
-
-pr <- plumber::plumb("plumber.R")
-
-
-```
 
