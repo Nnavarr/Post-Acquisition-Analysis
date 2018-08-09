@@ -19,6 +19,10 @@ library(RCurl)
       aggregate.is.df <- read.csv(text = aggregate.is.text)
         aggregate.is.df$Date = as.Date(aggregate.is.df$Date)
            
+        
+        
+        
+        
 
 
 # Dashboard Architecture ----
