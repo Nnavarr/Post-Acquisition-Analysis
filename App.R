@@ -12,6 +12,7 @@ library(RCurl)
 
 
 
+
 # Data Import
   
    # Aggregate Income Statement Data
@@ -24,10 +25,10 @@ library(RCurl)
         
       
 # Dashboard Architecture ----
-  header <- dashboardHeader( )
-  
-  
-  
+  header <- dashboardHeader(
+    title = "U-Haul Dashboard"
+    
+  )
   
   
   # Side Bar ----
@@ -41,6 +42,9 @@ library(RCurl)
     )
   )
   
+  
+        
+              
 
   
   # Body ----
@@ -48,15 +52,15 @@ library(RCurl)
     fluidRow(
       
       
-      # Line Item Selection
+      # Main Graph Control Drop Downs
         fixedRow(
           column(1, selectInput(inputId = "Group", label = "Acquisition Group", choices = aggregate.is.df$Group, selected = "FY15 Q4")),
-          column(2, selectInput(inputId = "LineItem", label = "Line Item", choices = aggregate.is.df$Line.Item, selected = 'Op_NOI'))
+          column(2, selectInput(inputId = "Line", label = "Line Item", choices = aggregate.is.df$Line.Item, selected = 'Op_NOI'))
         ),
       
       
       
-      # Row 1
+      # Row 1 (Line Item Graph)
         box(
           width = 12,
           title = "Income Statement",
@@ -85,33 +89,30 @@ ui <- dashboardPage(header = header,
  
         
         
-        
-        
-        
 #------------------------------------------------------------------------------        
-        
 
-
-# Define server logic required to draw a histogram
+# Define server logic 
 server <- function(input, output) {
   
   # Observe Line Item Input for updating the graph
     observeEvent(input$Group, {
       
+      observeEvent(input$Line, {
+      
       # Create Convenience data.frame for line item graph
         plot.lineitem <- data.frame(aggregate.is.df %>%
-                                      filter(Group == input$Group))
+                                      filter(Group == input$Group & Line.Item == input$Line))
 
-
+        
         
   # Render Line Item Plot      
    output$lineitem <- renderPlotly({
   
       plot_ly(plot.lineitem, x = ~Date, y = ~Value, mode = 'lines')
      
-   })
-})   
-   
+     })
+  })
+  })
 }
 
         
