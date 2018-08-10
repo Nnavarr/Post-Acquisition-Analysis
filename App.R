@@ -22,9 +22,7 @@ library(RCurl)
         
         
         
-        
-
-
+      
 # Dashboard Architecture ----
   header <- dashboardHeader( )
   
@@ -52,8 +50,8 @@ library(RCurl)
       
       # Line Item Selection
         fixedRow(
-          column(1, selectInput(inputId = "Group", label = "Acquisition Group", choices = aggregate.is.df$Group, selected = "FY15 Q4")
-        )
+          column(1, selectInput(inputId = "Group", label = "Acquisition Group", choices = aggregate.is.df$Group, selected = "FY15 Q4")),
+          column(2, selectInput(inputId = "LineItem", label = "Line Item", choices = aggregate.is.df$Line.Item, selected = 'Op_NOI'))
         ),
       
       
@@ -96,16 +94,27 @@ ui <- dashboardPage(header = header,
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+  
+  # Observe Line Item Input for updating the graph
+    observeEvent(input$Group, {
+      
+      # Create Convenience data.frame for line item graph
+        plot.lineitem <- data.frame(aggregate.is.df %>%
+                                      filter(Group == input$Group))
 
+
+        
+  # Render Line Item Plot      
    output$lineitem <- renderPlotly({
   
-     
-      plot_ly(aggregate.is.df, x = ~Date, y = ~Value, mode = 'lines')
+      plot_ly(plot.lineitem, x = ~Date, y = ~Value, mode = 'lines')
      
    })
-} 
-  
+})   
+   
+}
 
+        
 # Run the application 
 shinyApp(ui = ui, server = server)
 
