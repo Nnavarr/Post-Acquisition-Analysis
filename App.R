@@ -27,7 +27,8 @@ library(RCurl)
 # Dashboard Architecture ----
   header <- dashboardHeader(
     title = "U-Haul Dashboard"
-    
+    #valueBoxOutput("quarter")
+    #valueBoxOutput("fy")
   )
   
   
@@ -49,12 +50,21 @@ library(RCurl)
   
   # Body ----
   body <- dashboardBody(
+    
     fluidRow(
+      
+      valueBoxOutput("quarter")
+      
+      # Value Boxes
+       # infoBoxOutput("quarter")
+      
+    ),
+      
       
       
       # Main Graph Control Drop Downs
         fixedRow(
-          column(1, selectInput(inputId = "Group", label = "Acquisition Group", choices = aggregate.is.df$Group, selected = "FY15 Q4")),
+          column(1, selectInput(inputId = "Group", label = "Acq Group", choices = aggregate.is.df$Group, selected = "FY15 Q4")),
           column(2, selectInput(inputId = "Line", label = "Line Item", choices = aggregate.is.df$Line.Item, selected = 'Op_NOI'))
         ),
       
@@ -69,6 +79,7 @@ library(RCurl)
           mainPanel(
             plotlyOutput("lineitem"),
             verbatimTextOutput('Line Item')
+            
           )
             
           
@@ -76,8 +87,6 @@ library(RCurl)
           
           
         )
-      
-    )
   
 
 
@@ -91,19 +100,48 @@ ui <- dashboardPage(header = header,
         
 #------------------------------------------------------------------------------        
 
+# Server Inputs ----        
+        
 # Define server logic 
 server <- function(input, output) {
   
-  # Observe Line Item Input for updating the graph
+  
+  
+  # Observe Line Item Input for updating the graph ----
     observeEvent(input$Group, {
       
       observeEvent(input$Line, {
       
       # Create Convenience data.frame for line item graph
         plot.lineitem <- data.frame(aggregate.is.df %>%
-                                      filter(Group == input$Group & Line.Item == input$Line))
-
+                                      dplyr::filter(Group == input$Group & Line.Item == input$Line))
         
+      # Create Convenience data.frame for Value Boxes
+        boxes.df <- data.frame(aggregate.is.df %>%
+                                 dplyr::filter(Group == input$Group & Line.Item == input$Line) %>%
+                                 dplyr::group_by(Line.Item, FY, Quarter, Group) %>%
+                                 dplyr::summarise(Value = sum(Value))
+                                 )
+        
+          # Calculate Y/Y Quarter Comparison 
+            quarter.matrix <- as.matrix(boxes.df$Value)
+             df.row <- nrow(quarter.matrix)
+              yoy.q <- diff(quarter.matrix, lag = 4)
+               quarter.yoy <- (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
+               
+
+  
+  # Render Value Boxes ----
+  output$quarter <- renderValueBox({
+   valueBox(
+     
+     quarter.yoy$Value,
+     "Year over Year",
+     icon = icon("caret-up")
+            
+   )
+    })
+              
         
   # Render Line Item Plot      
    output$lineitem <- renderPlotly({
@@ -111,11 +149,15 @@ server <- function(input, output) {
       plot_ly(plot.lineitem, x = ~Date, y = ~Value, mode = 'lines')
      
      })
+   
   })
+      
   })
+  
 }
 
         
+
 # Run the application 
 shinyApp(ui = ui, server = server)
 

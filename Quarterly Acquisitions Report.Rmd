@@ -702,6 +702,27 @@ Quarterly Group Compilation
   
   
   
+# Test on Quarter Snapshot Aggregation
+  quarter.test <- 
+    Data.Combined %>%
+    dplyr::filter(Group == 'FY15 Q4' & Data.Combined$`Line Item` == 'Storage_Income') %>%
+    dplyr::group_by(`Line Item`, FY, Quarter, Group) %>%
+    dplyr::summarise(Value = sum(Value)) 
+
+
+   # Matrix Test
+     quarter.matrix <- as.matrix(quarter.test$Value)
+       
+      # Quarter YoY
+        df.row <- nrow(quarter.matrix)
+        
+        yoy.q <- diff(quarter.matrix, lag = 4)
+        
+        (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
+        
+        
+  
+  
 ```
 
 
