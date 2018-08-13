@@ -127,7 +127,7 @@ server <- function(input, output) {
             quarter.matrix <- as.matrix(boxes.df$Value)
              df.row <- nrow(quarter.matrix)
               yoy.q <- diff(quarter.matrix, lag = 4)
-               quarter.yoy <- (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
+               quarter.yoy <- round((yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100, 2)
                
 
   
@@ -135,8 +135,8 @@ server <- function(input, output) {
   output$quarter <- renderValueBox({
    valueBox(
      
-     quarter.yoy$Value,
-     "Year over Year",
+     paste(quarter.yoy$Value, "%"),
+     "Recent Quarter Y/Y",
      icon = icon("caret-up")
             
    )
