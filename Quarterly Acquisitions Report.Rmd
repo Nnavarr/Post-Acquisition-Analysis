@@ -696,29 +696,29 @@ Quarterly Group Compilation
   
   
 # Test CSV Read
-  test <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95b3R2JF_arMzwrMm1JieduB064cBks5bdfwOwA%3D%3D")
+ # test <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95b3R2JF_arMzwrMm1JieduB064cBks5bdfwOwA%3D%3D")
   
-  test.2 <- read.csv(text = test)
+  #test.2 <- read.csv(text = test)
   
   
   
 # Test on Quarter Snapshot Aggregation
-  quarter.test <- 
-    Data.Combined %>%
-    dplyr::filter(Group == 'FY15 Q4' & Data.Combined$`Line Item` == 'Storage_Income') %>%
-    dplyr::group_by(`Line Item`, FY, Quarter, Group) %>%
-    dplyr::summarise(Value = sum(Value)) 
+ # quarter.test <- 
+  #  Data.Combined %>%
+   # dplyr::filter(Group == 'FY15 Q4' & Data.Combined$`Line Item` == 'Storage_Income') %>%
+   # dplyr::group_by(`Line Item`, FY, Quarter, Group) %>%
+   # dplyr::summarise(Value = sum(Value)) 
 
 
    # Matrix Test
-     quarter.matrix <- as.matrix(quarter.test$Value)
+    # quarter.matrix <- as.matrix(quarter.test$Value)
        
       # Quarter YoY
-        df.row <- nrow(quarter.matrix)
+      #  df.row <- nrow(quarter.matrix)
         
-        yoy.q <- diff(quarter.matrix, lag = 4)
+       # yoy.q <- diff(quarter.matrix, lag = 4)
         
-        (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
+       # (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
         
         
   
@@ -948,7 +948,7 @@ Occ Data Compilation
   
   # From there, we can calculate our summary fields (Total_SF & Occupied_SF (a sum of these fields respectively)
     grp1.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp1.ME & unm_product %in% product.type & Date <= '2018-06-01') %>% 
+                   filter(`MEntity` %in% grp1.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
                         unm_timestamp, 
                         unm_product) %>%
@@ -1390,7 +1390,10 @@ Fiscal Year Column Addition for Occupancy Metrics
   
   UnitMix.Aggregate <- UnitMix.Aggregate %>% arrange(Group, MONTH)
   
-
+  UnitMix.Aggregate %>% 
+    group_by(MONTH) %>%
+    summarise(Occupancy = sum(Occupied_Rooms) / sum(Total_Rooms))
+  
 ```
 
 
