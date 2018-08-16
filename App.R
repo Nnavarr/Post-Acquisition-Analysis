@@ -53,11 +53,8 @@ library(RCurl)
     
     fluidRow(
       
-      valueBoxOutput("quarter")
-      
-      # Value Boxes
-       # infoBoxOutput("quarter")
-      
+      valueBoxOutput("quarter"),
+      valueBoxOutput("quarter2")
     ),
       
       
@@ -127,7 +124,13 @@ server <- function(input, output) {
             quarter.matrix <- as.matrix(boxes.df$Value)
              df.row <- nrow(quarter.matrix)
               yoy.q <- diff(quarter.matrix, lag = 4)
-               quarter.yoy <- round((yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100, 2)
+               quarter.yoy <- round((yoy.q[nrow(yoy.q)] /  boxes.df[nrow(boxes.df), 5]) * 100, 2)
+               
+          # Calculate Q/Q Comparison
+            quarterchange.matrix <- as.matrix(boxes.df$Value)
+             df.row.2 <- nrow(quarterchange.matrix)
+              qoq <- diff(quarterchange.matrix, lag = 1)
+               quarter.qoq <- round((qoq[nrow(qoq)] / boxes.df[nrow(boxes.df), 5]) * 100, 2)
                
 
   
@@ -141,6 +144,18 @@ server <- function(input, output) {
             
    )
     })
+               # Quarter 2 (quarter over quarter)
+               output$quarter2 <- renderValueBox({
+                 valueBox(
+                   
+                   paste(quarter.qoq$Value, "%"),
+                   "Quarter Change",
+                   icon = icon("caret-up")
+                   
+                 )
+               })              
+               
+               
               
         
   # Render Line Item Plot      
