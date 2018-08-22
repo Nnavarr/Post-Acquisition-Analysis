@@ -1,0 +1,112 @@
+---
+title: "Trend IS Data Verification"
+author: "Noe Navarro"
+date: "August 22, 2018"
+output: html_document
+---
+
+
+```{r}
+
+# Connection
+  con.FinAccounting = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "FinAccounting",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+
+
+# Import Database 
+  trend.is.detail <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP") 
+
+
+```
+
+
+```{r}
+
+# Database 
+  trend.is.detail <- collect(trend.is.detail)
+
+  trend.is.detail$ACCOUNT <- as.character(trend.is.detail$ACCOUNT)
+   
+# 10-K Accounts
+  k.accounts <- c(420000, 420010, 420030, 420040, 420050, 420060) #420100, 420110, 420120)
+  
+  #c(420000, 420010, 420030, 420040, 420050, 420060, 420100, 420110, 420120)
+  
+  k.accounts <- as.character(k.accounts)
+  
+  
+  
+# Import MEntity List Currently Used ----
+mentity.list <- 
+  read.csv("C:\\Users\\1217543\\Desktop\\Mentity_List.csv")
+
+mentity.list <-
+  as.character(mentity.list$MEntity)
+
+  
+  
+```
+
+
+
+```{r}
+
+
+# Summarise by 10-K Accounts
+  trend.is.detail <- 
+  trend.is.detail %>%
+    filter(ACCOUNT %in% k.accounts) #& MEntity %in% mentity.list)
+  
+  # Filter for F19 
+  trend.is.detail.19 <- 
+  trend.is.detail %>% 
+  filter(`Fiscal Year` == 2019)
+  
+  # Filter for F18
+  trend.is.detail.18 <- 
+    trend.is.detail %>%
+    filter(`Fiscal Year` == 2018)
+
+# Summarise by Column
+  Q1F19 <- 
+  trend.is.detail.19 %>% 
+    summarise(Q1 = sum(`PD 01`) + sum(`PD 02`) + sum(`PD 03`))
+  
+  Q4F18 <- 
+    trend.is.detail.18 %>%
+    summarise(Q2_to_4 = sum(`PD 04`) + sum(`PD 05`) + sum(`PD 06`) + sum(`PD 07`) + sum(`PD 08`) + sum(`PD 09`) + sum(`PD 10`) + sum(`PD 11`) + sum(`PD 12`))
+
+  
+  
+  Q1F19
+  
+  Q4F18
+  
+  
+  
+# Distinct MEntity and Profit Centers
+ # mentity_n_entity <- 
+ # trend.is.detail.19 %>%
+    #filter()
+    #select(MEntity, `PROFIT CENTER`)
+  
+  
+  # Distinct Values
+  #d.mentity.is <- 
+    #mentity_n_entity %>%
+     # distinct(MEntity)
+  
+  
+  
+```
+
+
+
+
+
+

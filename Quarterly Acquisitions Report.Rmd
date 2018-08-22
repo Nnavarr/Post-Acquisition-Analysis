@@ -34,6 +34,7 @@ library(supclust)
 library(jsonlite)
 library(RCurl)
 
+library(tidyr)
 
 ```
 
@@ -629,6 +630,10 @@ Quarterly Group Compilation
   profit.center.vector <- as.data.frame(profit.center.vector)
    colnames(profit.center.vector) <- "Profit_Center"
     profit.center.vector[!duplicated(profit.center.vector$Profit_Center), ]
+    
+    
+    # Count of Unique Profit Centers
+      n_distinct(profit.center.vector) # 246 Unique Profit Centers 
  
   
 ```
@@ -692,7 +697,7 @@ Quarterly Group Compilation
                       group14.data)
   
 # Export Data
-  write.csv(Data.Combined, 'C:\\Users\\1217543\\OneDrive\\R Projects\\Post Acquisition\\Post-Acquisition-Analysis\\Aggregate_IS_Data.csv')
+  write.csv(Data.Combined, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Aggregate_IS_Data.csv')
   
   
 # Test CSV Read
@@ -720,8 +725,6 @@ Quarterly Group Compilation
         
        # (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
         
-        
-  
   
 ```
 
@@ -734,7 +737,7 @@ Quarterly Group Compilation
   Occupancy.Calc = function(x){
     d <- Occupancy.Table %>% 
                             filter(x) %>%
-                            group_by(unm_timestamp, 
+                            group_by(Date, 
                                      MEntity,
                                      unm_product, 
                                      unm_numunits,
@@ -874,20 +877,22 @@ Occ Data Compilation
   }   
 
 # Groups #
-  grp1.MEntity = unique(map(grp1.pc.list2, SAP2Mentity))
-  grp2.MEntity = unique(map(grp2.pc.list2, SAP2Mentity))
-  grp3.MEntity = unique(map(grp3.pc.list2, SAP2Mentity))
-  grp4.MEntity = unique(map(grp4.pc.list2, SAP2Mentity))
-  grp5.MEntity = unique(map(grp5.pc.list2, SAP2Mentity))
-  grp6.MEntity = unique(map(grp6.pc.list2, SAP2Mentity))
-  grp7.MEntity = unique(map(grp7.pc.list2, SAP2Mentity))
-  grp8.MEntity = unique(map(grp8.pc.list2, SAP2Mentity))
-  grp9.MEntity = unique(map(grp9.pc.list2, SAP2Mentity))
-  grp10.MEntity = unique(map(grp10.pc.list2, SAP2Mentity))
-  grp11.MEntity = unique(map(grp11.pc.list2, SAP2Mentity))
-  grp12.MEntity = unique(map(grp12.pc.list2, SAP2Mentity))
-  grp13.MEntity = unique(map(grp13.pc.list2, SAP2Mentity))
-  grp14.MEntity = unique(map(grp14.pc.list2, SAP2Mentity))
+  grp1.MEntity = unique(map(grp1.pc.list2, SAP2Mentity)) # 8
+  grp2.MEntity = unique(map(grp2.pc.list2, SAP2Mentity)) # 5
+  grp3.MEntity = unique(map(grp3.pc.list2, SAP2Mentity)) # 7
+  grp4.MEntity = unique(map(grp4.pc.list2, SAP2Mentity)) # 11
+  grp5.MEntity = unique(map(grp5.pc.list2, SAP2Mentity)) # 11
+  grp6.MEntity = unique(map(grp6.pc.list2, SAP2Mentity)) # 13
+  grp7.MEntity = unique(map(grp7.pc.list2, SAP2Mentity)) # 13
+  grp8.MEntity = unique(map(grp8.pc.list2, SAP2Mentity)) # 13
+  grp9.MEntity = unique(map(grp9.pc.list2, SAP2Mentity)) # 11
+  grp10.MEntity = unique(map(grp10.pc.list2, SAP2Mentity)) # 9
+  grp11.MEntity = unique(map(grp11.pc.list2, SAP2Mentity)) # 12
+  grp12.MEntity = unique(map(grp12.pc.list2, SAP2Mentity)) # 19
+  grp13.MEntity = unique(map(grp13.pc.list2, SAP2Mentity)) # 25
+  grp14.MEntity = unique(map(grp14.pc.list2, SAP2Mentity)) # 10
+  
+
 
 ```
 
@@ -935,7 +940,60 @@ Occ Data Compilation
       grp13.ME = as.character(grp13.ME)    
 
   grp14.ME <- unlist(grp14.MEntity)
-      grp14.ME = as.character(grp14.ME)         
+      grp14.ME = as.character(grp14.ME)
+      
+      
+  # Check MEntity Counts ----
+    occ.mentity.df <- 
+        as.data.frame(c(grp1.ME,
+              grp2.ME,
+              grp3.ME,
+              grp4.ME, 
+              grp5.ME,
+              grp6.ME,
+              grp7.ME,
+              grp8.ME,
+              grp9.ME,
+              grp10.ME,
+              grp11.ME,
+              grp12.ME,
+              grp13.ME,
+              grp14.ME))
+      
+      colnames(occ.mentity.df)[1] = 'MEntity'
+      
+      occ.mentity.df <- 
+      occ.mentity.df %>% 
+        arrange(MEntity)
+      
+      # Dimension 
+        dim(occ.mentity.df) # 156 Unique MEntity
+        
+        # There were originally 246 unique profit center numbers. This means we lost 90 centers when merging Profit Center with MEntity number. 
+      
+        
+        
+ # Profit Center to MEntity Comparison ----
+   profitcenter_to_mentity <- 
+        as.data.frame(profit.center.vector) # Rows = 248
+        
+ # Remove NA Profit Centers 
+   profitcenter_to_mentity <- as.data.frame(profitcenter_to_mentity[!is.na(profitcenter_to_mentity)]) 
+   colnames(profitcenter_to_mentity)[1] <- 'Profit_Center'
+   
+     # Left Join Graph Data ----
+       profitcenter_to_mentity <-
+          left_join(profitcenter_to_mentity, Graph.Entity.Info.Local[ , c(3:5, 11:15,21)], by = 'Profit_Center') # Rows = 791
+            # 543 Difference in row count
+  
+     # Extract MEntity from the DF ----
+       d.mentity.check <- 
+       profitcenter_to_mentity %>% 
+         distinct(MEntity) 
+   
+       d.mentity.check[!is.na(d.mentity.check)] # 156 Unique MEntity numbers 
+       
+   
 
 ```
 
@@ -943,147 +1001,148 @@ Occ Data Compilation
 ```{r}
 
 # Vector to filter Product Type #
-  product.type = c("CONTAINER", "DRIVE UP", "INTERIOR", "SPLIT LEVEL")
+  #product.type = c("CONTAINER", "DRIVE UP", "INTERIOR", "SPLIT LEVEL", "RV")
 
   
   # From there, we can calculate our summary fields (Total_SF & Occupied_SF (a sum of these fields respectively)
     grp1.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp1.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp1.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     grp2.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp2.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp2.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp3.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp3.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp3.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp4.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp4.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp4.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp5.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp5.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp5.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp6.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp6.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp6.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp7.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp7.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp7.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp8.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp8.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp8.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     grp9.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp9.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp9.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp10.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp10.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp10.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
   
 #______________________________________________________________________________________________________________________________________________      
     # As of 3/21/2018 the next two groups are #
    grp11.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp11.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp11.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                   group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
    grp12.unitmix = Occupancy.Table %>% 
-                  filter(`MEntity` %in% grp12.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                  filter(`MEntity` %in% grp12.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)
+                   arrange(Date)
     
     
     grp13.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp13.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp13.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)  
+                   arrange(Date)  
     
     
     grp14.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp14.ME & unm_product %in% product.type & Date <= '2018-06-20') %>% 
+                   filter(`MEntity` %in% grp14.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
-                        unm_timestamp, 
+                        Date, 
                         unm_product) %>%
                    summarize(Total_Rooms = sum(unm_numunits),
                              Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(unm_timestamp)      
+                   arrange(Date)      
+    
     
   
 ```
@@ -1267,8 +1326,124 @@ Fiscal Year and Group Addition
                 x$FY[i] = 2019
                 x$Quarter[i] = 2                  
           
-                }
-            }
+                } else if (x$MONTH[i] >= '2018/10/1' & x$MONTH[i] <= '2018/12/30'){
+                  
+                x$FY[i] = 2019
+                x$Quarter[i] = 3                  
+          
+                } else if (x$MONTH[i] >= '2019/1/1' & x$MONTH[i] <= '2019/3/31'){
+                  
+                x$FY[i] = 2019
+                x$Quarter[i] = 4                
+              
+                } else if (x$MONTH[i] >= '2019/4/1' & x$MONTH[i] <= '2019/6/30'){
+                  
+                x$FY[i] = 2020
+                x$Quarter[i] = 1                
+              
+                } else if (x$MONTH[i] >= '2019/7/1' & x$MONTH[i] <= '2019/9/30'){
+                  
+                x$FY[i] = 2020
+                x$Quarter[i] = 2
+              
+                } else if (x$MONTH[i] >= '2019/10/1' & x$MONTH[i] <= '2019/12/30'){
+                  
+                x$FY[i] = 2020
+                x$Quarter[i] = 3
+              
+                } else if (x$MONTH[i] >= '2020/1/1' & x$MONTH[i] <= '2020/3/31'){
+                  
+                x$FY[i] = 2020
+                x$Quarter[i] = 4
+                
+                } else if (x$MONTH[i] >= '2020/4/1' & x$MONTH[i] <= '2020/6/30'){
+                  
+                x$FY[i] = 2021
+                x$Quarter[i] = 1
+                
+                } else if (x$MONTH[i] >= '2020/7/1' & x$MONTH[i] <= '2020/9/30'){
+                  
+                x$FY[i] = 2021
+                x$Quarter[i] = 2
+              
+                } else if (x$MONTH[i] >= '2020/10/1' & x$MONTH[i] <= '2020/12/30'){
+                  
+                x$FY[i] = 2021
+                x$Quarter[i] = 3
+              
+                } else if (x$MONTH[i] >= '2021/1/1' & x$MONTH[i] <= '2021/3/31'){
+                  
+                x$FY[i] = 2021
+                x$Quarter[i] = 4
+              
+                } else if (x$MONTH[i] >= '2021/4/1' & x$MONTH[i] <= '2021/6/30'){
+                  
+                x$FY[i] = 2022
+                x$Quarter[i] = 1
+              
+                } else if (x$MONTH[i] >= '2021/7/1' & x$MONTH[i] <= '2021/9/30'){
+                  
+                x$FY[i] = 2022
+                x$Quarter[i] = 2
+              
+              
+                } else if (x$MONTH[i] >= '2021/10/1' & x$MONTH[i] <= '2021/12/30'){
+                  
+                x$FY[i] = 2022
+                x$Quarter[i] = 3
+              
+                } else if (x$MONTH[i] >= '2022/1/1' & x$MONTH[i] <= '2022/3/31'){
+                  
+                x$FY[i] = 2022
+                x$Quarter[i] = 4
+                
+                } else if (x$MONTH[i] >= '2022/4/1' & x$MONTH[i] <= '2022/6/30'){
+                  
+                x$FY[i] = 2023
+                x$Quarter[i] = 1
+                
+                } else if (x$MONTH[i] >= '2022/7/1' & x$MONTH[i] <= '2022/9/30'){
+                  
+                x$FY[i] = 2023
+                x$Quarter[i] = 2
+                
+                } else if (x$MONTH[i] >= '2022/10/1' & x$MONTH[i] <= '2022/12/30'){
+                  
+                x$FY[i] = 2023
+                x$Quarter[i] = 3
+                
+                } else if (x$MONTH[i] >= '2023/1/1' & x$MONTH[i] <= '2023/3/31'){
+                  
+                x$FY[i] = 2023
+                x$Quarter[i] = 4
+                
+                } else if (x$MONTH[i] >= '2023/4/1' & x$MONTH[i] <= '2023/6/30'){
+                  
+                x$FY[i] = 2024
+                x$Quarter[i] = 1
+                
+                } else if (x$MONTH[i] >= '2023/7/1' & x$MONTH[i] <= '2023/9/30'){
+                  
+                x$FY[i] = 2024
+                x$Quarter[i] = 2
+              
+                } else if (x$MONTH[i] >= '2023/10/1' & x$MONTH[i] <= '2023/12/30'){
+                  
+                x$FY[i] = 2024
+                x$Quarter[i] = 3
+                
+                } else if (x$MONTH[i] >= '2024/1/1' & x$MONTH[i] <= '2024/3/31'){
+                  
+                x$FY[i] = 2024
+                x$Quarter[i] = 4
+                
+                } else if (x$MONTH[i] >= '2024/4/1' & x$MONTH[i] <= '2024/6/30'){
+                  
+                x$FY[i] = 2025
+                x$Quarter[i] = 1
+                
+              
+            }}
           
           # Month Loop #
             
@@ -1394,22 +1569,212 @@ Fiscal Year Column Addition for Occupancy Metrics
     group_by(MONTH) %>%
     summarise(Occupancy = sum(Occupied_Rooms) / sum(Total_Rooms))
   
+# Count Distinct Profit Centers
+   #occ.d.mentity <- distinct(UnitMix.Aggregate$MEntity)
+   
+   
 ```
+
 
 
 Export Occupancy Metrics
 
 ```{r}
 
- write.csv(UnitMix.Aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\UnitMix.csv', append = FALSE)
+ write.csv(UnitMix.Aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\UnitMix_All.csv', append = FALSE)
 
 ```
 
 
 
+#* Occupancy Predictions *
+
+In this section of the markdown, we will ready forecasted Occupancy data for integration with the dashboard
+
+```{r}
+
+
+# Extract MEntity number from Aggregate Unit Mix ----
+distinct.mentity <-   
+UnitMix.Aggregate %>%
+  distinct(MEntity)
+
+#write.csv(distinct.mentity, 'Z:\\\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\occ_mentity.csv')
+  
+
+# Import Forecasted Occupany Data ----
+  forecasted.occ.df <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Occupancy Forecast\\Occ_Forecast_Data_8162018.csv")
+
+
+# Filter for unecessary columns ----
+  forecasted.occ.df <- forecasted.occ.df[ , c(2, 35:130)]
+
+  # Reformat Data ----
+    forecasted.melt <-
+      melt(forecasted.occ.df, id.vars = "MEntity")
+
+    forecasted.melt$variable <- as.character(forecasted.melt$variable)
+    forecasted.melt$MEntity <- as.character(forecasted.melt$MEntity)
+      
+    # Replace string patterns ----
+      forecasted.melt$variable <-
+        gsub(pattern = 'X', replacement = " ", x = forecasted.melt$variable)
+    
+      forecasted.melt$variable <-
+        gsub(pattern = '\\.', replacement = "/", x = forecasted.melt$variable)
+      
+      # Convert Room "value" column to numeric ----
+        forecasted.melt$value <-
+          as.numeric(forecasted.melt$value)
+      
+      # Convert variable column into Date ----
+        forecasted.melt$variable <- 
+          as.Date(forecasted.melt$variable, format = "%m/%d/%Y")
+        
+        # Rename Columns for Join ----
+          colnames(forecasted.melt)[2] <- "MONTH"
+          colnames(forecasted.melt)[3] <- "F.Rooms"
+          
+          # Extract NA Forecasts
+            na.forecast <- 
+              forecasted.melt[is.na(forecasted.melt$F.Rooms), ]
+              
+            # Exctract Unique NA Values
+              #unique(na.forecast$MEntity)
+          
+          # Convert NA to 0 ----
+            forecasted.melt$F.Rooms[is.na(forecasted.melt$F.Rooms)] <- 0 # dim = 26,880
+            
+            
+# Check for missing Mentity within the Forecast Database
+  f.mentity <- 
+    forecasted.melt %>% filter(MEntity %in% distinct.mentity$MEntity)
+  
+# 92 MEntity Located within the forecast spreadsheet.  There are 6 that remain missing. 
+  f.mentity <- unique(f.mentity$MEntity) # 92 so far.
+  
+  #write.csv(f.mentity, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\mentity_within_forecast.csv')
+          
+  
+  
+```
+
+
+####*Combination of predictions and Occupany Metrics (Aggregate by MEntity Number)*
+
+```{r eval=FALSE, include=FALSE}
+
+
+  # Aggregate Data Frames ----
+    final.unitmix <- 
+      UnitMix.Aggregate %>%
+      group_by(MEntity, MONTH) %>%
+      summarise(Total_Rooms = sum(Total_Rooms),
+                Occupied_Rooms = sum(Occupied_Rooms))
+
+  # Forecasted Units ----
+    final.unitmix <- 
+      left_join(final.unitmix, forecasted.melt, by = c("MEntity", "MONTH"))
+
+    
+  # Addition of FY Columns and Info ----
+    final.unitmix <- 
+    FiscalYear.Columns(final.unitmix) # 1,402 Rows 
+
+
+  # Creation of MEntity and Group Key ----
+    mentity_n_group_key <- 
+      UnitMix.Aggregate %>% 
+      select(MEntity, Group) %>%
+      group_by(MEntity, Group)
+    
+    mentity_n_group_key <- 
+    unique(mentity_n_group_key[ ,c('MEntity','Group')])  # 99 Rows
+    
+  # Join Projections ----
+   final.unitmix <-
+     left_join(final.unitmix, mentity_n_group_key, by = 'MEntity') #1,402 rows. This is aggregating correctly. 
+   
+  # Replace NA with 0 ----
+    final.unitmix$F.Rooms[is.na(final.unitmix$F.Rooms)] <- 0 
+   
+  # Export Projection Data ----
+   write.csv(final.unitmix, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Forecasted_Units.csv", append = TRUE)
+   
+
+   
+# Forecasted Amounts ----
+  mentity_n_group_key # Data Frame to use in Combination of Forecasted Amounts (From CSV)
+  
+  # Join on Data Frame ----
+    forecasted.df <- 
+      left_join(forecasted.melt, mentity_n_group_key, by = 'MEntity') # 269,184 
+    
+    # Filter For 5 year forecast ----
+      Date <- today() + 1825
+        
+      forecasted.df <- 
+        forecasted.df %>%
+        filter(MONTH >= '2018-7-1' & MONTH <= Date)
+        
+      # Remove NA ---- 
+        forecasted.df <- forecasted.df[complete.cases(forecasted.df), ]
+      
+      # Add Fiscal Year / Quarter
+        forecasted.df <- FiscalYear.Columns(forecasted.df)
+        
+        
+        # Join Current Total Rooms ----
+        Total_Rooms <- 
+          UnitMix.Aggregate %>%
+            group_by(MEntity) %>% 
+            filter(MONTH == '2018-7-1') %>%
+            summarise(Total_Rooms = sum(Total_Rooms))
+        
+        
+        # Left Join Total Rooms ----
+          forecasted.df <-
+          left_join(forecasted.df, Total_Rooms, by = 'MEntity')
+        
+        # Update column name
+          colnames(forecasted.df)[3] <- 'Forecasted_Rooms'
+          
+          # Filter Month ----
+            forecasted.df <-
+            forecasted.df %>%
+            filter(FY < 2024)
+      
+        
+        # Export Forecasts 
+          xlsx::write.xlsx(forecasted.df,
+                           "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\occ_rooms_forecast.xls",
+                           sheetName = 'Forecasted_Rooms', col.names = TRUE)
+      
+```
+
+
+#####*Extract NA Values *
+
+```{r}
+
+ # Missing Projections
+  missingdata.f <- 
+ unitmix.aggregate.final %>% 
+  filter(is.na(F.Rooms)) %>% 
+   select(MEntity)
+
+ # distinct.missingdata.f <- 
+    unique(missingdata.f)
+  
+  
+  # Export Missing Forecasts ----
+    write.csv(distinct.missingdata.f, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Occupancy Forecast\\Missing_Forecast.csv")
 
   
+```
+
   
+
   
   
   
