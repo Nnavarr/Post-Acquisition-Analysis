@@ -70,7 +70,22 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-      
+
+# MEntity       
+  con.mentity = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "MEntity",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+
+
+
+
+
+
+
 # Graph MEntity and SAP number combination
   Graph.Entity.Info.Sql <- dplyr::tbl(con.FinAnalysis, "GRAPH_ENTITY_INFO")
     Graph.Entity.Info.Local <- collect(Graph.Entity.Info.Sql)
@@ -101,6 +116,9 @@ Occupancy.Table = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")
     
 # Collect SAP Hierarchy
   SAP.Hierarchy <- collect(SAP.Hierarchy)
+  
+  
+  
 
 
 
@@ -537,6 +555,9 @@ Quarterly Group Compilation
                               grp14 = C.Acquisitions.Include %>% filter(Group == 14)
 
 
+
+# THE EXTRACTION OF UNIQUE PROFIT CENTERS CAN BE REMOVED; IT IS COMPLETED ABOVE -----                                                            
+                              
 # Profit Center Selection
   group1.pc = C.Acquisitions.Include %>% filter(Group == 1) %>% select(Profit_Center)
     group1.pc <- unique(group1.pc$Profit_Center)
@@ -637,8 +658,6 @@ Quarterly Group Compilation
  
   
 ```
-
-
 
 
 # Aggregate Income Statement Compilation
