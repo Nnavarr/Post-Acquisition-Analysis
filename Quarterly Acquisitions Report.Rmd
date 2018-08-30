@@ -105,7 +105,7 @@ IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")  #Main data for i
 SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") #SAP Hierarchy Table
 
 # Finanalysis Tables
-SAP_Info = dplyr::tbl(con.FinAnalysis, "MENTITY_SAP")# MEntity to SAP number
+SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")# MEntity to SAP number 
   SAP.DB = collect(SAP_Info) # Save local copy of MEntity_SAP database
   
     SAP.DB %>% summarise(n_distinct(MEntity)
@@ -888,7 +888,11 @@ Occ Data Compilation
 ```
 
 
-```{r}
+```{r Needs update}
+
+
+# This portion of the code needs to be updated! Use different database for SAP Profit center to MEntity number #
+
 
 # MEntity compilation Function #
   SAP2Mentity = function(x){
@@ -990,7 +994,6 @@ Occ Data Compilation
         
         # There were originally 246 unique profit center numbers. This means we lost 90 centers when merging Profit Center with MEntity number. 
       
-        
         
  # Profit Center to MEntity Comparison ----
    profitcenter_to_mentity <- 
@@ -1598,7 +1601,7 @@ Fiscal Year Column Addition for Occupancy Metrics
 
 Export Occupancy Metrics
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
  write.csv(UnitMix.Aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\UnitMix_All.csv', append = FALSE)
 
@@ -1666,11 +1669,11 @@ UnitMix.Aggregate %>%
             
             
 # Check for missing Mentity within the Forecast Database
-  f.mentity <- 
-    forecasted.melt %>% filter(MEntity %in% distinct.mentity$MEntity)
+  #f.mentity <- 
+   ## forecasted.melt %>% filter(MEntity %in% distinct.mentity$MEntity)
   
 # 92 MEntity Located within the forecast spreadsheet.  There are 6 that remain missing. 
-  f.mentity <- unique(f.mentity$MEntity) # 92 so far.
+  #f.mentity <- unique(f.mentity$MEntity) # 92 so far.
   
   #write.csv(f.mentity, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\mentity_within_forecast.csv')
           
