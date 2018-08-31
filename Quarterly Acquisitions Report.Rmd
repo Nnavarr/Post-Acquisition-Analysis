@@ -39,10 +39,11 @@ library(tidyr)
 ```
 
 
-SQL Connections
+## **SQL Connections**
 
 ```{r}
 
+# Finaccounting connection ----
 con.FinAccounting = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -51,7 +52,7 @@ con.FinAccounting = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-
+# Finanalysis connection ----
 con.FinAnalysis = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -60,8 +61,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-  
-# Storage Tables ----
+# Storage connection ----
   con.Storage = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -70,8 +70,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-
-# MEntity       
+# MEntity connection ----      
   con.mentity = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -80,52 +79,40 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-
-
-
-
-
-
 # Graph MEntity and SAP number combination
   Graph.Entity.Info.Sql <- dplyr::tbl(con.FinAnalysis, "GRAPH_ENTITY_INFO")
     Graph.Entity.Info.Local <- collect(Graph.Entity.Info.Sql)
       colnames(Graph.Entity.Info.Local)[21] <- 'Profit_Center'
         
-      
-    
 ```
 
-Table Import
+
+## **Import Table**
 
 ```{r}
 
+# Finaccounting Tables ----
+  IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")
+  SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") 
 
-# Finaccounting Tables
-IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")  #Main data for income statement compilation
-SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") #SAP Hierarchy Table
-
-# Finanalysis Tables
-SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")# MEntity to SAP number 
-  SAP.DB = collect(SAP_Info) # Save local copy of MEntity_SAP database
-  
-    SAP.DB %>% summarise(n_distinct(MEntity)
-    )
+# Finanalysis Tables ----
+  SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")
+    SAP.DB = collect(SAP_Info)
+      SAP.DB %>% summarise(n_distinct(MEntity))
 
 # Occupancy Table ----  
-Occupancy.Table = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
+  Occupancy.Table = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
     
-# Collect SAP Hierarchy
+# Collect SAP Hierarchy ----
   SAP.Hierarchy <- collect(SAP.Hierarchy)
   
-  
-  
-
-
-
 ```
 
 
-Functions
+## **Functions**
+---
+
+### *Aggregate Income Statement*
 
 ```{r}
 
@@ -340,9 +327,10 @@ Aggregate.IS <- function(x){
 
 }
 
-
 ```
 
+
+### **Income Statement Data Check**
 
 ```{r Data Check Function}
 
@@ -377,6 +365,8 @@ DataCheck = function(x) {
 ```
 
 
+### **Month of Operation Start**
+
 ```{r}
 
 MonthofOperation.Start = function (x){
@@ -394,6 +384,8 @@ MonthofOperation.Start = function (x){
 ```
 
 
+### **Omit NA from list**
+
 ```{r}
 
 na.omit.list <- function(y) {
@@ -402,6 +394,8 @@ na.omit.list <- function(y) {
 
 ```
 
+
+### **Property Owner Function**
 
 ```{r}
 
@@ -424,6 +418,8 @@ Property_Owner = function (x){
 ```
 
 
+### **Vector Conversion Function**
+
 ```{r}
 
 vector.conv <- function(x){
@@ -434,21 +430,18 @@ vector.conv <- function(x){
 ```
 
 
-Compilation of New Acquisitions List
+##**Compilation of New Acquisitions List**
 
-```{r}
+```{r This section will need to be updated last}
 
-  # Import New List
-    New.Acquisitions <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\New Acquisitions F19 Q1.csv")
+# Import New Acquisitions List ----
+  New.Acquisitions <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\New Acquisitions F19 Q1.csv")
 
-    # Rename Column
-      colnames(New.Acquisitions)[3] <- "Entity"
+  # Rename New.Acquisitions 3rd column to "Entity"  ----
+    colnames(New.Acquisitions)[3] <- "Entity"
       New.Acquisitions$Entity <- as.character(New.Acquisitions$Entity)
       
-      
-      
-
-  # Import Graph File Data
+  # Import Graph File Data ----
     Graph.File <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Q1 Graph File.csv", header = TRUE)
       
     Graph.File$Entity <- as.character(Graph.File$Entity)
@@ -484,63 +477,102 @@ Compilation of New Acquisitions List
           }
         }
 
-  
     # Export to CSV
      # write.csv(New.Acquisitions, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\NewAcq_Export.csv")
-    
-
+  
 ```
 
-
-Completed Acquisitions Spreadsheet
+---
+##**Completed Acquisitions Spreadsheet**
 
 ```{r}
 
-# Spreadsheet Import
-  C.Acquisitions = read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
-C.Acquisitions
+# Completed acquisitions spreadsheet import ----
+  c_acquisitions <- 
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
 
-  # TBL conversion
-     C.Acquisitions = as.tbl(C.Acquisitions)
-     
-      C.Acquisitions.Include = C.Acquisitions %>% filter(Include. == 'Yes')
-      C.Acquisitions.Exclude = C.Acquisitions %>% filter(Include. == 'No')
+  # completed completed acquisitions tbl conversion ----
+    c_acquisitions <- 
+      as.tbl(c_acquisitions)
+
+      c_acquisitions_include <- 
+        c_acquisitions %>% 
+        filter(Include. == 'Yes')
+      
+        c_acquisitions_exclude <- 
+          c_acquisitions %>% 
+          filter(Include. == 'No')
       
 ```
 
 
-Ensure no Duplicates are included
+###*Duplicate profit center check*
 
 ```{r}
 
- # Extract Profit Center Column
-   C.Acquisitions.Include2 = C.Acquisitions.Include %>% 
-                              select(Profit_Center)
+# c.acquisitions extraction of profit center numbers ----
+  c_acquisitions_pc <-
+    c_acquisitions_include %>% 
+    select(Profit_Center)
 
-   C.Acquisitions.Include2.Complete <-  C.Acquisitions.Include2[!is.na(C.Acquisitions.Include2), ] #  Remove NA Values
+  # c.aquisitioins removal of NA values ----
+    c_acquisitions_pc_complete <-  
+      c_acquisitions_pc[!is.na(c_acquisitions_pc), ] 
    
-    # Check for Duplicates
-      C.Acquisitions.Include2.Complete %>%
-        group_by(Profit_Center) %>%
-        mutate(Count = 1) %>%
-        summarise(Total = sum(Count)) %>%
-        filter(Total > 1)
+    # Check for duplicate profit centers within completed acquisitions data frame ----
+      duplicate_pc_check_1 <- 
+        c_acquisitions_pc_complete %>%
+          group_by(Profit_Center) %>%
+          mutate(Count = 1) %>%
+          summarise(Total = sum(Count)) %>%
+          filter(Total > 1)
+      
+      # Kill switch if duplicate profit centers are detected; Check 1 ----
+        if(length(duplicate_pc_check_1$Profit_Center) != 0) {
         
-    # Duplicates have been removed.
+          stop() 
+        
+        }
 
 ```
 
 
-
-
-
-Quarterly Group Compilation
+---
+##**Quarterly Group Compilation**
 
 ```{r}
 
-# Group Creation
-    grp1 = C.Acquisitions.Include %>% filter(Group == 1)
-      grp2 = C.Acquisitions.Include %>% filter(Group == 2)
+# Quarterly acquisition group creation (code improvement) ----
+  
+  acquisition.groups <- function(x){
+    
+    require(dplyr)
+    require(lazyeval)
+    require(purrr)
+    
+      distinct.g = distinct(x$Group)
+      
+      for (i in 1:length(disting.g)) {
+        
+      }
+    
+  }
+      
+    
+
+
+
+
+
+#________________________________________________________
+
+# Attempt at improving the code ----
+  
+
+
+# Quarterly acquisition group creation ----
+    grp1 = c.acquisitions.include %>% filter(Group == 1)
+      grp2 = c.acquisitions.include %>% filter(Group == 2)
         grp3 = C.Acquisitions.Include %>% filter(Group == 3)
           grp4 = C.Acquisitions.Include %>% filter(Group == 4)
             grp5 = C.Acquisitions.Include %>% filter(Group == 5)
