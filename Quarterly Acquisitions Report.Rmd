@@ -610,7 +610,7 @@ Process
                   "FY19 Q1")
     
     grp_table <- 
-      data.frame(grp_name)
+      data.frame(grp_number,grp_name)
     
     # Enter grp name identifier ----
       for (i in 1:length(aggregate_income_statement)) { 
@@ -620,20 +620,32 @@ Process
 # Unlist income statement data into a data frame for excel export ----
   income_statement_aggregate <-   
     map_df(aggregate_income_statement, `[`)
-
     
+  # Import group number for Dashboard ----
+    colnames(grp_table)[1] <- "Grp_Num"
+    colnames(grp_table)[2] <- "Group"
+      income_statement_aggregate <-
+        left_join(income_statement_aggregate, grp_table, by = 'Group')
+      
+      # Data type adjustments for export ----
+        income_statement_aggregate$FY <- as.numeric(income_statement_aggregate$FY)
+        income_statement_aggregate$FM <- as.numeric(income_statement_aggregate$FM)
+        income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
+
     # Export Data
-      write.csv(income_statement_aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Aggregate_IS_Data.csv')
-  
+    xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
+                     sheetName = "Report42018")
+    
 ```
 
 
-
-#--- Occupancy Metrics ---#
+---
+##**Occupancy Metric Compilation**##
+---
 
 ```{r Occupancy Function}
 
-  Occupancy.Calc = function(x){
+  occupancy.calc = function(x){
     d <- Occupancy.Table %>% 
                             filter(x) %>%
                             group_by(Date, 
@@ -649,13 +661,12 @@ Process
     collect(d)
   }
 
-
 ```
 
 
 ```{r}
 
-Occ.Data.Comp.Function = function(x, list.container){
+occ.data.comp.function = function(x, list.container){
     
     # Filter and select only the profit centers from the individual data frames
     a <- x %>% select(Profit_Center)
@@ -677,11 +688,18 @@ Occ.Data.Comp.Function = function(x, list.container){
 ```
 
 
-Occupancy Data List Containers (Needs Updating Every Quarter)
+# PROCESS UPDATE IN PROGRESS
 
-  The update process includes creating a new group category and associated lists. 
+Current Process
+
+1. Create individual list containers
+2. Check for Data
+3. 
   
 ```{r}
+
+ 
+
 
 # Container Creation
   grp1.pc.list = list()
@@ -706,20 +724,24 @@ Occ Data Compilation
 ```{r}
 
 # List Compilation by Acquisition Group
-  grp1.pc.list = Occ.Data.Comp.Function(grp1, grp1.pc.list) 
-    grp2.pc.list = Occ.Data.Comp.Function(grp2, grp2.pc.list)   
-      grp3.pc.list = Occ.Data.Comp.Function(grp3, grp3.pc.list) 
-        grp4.pc.list = Occ.Data.Comp.Function(grp4, grp4.pc.list) 
-          grp5.pc.list = Occ.Data.Comp.Function(grp5, grp5.pc.list) 
-            grp6.pc.list = Occ.Data.Comp.Function(grp6, grp6.pc.list) 
-              grp7.pc.list = Occ.Data.Comp.Function(grp7, grp7.pc.list) 
-                grp8.pc.list = Occ.Data.Comp.Function(grp8, grp8.pc.list) 
-                  grp9.pc.list = Occ.Data.Comp.Function(grp9, grp9.pc.list) 
-                    grp10.pc.list = Occ.Data.Comp.Function(grp10, grp10.pc.list) 
-                      grp11.pc.list = Occ.Data.Comp.Function(grp11, grp11.pc.list) 
-                        grp12.pc.list = Occ.Data.Comp.Function(grp12, grp12.pc.list) 
-                          grp13.pc.list = Occ.Data.Comp.Function(grp13, grp13.pc.list)
-                            grp14.pc.list = Occ.Data.Comp.Function(grp14, grp14.pc.list)
+  grp1.pc.list = occ.data.comp.function(grp1, grp1.pc.list) 
+
+
+
+
+   # grp2.pc.list = Occ.Data.Comp.Function(grp2, grp2.pc.list)   
+      #grp3.pc.list = Occ.Data.Comp.Function(grp3, grp3.pc.list) 
+       # grp4.pc.list = Occ.Data.Comp.Function(grp4, grp4.pc.list) 
+          #grp5.pc.list = Occ.Data.Comp.Function(grp5, grp5.pc.list) 
+           # grp6.pc.list = Occ.Data.Comp.Function(grp6, grp6.pc.list) 
+              #grp7.pc.list = Occ.Data.Comp.Function(grp7, grp7.pc.list) 
+                #grp8.pc.list = Occ.Data.Comp.Function(grp8, grp8.pc.list) 
+                 # grp9.pc.list = Occ.Data.Comp.Function(grp9, grp9.pc.list) 
+                   # grp10.pc.list = Occ.Data.Comp.Function(grp10, grp10.pc.list) 
+                      #grp11.pc.list = Occ.Data.Comp.Function(grp11, grp11.pc.list) 
+                       # grp12.pc.list = Occ.Data.Comp.Function(grp12, grp12.pc.list) 
+                          #grp13.pc.list = Occ.Data.Comp.Function(grp13, grp13.pc.list)
+                          #  grp14.pc.list = Occ.Data.Comp.Function(grp14, grp14.pc.list)
                           
                                                 
 # Blank Data Check (Verification of Income Statement Data)
