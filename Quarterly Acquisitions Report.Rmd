@@ -539,243 +539,91 @@ vector.conv <- function(x){
 
 ---
 ##**Quarterly Group Compilation**
+---
+
+
+Process
+
+1. Import acquisitions list 
+2. Isolate unique Profit centers within each quarterly acquisition group
+3. Run aggregate Profit Center on aggregate vector set of Unique Profit Centers 
+
 
 ```{r}
 
 # Quarterly acquisition group creation (code improvement) ----
-  
-  acquisition.groups <- function(x){
-    
-    require(dplyr)
-    require(lazyeval)
-    require(purrr)
-    
-      distinct.g = distinct(x$Group)
+
+# Split Data Frame into Elements within a list ----
+  q_list_container <- 
+    split(c_acquisitions_include, f = c_acquisitions_include$Group)
+
+  # Select Unique Profit Center Numbers ----
+    profit_center_selection <- function(x){
       
-      for (i in 1:length(disting.g)) {
+    # Library
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
         
+        # Extract profit center ----
+        grp_pc = x %>% 
+                   select(Profit_Center)
+        
+        # Isolate Unique Profit Centers ----
+        grp_pc_unique = unique(grp_pc$Profit_Center)
+          grp_pc_unique = as.character(grp_pc_unique)
+          
       }
     
-  }
-      
-    
-
-
-
-
-
-#________________________________________________________
-
-# Attempt at improving the code ----
+# Test profit center selection ----
+  quarter_list <- 
+    map(q_list_container, profit_center_selection)
   
 
-
-# Quarterly acquisition group creation ----
-    grp1 = c.acquisitions.include %>% filter(Group == 1)
-      grp2 = c.acquisitions.include %>% filter(Group == 2)
-        grp3 = C.Acquisitions.Include %>% filter(Group == 3)
-          grp4 = C.Acquisitions.Include %>% filter(Group == 4)
-            grp5 = C.Acquisitions.Include %>% filter(Group == 5)
-              grp6 = C.Acquisitions.Include %>% filter(Group == 6)
-                grp7 = C.Acquisitions.Include %>% filter(Group == 7)
-                  grp8 = C.Acquisitions.Include %>% filter(Group == 8)
-                    grp9 = C.Acquisitions.Include %>% filter(Group == 9)
-                      grp10 = C.Acquisitions.Include %>% filter(Group == 10)
-                        grp11 = C.Acquisitions.Include %>% filter(Group == 11)
-                          grp12 = C.Acquisitions.Include %>% filter(Group == 12)
-                            grp13 = C.Acquisitions.Include %>% filter(Group == 13)
-                              grp14 = C.Acquisitions.Include %>% filter(Group == 14)
-
-
-
-# THE EXTRACTION OF UNIQUE PROFIT CENTERS CAN BE REMOVED; IT IS COMPLETED ABOVE -----                                                            
-                              
-# Profit Center Selection
-  group1.pc = C.Acquisitions.Include %>% filter(Group == 1) %>% select(Profit_Center)
-    group1.pc <- unique(group1.pc$Profit_Center)
-      group1.pc <- as.character(group1.pc)
-    
-  
-  group2.pc = C.Acquisitions.Include %>% filter(Group == 2) %>% select(Profit_Center)
-    group2.pc <- unique(group2.pc$Profit_Center)
-      group2.pc <- as.character(group2.pc)
-  
-  group3.pc = C.Acquisitions.Include %>% filter(Group == 3) %>% select(Profit_Center) 
-    group3.pc <- unique(group3.pc$Profit_Center)
-      group3.pc <- as.character(group3.pc)
-  
-  
-  group4.pc = C.Acquisitions.Include %>% filter(Group == 4) %>% select(Profit_Center)  
-    group4.pc <- unique(group4.pc$Profit_Center)
-      group4.pc <- as.character(group4.pc)
-
-  
-  group5.pc = C.Acquisitions.Include %>% filter(Group == 5) %>% select(Profit_Center)
-    group5.pc <- unique(group5.pc$Profit_Center)
-      group5.pc <- as.character(group5.pc)
-      
-  
-  group6.pc = C.Acquisitions.Include %>% filter(Group == 6) %>% select(Profit_Center)
-    group6.pc <- unique(group6.pc$Profit_Center)
-      group6.pc <- as.character(group6.pc)
-  
-  
-  group7.pc = C.Acquisitions.Include %>% filter(Group == 7) %>% select(Profit_Center)
-    group7.pc <- unique(group7.pc$Profit_Center)
-      group7.pc <- as.character(group7.pc)
-  
-  
-  
-  group8.pc = C.Acquisitions.Include %>% filter(Group == 8) %>% select(Profit_Center)
-    group8.pc <- unique(group8.pc$Profit_Center)
-      group8.pc <- as.character(group8.pc)
-  
-  
-  group9.pc = C.Acquisitions.Include %>% filter(Group == 9) %>% select(Profit_Center)
-    group9.pc <- unique(group9.pc$Profit_Center)
-      group9.pc <- as.character(group9.pc)
-  
-  
-  group10.pc = C.Acquisitions.Include %>% filter(Group == 10) %>% select(Profit_Center)
-    group10.pc <- unique(group10.pc$Profit_Center)
-      group10.pc <- as.character(group10.pc)
-  
-  
-  group11.pc = C.Acquisitions.Include %>% filter(Group == 11) %>% select(Profit_Center)
-    group11.pc <- unique(group11.pc$Profit_Center)
-      group11.pc <- as.character(group11.pc)
-  
-  
-  group12.pc = C.Acquisitions.Include %>% filter(Group == 12) %>% select(Profit_Center)
-    group12.pc <- unique(group12.pc$Profit_Center)
-      group12.pc <- as.character(group12.pc)  
-  
-      
-  group13.pc = C.Acquisitions.Include %>% filter(Group ==13) %>% select(Profit_Center)
-    group13.pc <- unique(group13.pc$Profit_Center)
-      group13.pc <- as.character(group13.pc)  
-  
-  
-  group14.pc = C.Acquisitions.Include %>% filter(Group ==14) %>% select(Profit_Center)
-    group14.pc <- unique(group14.pc$Profit_Center)
-      group14.pc <- as.character(group14.pc) 
-  
-  
-  
-# List Creation
-  Quarter.list = list(group1.pc, 
-                        group2.pc, 
-                        group3.pc, 
-                        group4.pc, 
-                        group5.pc, 
-                        group6.pc, 
-                        group7.pc, 
-                        group8.pc, 
-                        group9.pc, 
-                        group10.pc, 
-                        group11.pc, 
-                        group12.pc,
-                        group13.pc,
-                        group14.pc)
-  
-  
- profit.center.vector <- unlist(Quarter.list)
-  profit.center.vector <- as.data.frame(profit.center.vector)
-   colnames(profit.center.vector) <- "Profit_Center"
-    profit.center.vector[!duplicated(profit.center.vector$Profit_Center), ]
-    
-    
-    # Count of Unique Profit Centers
-      n_distinct(profit.center.vector) # 246 Unique Profit Centers 
- 
-  
 ```
 
 
-# Aggregate Income Statement Compilation
+---
+##**Aggregate Income Statement Compilation**
+---
 
 ```{r}
 
-# IS Trend Compilation
-  aggregateIS.data.list = map(Quarter.list, Aggregate.IS)
+# Income statement compilation ----
+  aggregate_income_statement <- map(quarter_list, Aggregate.IS)
 
-# List Separation
-  group1.data = aggregateIS.data.list[[1]]
-  group2.data = aggregateIS.data.list[[2]]
-  group3.data = aggregateIS.data.list[[3]]
-  group4.data = aggregateIS.data.list[[4]]
-  group5.data = aggregateIS.data.list[[5]]
-  group6.data = aggregateIS.data.list[[6]]
-  group7.data = aggregateIS.data.list[[7]]
-  group8.data = aggregateIS.data.list[[8]]
-  group9.data = aggregateIS.data.list[[9]]
-  group10.data = aggregateIS.data.list[[10]]
-  group11.data = aggregateIS.data.list[[11]]
-  group12.data = aggregateIS.data.list[[12]]
-  group13.data = aggregateIS.data.list[[13]]
-  group14.data = aggregateIS.data.list[[14]]
-  
-# Group Identifier
-  group1.data$Group = 'FY15 Q4'
-  group2.data$Group = 'FY16 Q1'
-  group3.data$Group = 'FY16 Q2'
-  group4.data$Group = 'FY16 Q3'
-  group5.data$Group = 'FY16 Q4'
-  group6.data$Group = 'FY17 Q1'
-  group7.data$Group = 'FY17 Q2'
-  group8.data$Group = 'FY17 Q3'
-  group9.data$Group = 'FY17 Q4'
-  group10.data$Group = 'FY18 Q1'
-  group11.data$Group = 'FY18 Q2'
-  group12.data$Group = 'FY18 Q3'
-  group13.data$Group = 'FY18 Q4'
-  group14.data$Group = 'FY19 Q1'
+  # Creation of group identifier table ----
+    grp_number <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    grp_name <- c("FY15 Q4", 
+                  "FY16 Q1", 
+                  "FY16 Q2",
+                  "FY16 Q3",
+                  "FY16 Q4",
+                  "FY17 Q1",
+                  "FY17 Q2",
+                  "FY17 Q3",
+                  "FY17 Q4",
+                  "FY18 Q1",
+                  "FY18 Q2", 
+                  "FY18 Q3", 
+                  "FY18 Q4",
+                  "FY19 Q1")
+    
+    grp_table <- 
+      data.frame(grp_name)
+    
+    # Enter grp name identifier ----
+      for (i in 1:length(aggregate_income_statement)) { 
+        aggregate_income_statement[[i]]$Group = as.character(grp_table$grp_name[i])
+      }
+    
+# Unlist income statement data into a data frame for excel export ----
+  income_statement_aggregate <-   
+    map_df(aggregate_income_statement, `[`)
 
-# Combined Data
-  Data.Combined = bind_rows(group1.data, 
-                      group2.data, 
-                      group3.data, 
-                      group4.data,
-                      group5.data,
-                      group6.data,
-                      group7.data, 
-                      group8.data,
-                      group9.data,
-                      group10.data, 
-                      group11.data, 
-                      group12.data,
-                      group13.data,
-                      group14.data)
-  
-# Export Data
-  write.csv(Data.Combined, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Aggregate_IS_Data.csv')
-  
-  
-# Test CSV Read
- # test <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95b3R2JF_arMzwrMm1JieduB064cBks5bdfwOwA%3D%3D")
-  
-  #test.2 <- read.csv(text = test)
-  
-  
-  
-# Test on Quarter Snapshot Aggregation
- # quarter.test <- 
-  #  Data.Combined %>%
-   # dplyr::filter(Group == 'FY15 Q4' & Data.Combined$`Line Item` == 'Storage_Income') %>%
-   # dplyr::group_by(`Line Item`, FY, Quarter, Group) %>%
-   # dplyr::summarise(Value = sum(Value)) 
-
-
-   # Matrix Test
-    # quarter.matrix <- as.matrix(quarter.test$Value)
-       
-      # Quarter YoY
-      #  df.row <- nrow(quarter.matrix)
-        
-       # yoy.q <- diff(quarter.matrix, lag = 4)
-        
-       # (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
-        
+    
+    # Export Data
+      write.csv(income_statement_aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Aggregate_IS_Data.csv')
   
 ```
 
