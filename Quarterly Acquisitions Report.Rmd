@@ -575,19 +575,111 @@ Process
           
       }
     
-# Test profit center selection ----
+# Quarter group profit centers by list ----
   quarter_list <- 
     map(q_list_container, profit_center_selection)
+
+# Remove NA from quarter list (this is a safety on the initial )
+  quarter_list <- 
+    lapply(quarter_list, function(x){x[!is.na(x)]})
   
+```
+
+
+###**Check for income statement representation**
+
+```{r}
+
+
+  # Nested profit center list ----
+    nested_profit_center_list <- 
+      list(as.list(quarter_list[[1]]),
+           as.list(quarter_list[[2]]),
+           as.list(quarter_list[[3]]),
+           as.list(quarter_list[[4]]),
+           as.list(quarter_list[[5]]),
+           as.list(quarter_list[[6]]),
+           as.list(quarter_list[[7]]),
+           as.list(quarter_list[[8]]),
+           as.list(quarter_list[[9]]),
+           as.list(quarter_list[[10]]),
+           as.list(quarter_list[[11]]),
+           as.list(quarter_list[[12]]),
+           as.list(quarter_list[[13]]),
+           as.list(quarter_list[[14]]))
+
+  # income statement data check ----
+    income_statement_check <- at_depth(nested_profit_center_list, 2, DataCheck)
+    
+
+# ----------------------------------------------------------------------------------------
+  # Nested list trial 2
+   q_test <- quarter_list
+
+   list_length <- length(q_test)
+   
+   # Container 
+     list_test_container <- vector("list", length = list_length)
+     
+     
+      t_container <- list()
+     
+      
+
+      
+      
+      
+      
+      
+      
+      
+
+ 
+ 
+ 
+ 
+ 
+
+DataCheck = function(x) {
+
+  #%% Check for Data Function %%
+  #The function will check for data and return NA if none exists.
+
+  #Library
+  require("dplyr")
+  require("lazyeval")
+  require("purrr") #makes iteration problems easier to solve
+
+  #vector of list
+  list.vector = list()
+  i = 1
+
+  #Filter Criteria
+  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
+
+  #Create a local copy of the data frame
+  b = collect(d)
+  if(nrow(b) > 0){
+    list.vector[[i]] = x
+  } else {
+    list.vector[[i]] = NA
+  }
+  return(list.vector)
+}
+
+
 
 ```
+
+
+
 
 
 ---
 ##**Aggregate Income Statement Compilation**
 ---
 
-```{r}
+```{r Aggregate Income Statement Process}
 
 # Income statement compilation ----
   aggregate_income_statement <- map(quarter_list, Aggregate.IS)
@@ -698,25 +790,10 @@ Current Process
   
 ```{r}
 
- 
-
 
 # Container Creation
   grp1.pc.list = list()
-  grp2.pc.list = list()
-  grp3.pc.list = list()
-  grp4.pc.list = list()
-  grp5.pc.list = list()
-  grp6.pc.list = list()
-  grp7.pc.list = list()
-  grp8.pc.list = list()
-  grp9.pc.list = list()
-  grp10.pc.list = list()
-  grp11.pc.list = list()
-  grp12.pc.list = list()
-  grp13.pc.list = list()
-  grp14.pc.list = list()
-  
+
 ```
 
 
