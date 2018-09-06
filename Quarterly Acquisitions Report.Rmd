@@ -35,6 +35,7 @@ library(jsonlite)
 library(RCurl)
 
 library(tidyr)
+library(data.table)
 
 ```
 
@@ -334,7 +335,8 @@ Aggregate.IS <- function(x){
 
 ```{r Data Check Function}
 
-DataCheck = function(x) {
+data_check_na <-
+  function(x) {
 
   #%% Check for Data Function %%
   #The function will check for data and return NA if none exists.
@@ -361,6 +363,86 @@ DataCheck = function(x) {
   return(list.vector)
 }
 
+
+
+data_check_flag <- 
+  function(x) {
+
+  #%% Check for Data Function %%
+  #The function will check for data and return NA if none exists.
+
+  #Library
+  require("dplyr")
+  require("lazyeval")
+  require("purrr") #makes iteration problems easier to solve
+
+  #vector of list
+  list.vector = list()
+  i = 1
+
+  #Filter Criteria
+  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
+
+  #Create a local copy of the data frame
+  b = collect(d)
+  if(nrow(b) > 0){
+    list.vector[[i]] = x
+  } else {
+    list.vector[[i]] = paste("Error:", paste(x), sep = " ")
+  }
+  return(list.vector)
+}
+
+
+data_check_center <-
+  function(x){
+    
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
+    
+  #vector of list
+  list.vector = list()
+  list.complete = list()
+  
+  i = 1
+
+  #Filter Criteria
+  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
+
+  #Create a local copy of the data frame
+  b = collect(d)
+    
+  if(nrow(b) > 0){
+    list.vector[[i]] = 1
+  } else {
+    list.complete[[i]] = x
+  }
+  return(list.complete)
+}
+
+
+
+```
+
+
+```{r}
+
+# Nested list creation
+  nested_list_creation <-
+  function(x) {
+    
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
+    
+  list.vector = list()
+    i = 1
+  
+    list.vector[[i]] = x
+
+  return(list.vector)
+}
 
 ```
 
@@ -590,84 +672,22 @@ Process
 
 ```{r}
 
+# Nested profit center list ----
+  nested_profit_center_list <- 
+    lapply(quarter_list, as.list)
 
-  # Nested profit center list ----
-    nested_profit_center_list <- 
-      list(as.list(quarter_list[[1]]),
-           as.list(quarter_list[[2]]),
-           as.list(quarter_list[[3]]),
-           as.list(quarter_list[[4]]),
-           as.list(quarter_list[[5]]),
-           as.list(quarter_list[[6]]),
-           as.list(quarter_list[[7]]),
-           as.list(quarter_list[[8]]),
-           as.list(quarter_list[[9]]),
-           as.list(quarter_list[[10]]),
-           as.list(quarter_list[[11]]),
-           as.list(quarter_list[[12]]),
-           as.list(quarter_list[[13]]),
-           as.list(quarter_list[[14]]))
-
-  # income statement data check ----
-    income_statement_check <- at_depth(nested_profit_center_list, 2, DataCheck)
+    nested_profit_center_list <-
+      modify_depth(nested_profit_center_list, 2, nested_list_creation)
+  
+    # Missing income statement data ----
+      missing_income_statement <- modify_depth(nested_profit_center_list, 2, data_check_center)
+        missing_is_profit_centers <- unlist(missing_income_statement) # Be careful, the grp number is correct, the index is not
+          missing_is_profit_centers <- as.data.frame(missing_is_profit_centers)
+            colnames(missing_is_profit_centers) <- "Profit_Center"
+        
+        # Missing center information ----
+          SAP.Hierarchy
     
-
-# ----------------------------------------------------------------------------------------
-  # Nested list trial 2
-   q_test <- quarter_list
-
-   list_length <- length(q_test)
-   
-   # Container 
-     list_test_container <- vector("list", length = list_length)
-     
-     
-      t_container <- list()
-     
-      
-
-      
-      
-      
-      
-      
-      
-      
-
- 
- 
- 
- 
- 
-
-DataCheck = function(x) {
-
-  #%% Check for Data Function %%
-  #The function will check for data and return NA if none exists.
-
-  #Library
-  require("dplyr")
-  require("lazyeval")
-  require("purrr") #makes iteration problems easier to solve
-
-  #vector of list
-  list.vector = list()
-  i = 1
-
-  #Filter Criteria
-  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
-
-  #Create a local copy of the data frame
-  b = collect(d)
-  if(nrow(b) > 0){
-    list.vector[[i]] = x
-  } else {
-    list.vector[[i]] = NA
-  }
-  return(list.vector)
-}
-
-
 
 ```
 
@@ -705,7 +725,7 @@ DataCheck = function(x) {
       data.frame(grp_number,grp_name)
     
     # Enter grp name identifier ----
-      for (i in 1:length(aggregate_income_statement)) { 
+      for (i in seq_along(aggregate_income_statement)) { 
         aggregate_income_statement[[i]]$Group = as.character(grp_table$grp_name[i])
       }
     
@@ -790,7 +810,6 @@ Current Process
   
 ```{r}
 
-
 # Container Creation
   grp1.pc.list = list()
 
@@ -802,9 +821,6 @@ Occ Data Compilation
 
 # List Compilation by Acquisition Group
   grp1.pc.list = occ.data.comp.function(grp1, grp1.pc.list) 
-
-
-
 
    # grp2.pc.list = Occ.Data.Comp.Function(grp2, grp2.pc.list)   
       #grp3.pc.list = Occ.Data.Comp.Function(grp3, grp3.pc.list) 
@@ -872,7 +888,6 @@ Occ Data Compilation
 
 # This portion of the code needs to be updated! Use different database for SAP Profit center to MEntity number #
 
-
 # MEntity compilation Function #
   SAP2Mentity = function(x){
     x[[2]] = Graph.Entity.Info.Local  %>% filter(`Profit_Center` == x[1]) %>% select(MEntity)
@@ -894,8 +909,6 @@ Occ Data Compilation
   grp13.MEntity = unique(map(grp13.pc.list2, SAP2Mentity)) # 25
   grp14.MEntity = unique(map(grp14.pc.list2, SAP2Mentity)) # 10
   
-
-
 ```
 
 
