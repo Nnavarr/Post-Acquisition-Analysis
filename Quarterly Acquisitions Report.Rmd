@@ -106,7 +106,8 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
     
 # Collect SAP Hierarchy ----
   SAP.Hierarchy <- collect(SAP.Hierarchy)
-  
+  colnames(SAP.Hierarchy)[12] <- "Profit_Center"
+    
 ```
 
 
@@ -694,7 +695,7 @@ Process
         
         # Missing center information ----
           missing_is_profit_centers <- 
-              left_join(missing_is_profit_centers, SAP.Hierarchy[ , c(4, 12, 44)]) 
+              left_join(missing_is_profit_centers, SAP.Hierarchy[ , c(4, 12, 44)], by = "Profit_Center") 
             
                 # The missing centers do not appear to have any MEntity info. 
                   data.table(missing_is_profit_centers)
