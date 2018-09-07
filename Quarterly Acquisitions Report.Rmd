@@ -829,6 +829,8 @@ occ.data.comp.function = function(x, list.container){
       return(list.container)
 }
 
+
+
 ```
 
 
@@ -842,24 +844,54 @@ Current Process
   
 ```{r}
 
+# Rework SAP 2 Mentity to pull from SAP.Hierarchy
+
 # MEntity number join on profit center # ----
-  SAP2Mentity = function(x){
-    x[[2]] = Graph.Entity.Info.Local  %>% filter(`Profit_Center` == x[1]) %>% select(MEntity)
+  SAP2Mentity <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    y =  
+      append(x, as.character(SAP.Hierarchy %>%
+        filter(`Profit_Center` %in% x[[1]][[1]][[1]]) %>%
+        select(`MEntity`)))
+    
+    return(y)
+    
+     browser()
+    
   }   
 
-# List of Profit Centers to Include OCcupancy data for ----
-  nested_profit_center_list
 
+# List of Profit Centers to Include OCcupancy data for ----
+  nested_profit_center_list 
+    
   # Import MEntity on profit center list
     mentity_test <-
-      lapply( )
+      modify_depth(nested_profit_center_list, 2, SAP2Mentity)
+    
+# _________________#
+# Test list subset #    
+# _________________#
+    
+    # Working Filter of List 9/7/2018
+    tfilter <- 
+      as.character(SAP.Hierarchy %>%
+        filter(Profit_Center %in% nested_profit_center_list[[1]][[1]][[1]]) %>%
+        select(MEntity))
 
-
-
-
-
-# MEntity Data Import
-  
+    # add the variable above to an existing list
+      tlist <- nested_profit_center_list
+      
+      tlist <-
+        append(tlist[[1]][[1]][1], tfilter)
+      
+      # This process is working. Now we need to apply this for every element of the nested list. 
+      
+        # Option 1: Use modify_depth 
+          
 
 ```
 
