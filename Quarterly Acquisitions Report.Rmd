@@ -679,6 +679,7 @@ Process
     nested_profit_center_list <-
       modify_depth(nested_profit_center_list, 2, nested_list_creation)
   
+    
     # Missing income statement data ----
       missing_income_statement <- modify_depth(nested_profit_center_list, 2, data_check_center)
         missing_is_profit_centers <- unlist(missing_income_statement) # Be careful, the grp number is correct, the index is not
@@ -686,13 +687,18 @@ Process
             colnames(missing_is_profit_centers) <- "Profit_Center"
         
         # Missing center information ----
-          SAP.Hierarchy
-    
-
+          missing_is_profit_centers <- 
+              left_join(missing_is_profit_centers, SAP.Hierarchy[ , c(4, 12, 44)]) 
+            
+    # Complete income statement data ----
+      complete_income_statement <- missing_income_statement <- modify_depth(nested_profit_center_list, 2, data_check_na)
+        complete_is_profit_centers <- unlist(complete_income_statement)
+          complete_is_profit_centers <- as.data.frame(complete_is_profit_centers)
+            complete_is_profit_centers <- as.data.frame(complete_is_profit_centers[!is.na(complete_is_profit_centers)])
+              colnames(complete_is_profit_centers) <- "Profit_Center" # The data frame will be used to check against a list of occupancy profit centers
+            
+            
 ```
-
-
-
 
 
 ---
