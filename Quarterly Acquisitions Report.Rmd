@@ -682,7 +682,7 @@ Process
   
     # Missing income statement data ----
       missing_income_statement <- 
-       modify_depth(n_pc_list_2, 2, data_check_center)
+       modify_depth(n_pc_list, 2, data_check_center)
     
         missing_is_profit_centers <- 
           unlist(missing_income_statement) # Be careful, the grp number is correct, the index is not
@@ -706,7 +706,7 @@ Process
             
     # Complete income statement data ----
       complete_income_statement <- 
-        modify_depth(n_pc_list_2, 2, data_check_na)
+        modify_depth(n_pc_list, 2, data_check_na)
                   
         complete_is_profit_centers <- 
           unlist(complete_income_statement)
@@ -720,9 +720,10 @@ Process
               colnames(complete_is_profit_centers) <- 
                 "Profit_Center" # The data frame will be used to check against a list of occupancy profit centers
               
-              # List of Quarterly Acquisitions to use moving forward ----
+              
+              # List of Quarterly Acquisitions included in the income statement aggregation ----
                 nested_profit_center_list <- 
-                  complete_is_profit_centers
+                  na.omit.list(n_pc_list_2)
             
 ```
 
@@ -777,8 +778,8 @@ Process
         income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
 
     # Export Data
-    xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
-                     sheetName = "Report42018")
+      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
+                    sheetName = "Report42018")
     
 ```
 
@@ -841,8 +842,24 @@ Current Process
   
 ```{r}
 
-# Container Creation
-  grp1.pc.list = list()
+# MEntity number join on profit center # ----
+  SAP2Mentity = function(x){
+    x[[2]] = Graph.Entity.Info.Local  %>% filter(`Profit_Center` == x[1]) %>% select(MEntity)
+  }   
+
+# List of Profit Centers to Include OCcupancy data for ----
+  nested_profit_center_list
+
+  # Import MEntity on profit center list
+    mentity_test <-
+      lapply( )
+
+
+
+
+
+# MEntity Data Import
+  
 
 ```
 
@@ -850,79 +867,14 @@ Current Process
 Occ Data Compilation 
 ```{r}
 
-# List Compilation by Acquisition Group
-  grp1.pc.list = occ.data.comp.function(grp1, grp1.pc.list) 
 
-   # grp2.pc.list = Occ.Data.Comp.Function(grp2, grp2.pc.list)   
-      #grp3.pc.list = Occ.Data.Comp.Function(grp3, grp3.pc.list) 
-       # grp4.pc.list = Occ.Data.Comp.Function(grp4, grp4.pc.list) 
-          #grp5.pc.list = Occ.Data.Comp.Function(grp5, grp5.pc.list) 
-           # grp6.pc.list = Occ.Data.Comp.Function(grp6, grp6.pc.list) 
-              #grp7.pc.list = Occ.Data.Comp.Function(grp7, grp7.pc.list) 
-                #grp8.pc.list = Occ.Data.Comp.Function(grp8, grp8.pc.list) 
-                 # grp9.pc.list = Occ.Data.Comp.Function(grp9, grp9.pc.list) 
-                   # grp10.pc.list = Occ.Data.Comp.Function(grp10, grp10.pc.list) 
-                      #grp11.pc.list = Occ.Data.Comp.Function(grp11, grp11.pc.list) 
-                       # grp12.pc.list = Occ.Data.Comp.Function(grp12, grp12.pc.list) 
-                          #grp13.pc.list = Occ.Data.Comp.Function(grp13, grp13.pc.list)
-                          #  grp14.pc.list = Occ.Data.Comp.Function(grp14, grp14.pc.list)
-                          
-                                                
-# Blank Data Check (Verification of Income Statement Data)
-  grp1.pc.list1 = map(grp1.pc.list, DataCheck)
-    grp1.pc.list2 = unique(na.omit.list(grp1.pc.list1))
-    
-  grp2.pc.list1 = map(grp2.pc.list, DataCheck)
-    grp2.pc.list2 = unique(na.omit.list(grp2.pc.list1))
-    
-  grp3.pc.list1 = map(grp3.pc.list, DataCheck)
-    grp3.pc.list2 = unique(na.omit.list(grp3.pc.list1))
-    
-  grp4.pc.list1 = map(grp4.pc.list, DataCheck)
-    grp4.pc.list2 = unique(na.omit.list(grp4.pc.list1))
-    
-  grp5.pc.list1 = map(grp5.pc.list, DataCheck)
-    grp5.pc.list2 = unique(na.omit.list(grp5.pc.list1))
-    
-  grp6.pc.list1 = map(grp6.pc.list, DataCheck)
-    grp6.pc.list2 = unique(na.omit.list(grp6.pc.list1))
-    
-  grp7.pc.list1 = map(grp7.pc.list, DataCheck)
-    grp7.pc.list2 = unique(na.omit.list(grp7.pc.list1))
 
-  grp8.pc.list1 = map(grp8.pc.list, DataCheck)
-    grp8.pc.list2 = unique(na.omit.list(grp8.pc.list1))
 
-  grp9.pc.list1 = map(grp9.pc.list, DataCheck)
-    grp9.pc.list2 = unique(na.omit.list(grp9.pc.list1))    
-    
-  grp10.pc.list1 = map(grp10.pc.list, DataCheck)
-    grp10.pc.list2 = unique(na.omit.list(grp10.pc.list1)) 
-    
-  grp11.pc.list1 = map(grp11.pc.list, DataCheck)
-    grp11.pc.list2 = unique(na.omit.list(grp11.pc.list1))
-    
-  grp12.pc.list1 = map(grp12.pc.list, DataCheck)
-    grp12.pc.list2 = unique(na.omit.list(grp12.pc.list1))
-
-  grp13.pc.list1 = map(grp13.pc.list, DataCheck)
-    grp13.pc.list2 = unique(na.omit.list(grp13.pc.list1))                          
-
-  grp14.pc.list1 = map(grp14.pc.list, DataCheck)
-    grp14.pc.list2 = unique(na.omit.list(grp14.pc.list1))
 
 ```
 
 
 ```{r Needs update}
-
-
-# This portion of the code needs to be updated! Use different database for SAP Profit center to MEntity number #
-
-# MEntity compilation Function #
-  SAP2Mentity = function(x){
-    x[[2]] = Graph.Entity.Info.Local  %>% filter(`Profit_Center` == x[1]) %>% select(MEntity)
-  }   
 
 # Groups #
   grp1.MEntity = unique(map(grp1.pc.list2, SAP2Mentity)) # 8
