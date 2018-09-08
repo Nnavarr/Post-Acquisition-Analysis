@@ -847,7 +847,7 @@ Current Process
 # Rework SAP 2 Mentity to pull from SAP.Hierarchy
 
 # MEntity number join on profit center # ----
-  SAP2Mentity <- function(x){
+  sap2mentity <- function(x){
     
       require("dplyr")
       require("lazyeval")
@@ -864,13 +864,12 @@ Current Process
     
   }   
 
-
 # List of Profit Centers to Include OCcupancy data for ----
   nested_profit_center_list 
     
   # Import MEntity on profit center list
     mentity_test <-
-      modify_depth(nested_profit_center_list, 2, SAP2Mentity)
+      modify_depth(nested_profit_center_list, 2, sap2mentity)
     
 # _________________#
 # Test list subset #    
