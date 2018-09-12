@@ -952,10 +952,10 @@ occ_compilation <- function(x){
       require("lazyeval")
       require("purrr")
   
-  # Occ Data 
+# Occ Data 
   occ_df =
     occupancy_data %>%
-      filter(`MEntity` %in% x[[2]] & unm_product != 'UBOX' & Date <= '2018-06-01') %>% 
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-06-01') %>% 
       group_by(MEntity,
                Date, 
                unm_product) %>%
@@ -965,9 +965,21 @@ occ_compilation <- function(x){
   
   occ_df_local = collect(occ_df)
   
+    # Rename Data Column to "MONTH"
+      colnames(occ_df_local)[2] <- "MONTH"
+    
+      # Convert Month Column to Date 
+        occ_df_local$MONTH <- as.Date(occ_df_local$MONTH)
+        
+        # Create Fiscal Year Columns for Data 
+          occ_df_local <- 
+            FiscalYear.Columns(occ_df_local)
+        
+  # Append List 
+    y =
+      append(x, list(occ_df_local))
   
-  y =
-    append(x, list(occ_df_local))
+  names(y)[[3]] <- "Occupancy"
   
   return(y)
   
@@ -975,12 +987,11 @@ occ_compilation <- function(x){
   
 }
 
-
-# Test Occupancy Merge ----
+# Append Occ Data to list ----
   t_list <-
       modify_depth(q_acquisitions_list, 2, occ_compilation)
 
-
+  t_list[[1]][[3]]
 
 
 ```
