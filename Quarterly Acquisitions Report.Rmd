@@ -111,7 +111,9 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
 # Collect SAP Hierarchy ----
   SAP.Hierarchy <- collect(SAP.Hierarchy)
   colnames(SAP.Hierarchy)[12] <- "Profit_Center"
+  
     
+  
 ```
 
 
@@ -725,7 +727,7 @@ Process
                 "Profit_Center" # The data frame will be used to check against a list of occupancy profit centers
           
               # List of Quarterly Acquisitions included in the income statement aggregation ----
-                nested_profit_center_list <- 
+                quarterly_acquisitions_list <- 
                   na.omit.list(n_pc_list_2)
             
 ```
@@ -837,13 +839,7 @@ occ.data.comp.function = function(x, list.container){
 ```
 
 
-# PROCESS UPDATE IN PROGRESS
-
-Current Process
-
-1. Create individual list containers
-2. Check for Data
-3. 
+## **Import MEntity Numbers**
   
 ```{r Import MEntity Numbers}
 
@@ -878,86 +874,19 @@ Current Process
   nested_profit_center_list
 
   # Import MEntity on profit center list ----
-    nested_profit_center_list_2 <-
-      modify_depth(nested_profit_center_list, 2, sap2mentity)
+    q_acquisitions_list <-
+      modify_depth(quarterly_acquisitions_list, 2, sap2mentity)
     
   # Modify names of outer list ----
   group_names <-
     c('FY15 Q4', 'FY16 Q1', 'FY16 Q2', 'FY16 Q3', 'FY16 Q4', 'FY17 Q1', 'FY17 Q2', 'FY17 Q3', 'FY17 Q4', 'FY18 Q1', 'FY18 Q2', 'FY18 Q3', 'FY18 Q4', 'FY19 Q1')
 
-    names(nested_profit_center_list_2) <- group_names
+    names(q_acquisitions_list) <- group_names
   
 ```
 
 
-```{r}
-
-depth <- function(this, thisdepth = 0){
-  
-  if(!is.list(this)){
-    return(thisdepth)
-  } else {
-    return(max(unlist(lapply(this, depth, thisdepth = thisdepth + 1))))
-  }
-}
-
-# Test nested profit center list depth ----
-  expect_equal(depth(nested_profit_center_list_2), 3) # Depth at 3 
-
-t1 <- 
-nested_profit_center_list_2[[1]]
-lapply(t1, function(x){
-  x[["MEntity"]]
-})
-
-
-# Working MEntity Join Function 
-    y =  
-      append(x, SAP.Hierarchy %>%
-        filter(`Profit_Center` %in% x[[1]][[1]][[1]]) %>%
-        select(MEntity))
-    
-    # Edit name of list elements 
-    names(y) <- c("Profit_Center", "MEntity")
-    
-    return(y)
-    
-     browser()
-    
-  }   
-
-
-# Temporary Solution 
-    sap2mentity <- function(x){
-    
-      require("dplyr")
-      require("lazyeval")
-      require("purrr")
-    
-    mentity = 
-      SAP.Hierarchy %>%
-        filter(`Profit_Center` %in% x[[1]][[1]][[1]][1]) %>%
-        select(MEntity)
-    
-    mentity2 = mentity[1]
-    
-    y =  
-      append(x, mentity2[[1]])
-    
-    # Edit name of list elements 
-    names(y) <- c("Profit_Center", "MEntity")
-    
-    return(y)
-    
-     browser()
-    
-  }   
-
-
-```
-
-
-
+## **Filter Profit Centers without MEntity Numbers**
 
 ```{r Filter list test}
 
@@ -969,117 +898,53 @@ nested_list_filter <- function(x, z){
  return(y)
 }
 
+# Test Function (working 9-11-2018)
+  # test <-
+  # modify_depth(nested_profit_center_list_2, 2, mentity_filter, z = "MEntity")  
 
-# Test Function
-test <-
-  modify_depth(nested_profit_center_list_2, 2, mentity_filter, z = "MEntity")  
 
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Additional Functions of potential use #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Remove NA from nested list function ----
+  # na_omit_nested_list <- function(x){
+    # x[!is.na(x)]
+  # }
+
+# Filter NA MEntity from nested list ----
+  na_filter_list <- function(x){
+    
+    x %>%
+      list.filter(is.na(MEntity))
+    
+  }
+ 
+  # Extract List Elements where MEntity == NA ---- 
+  na_mentity_list <- 
+    modify_depth(q_acquisitions_list, 1, na_filter_list)
+  
+    # Isolate Profit Center Numbers ----
+    na_mentity_profit_centers <- 
+      unlist(modify_depth(na_mentity_list, 2, nested_list_filter, z = "Profit_Center"))
+
+      # Profit Centers without MEntity numbers. After verification, it turns out these profit centers do not have any income statement data as well. 
+        # Further research is needed into these set of centers
+          print(data.table(na_mentity_profit_centers))
 
 ```
 
 
-```{r Remove Duplicate MEntity Numbers}
-unique_mentity_filter <- function(x){
+## **Occupancy Data Compilation**
+
+
+
+
+
+```{r}
+
+
   
-  y = x[[1]]
-  
-  return(y)
-}
-
-
-
-test_single <-
-  test[["FY18 Q3"]][[14]]
-
-test_single[[1]]
-
-length(test_single)
-
-```
-
-
-
-
-
-
-
-```{r Potential Function to Append List}
-
-# Append List with another element (regardless of number of elements) ----
-   append_nested_list <- function(x, new_element){
-    
-     # Append if Data Frame (Create if Statement)
-       if(class(new_element) == 'data.frame'){
-         x2 = 
-           append(x[[1]], list(new_element))
-       } else {
-         x2 = 
-           append(x[[1]], new_element)
-         
-       }
-   }
-     
-
-   # Referencing the DF added into list (2nd element at the moment) ----
-      nested_profit_center_list2[[1]][[1]][[2]]
-        
-    # test Nested Sublist 
-      nested_profit_center_list2 <- 
-        modify_depth(nested_profit_center_list, 2, append_nested_list, new_element = x3)
-      
-      
-    
-# _________________#
-# Test list subset #    
-# _________________#
-    
-    # Working Filter of List 9/7/2018
-    tfilter <- 
-      as.character(SAP.Hierarchy %>%
-        filter(Profit_Center %in% nested_profit_center_list[[1]][[1]][[1]]) %>%
-        select(MEntity))
-    
-    tfilter2 <- 
-      as.character("append2")
-
-    # add the variable above to an existing list
-      tlist <- nested_profit_center_list
-      
-      # Working Code to append list element ----
-      tlist <-
-        append(tlist[[1]][[1]], tfilter2) # Works to append existing lis structure with a third element (SINGLE LIST ELEMENT)
-      
-      #-----------------------------------------------------------------------------------------------------------------------
-      
-      
-      # Renaming List element ----
-        names(tlist)
-        
-      # This process is working. Now we need to apply this for every element of the nested list. 
-        names(tlist) <- c("Profit_Center", "MEntity", "Test") # Working Code to Rename 
-        
-        
-        
-        
-# Append dataframe to list ----
-  x1 <- c(50, 100, 10)
-  x2 <- c(70, 80, 100)    
-  x3 <- c("one", "two", "three")
-            
-  x3 <- data.frame(x1, x2)
-  
-  tlist <- 
-    append(tlist, list(x3))
-  
-  list(x3)
-  
-  # Appending List Dynamically
-    # In order to append the list regardless of the existing list elements, we will need a method for appending on iteration. 
-  
-  
-# Append List regardless of elements ----
-
-
 ```
 
 
