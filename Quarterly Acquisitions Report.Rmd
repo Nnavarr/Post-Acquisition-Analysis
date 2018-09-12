@@ -106,13 +106,19 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       SAP.DB %>% summarise(n_distinct(MEntity))
 
 # Occupancy Table ----  
-  Occupancy.Table = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
+  wss_data = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
     
 # Collect SAP Hierarchy ----
   SAP.Hierarchy <- collect(SAP.Hierarchy)
   colnames(SAP.Hierarchy)[12] <- "Profit_Center"
   
+# %%%%%% #  
+# Inputs ----  
+# %%%%% #
     
+# Dynamic Variables ----
+  date_occ <-
+    as.Date('2018-06-20') # Enter Current Month Date for data compilation ----
   
 ```
 
@@ -937,14 +943,46 @@ nested_list_filter <- function(x, z){
 
 ## **Occupancy Data Compilation**
 
-
-
-
-
 ```{r}
 
-
+# Occupancy Function ----
+occ_compilation <- function(x){
   
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+  
+  # Occ Data 
+  occ_df =
+    occupancy_data %>%
+      filter(`MEntity` %in% x[[2]] & unm_product != 'UBOX' & Date <= '2018-06-01') %>% 
+      group_by(MEntity,
+               Date, 
+               unm_product) %>%
+      summarize(Total_Rooms = sum(unm_numunits),
+                Occupied_Rooms = sum(unm_occunits)) %>%
+      arrange(Date)
+  
+  occ_df_local = collect(occ_df)
+  
+  
+  y =
+    append(x, list(occ_df_local))
+  
+  return(y)
+  
+  browser()
+  
+}
+
+
+# Test Occupancy Merge ----
+  t_list <-
+      modify_depth(q_acquisitions_list, 2, occ_compilation)
+
+
+
+
 ```
 
 
@@ -1079,8 +1117,6 @@ Occ Data Compilation
    
        d.mentity.check[!is.na(d.mentity.check)] # 156 Unique MEntity numbers 
        
-   
-
 ```
 
 
@@ -1100,6 +1136,7 @@ Occ Data Compilation
                              Occupied_Rooms = sum(unm_occunits)) %>%
                    arrange(Date)
     
+
     grp2.unitmix = Occupancy.Table %>% 
                    filter(`MEntity` %in% grp2.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
                    group_by(MEntity, 
