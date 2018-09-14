@@ -1327,13 +1327,22 @@ occ_only_list <-
     
       grp_dictionary <-
         left_join(c_acquisitions_include, unique(SAP.Hierarchy[ , c(12, 44)]), by = "Profit_Center")
-    
-      #     
       
-    
+        # Join Group column to occupancy metrics ----
+        occ_df <-
+          left_join(occ_df, grp_dictionary[ , c(24, 1)], by = "MEntity")
+      
+          # Rename group number column ----
+          colnames(occ_df)[10] <- 'Grp_Num'
+      
+          occ_df <- 
+            left_join(occ_df, grp_table, by = 'Grp_Num')
+            
+            # Re-arrange data frame columns to match excel dashboard positions ----
+              occ_df <-
+                occ_df[ , c(1:9, 11, 10)]
+          
 ```
-
-
 
 
 Export Occupancy Metrics
