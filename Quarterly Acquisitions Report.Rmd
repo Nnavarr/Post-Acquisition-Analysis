@@ -1060,52 +1060,6 @@ Process
 ##**Occupancy Metric Compilation**##
 ---
 
-```{r Occupancy Function}
-
-  occupancy.calc = function(x){
-    d <- Occupancy.Table %>% 
-                            filter(x) %>%
-                            group_by(Date, 
-                                     MEntity,
-                                     unm_product, 
-                                     unm_numunits,
-                                     unm_occunits,
-                                     unm_damunits,
-                                     unm_floor,
-                                     unm_elevation,
-                                     unm_climate,
-                                     unm_rentrate)
-    collect(d)
-  }
-
-```
-
-
-```{r}
-
-occ.data.comp.function = function(x, list.container){
-    
-    # Filter and select only the profit centers from the individual data frames
-    a <- x %>% select(Profit_Center)
-    
-    # Loop and save each observation in the data frame in a single list row
-    for (i in a){
-      list.container = i
-      i + 1
-    }
-      
-    # List Creation 
-      list.container = as.list(list.container)
-  
-    # Return List 
-      return(list.container)
-}
-
-
-
-```
-
-
 ### **Import MEntity Numbers**
   
 ```{r Import MEntity Numbers}
@@ -1321,6 +1275,9 @@ occ_only_list <-
   occ_df <-   
     map_df(flat_occ_exl_na, `[`)
 
+  # Rename Unm_product to "Product" ----
+    colnames(occ_df)[3] <- "Product"
+
     # Group Name and Number Addition ----
     c_acquisitions_include$Profit_Center <- 
       as.character(c_acquisitions_include$Profit_Center)
@@ -1345,17 +1302,21 @@ occ_only_list <-
 ```
 
 
-Export Occupancy Metrics
+### **Export Occupancy Metrics**
 
 ```{r eval=FALSE, include=FALSE}
 
- write.csv(UnitMix.Aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\UnitMix_All.csv', append = FALSE)
+ xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\UnitMix.xlsx', 
+                  append = FALSE,
+                  sheetName = "UnitMix",
+                  col.names = TRUE)
 
 ```
 
+---
+##**Occupancy Predictions**
+---
 
-
-#* Occupancy Predictions *
 
 In this section of the markdown, we will ready forecasted Occupancy data for integration with the dashboard
 
