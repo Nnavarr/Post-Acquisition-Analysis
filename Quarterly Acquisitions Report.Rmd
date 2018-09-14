@@ -24,8 +24,11 @@ library(dygraphs)
 library(xts)
 library(lubridate)
 library(reshape2)
+
+library(plyr)
 library(dplyr)
 library(dbplyr)
+
 library(R2HTML)
 library(CenterIS)
 
@@ -477,7 +480,6 @@ data_check_center <-
   
   } else {
     
-    
       x$FY = " "
       x$FM = " "
       x$Quarter = " "
@@ -702,6 +704,16 @@ data_check_center <-
             
         return(x)    
     }
+
+```
+
+
+### **Group Identifier**
+
+```{r}
+
+
+
 
 ```
 
@@ -998,7 +1010,7 @@ Process
   aggregate_income_statement <- map(quarter_list, Aggregate.IS)
 
   # Creation of group identifier table ----
-    grp_number <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+    grp_number <- c(1:14)
     grp_name <- c("FY15 Q4", 
                   "FY16 Q1", 
                   "FY16 Q2",
@@ -1094,7 +1106,7 @@ occ.data.comp.function = function(x, list.container){
 ```
 
 
-## **Import MEntity Numbers**
+### **Import MEntity Numbers**
   
 ```{r Import MEntity Numbers}
 
@@ -1125,9 +1137,6 @@ occ.data.comp.function = function(x, list.container){
     
   }   
 
-# List of Profit Centers to Include OCcupancy data for ----
-  nested_profit_center_list
-
   # Import MEntity on profit center list ----
     q_acquisitions_list <-
       modify_depth(quarterly_acquisitions_list, 2, sap2mentity)
@@ -1141,7 +1150,7 @@ occ.data.comp.function = function(x, list.container){
 ```
 
 
-## **Filter Profit Centers without MEntity Numbers**
+### **Filter Profit Centers without MEntity Numbers**
 
 ```{r Filter list test}
 
@@ -1195,7 +1204,7 @@ nested_list_filter <- function(x, z){
 ```
 
 
-## **Occupancy Data Compilation**
+### **Occupancy Data Compilation**
 
 ```{r}
 
@@ -1251,7 +1260,8 @@ occ_compilation <- function(x){
 ```
 
 
-## **NA Occupancy MEtrics**
+
+### **NA Occupancy MEtrics**
 
 ```{r}
 
@@ -1280,721 +1290,49 @@ occ_compilation <- function(x){
         as.character(profit_centers_na_occ)
 
       # Retrieve information regarding profit centers with NA occupancy metrics ----
-        t_sap_filter <- 
+        na_occupancy_profit_center_info <- 
         SAP.Hierarchy %>%
-          filter(MEntity %in% profit_centers_na_occ$)
+          filter(Profit_Center %in% profit_centers_na_occ)
 
-      head(profit_centers_na_occ)
+        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+        # NA Occupancy MEtric MEntity / Profit Centers ---- #
+        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
 
-      str(profit_centers_na_occ)
-      
+        # na_occupancy_profit_center_info          
+
 ```
 
 
-
-
-
-
-
-
-```{r Needs update}
-
-# Groups #
-  grp1.MEntity = unique(map(grp1.pc.list2, SAP2Mentity)) # 8
-  grp2.MEntity = unique(map(grp2.pc.list2, SAP2Mentity)) # 5
-  grp3.MEntity = unique(map(grp3.pc.list2, SAP2Mentity)) # 7
-  grp4.MEntity = unique(map(grp4.pc.list2, SAP2Mentity)) # 11
-  grp5.MEntity = unique(map(grp5.pc.list2, SAP2Mentity)) # 11
-  grp6.MEntity = unique(map(grp6.pc.list2, SAP2Mentity)) # 13
-  grp7.MEntity = unique(map(grp7.pc.list2, SAP2Mentity)) # 13
-  grp8.MEntity = unique(map(grp8.pc.list2, SAP2Mentity)) # 13
-  grp9.MEntity = unique(map(grp9.pc.list2, SAP2Mentity)) # 11
-  grp10.MEntity = unique(map(grp10.pc.list2, SAP2Mentity)) # 9
-  grp11.MEntity = unique(map(grp11.pc.list2, SAP2Mentity)) # 12
-  grp12.MEntity = unique(map(grp12.pc.list2, SAP2Mentity)) # 19
-  grp13.MEntity = unique(map(grp13.pc.list2, SAP2Mentity)) # 25
-  grp14.MEntity = unique(map(grp14.pc.list2, SAP2Mentity)) # 10
-  
-```
-
-
-```{r Occupancy Data Aggregation}
-
-# Step 3: Occupancy Tables #
-  grp1.ME <- unlist(grp1.MEntity)
-    grp1.ME <- as.character(grp1.ME)
-    
-  grp2.ME <- unlist(grp2.MEntity)
-      grp2.ME <- as.character(grp2.ME)
-    
-  grp3.ME <- unlist(grp3.MEntity)
-      grp3.ME <- as.character(grp3.ME)
-    
-  grp4.ME <- unlist(grp4.MEntity)
-      grp4.ME = as.character(grp4.ME)
-    
-  grp5.ME <- unlist(grp5.MEntity)
-      grp5.ME = as.character(grp5.ME)
-    
-  grp6.ME <- unlist(grp6.MEntity)
-      grp6.ME = as.character(grp6.ME)
-    
-  grp7.ME <- unlist(grp7.MEntity)
-      grp7.ME = as.character(grp7.ME)
-    
-  grp8.ME <- unlist(grp8.MEntity)
-      grp8.ME = as.character(grp8.ME)
-    
-  grp9.ME <- unlist(grp9.MEntity)
-      grp9.ME = as.character(grp9.ME)
-    
-  grp10.ME <- unlist(grp10.MEntity)
-      grp10.ME = as.character(grp10.ME)
-
-  grp11.ME <- unlist(grp11.MEntity)
-      grp11.ME = as.character(grp11.ME)
-    
-  grp12.ME <- unlist(grp12.MEntity)
-      grp12.ME = as.character(grp12.ME)
-      
-  grp13.ME <- unlist(grp13.MEntity)
-      grp13.ME = as.character(grp13.ME)    
-
-  grp14.ME <- unlist(grp14.MEntity)
-      grp14.ME = as.character(grp14.ME)
-      
-      
-  # Check MEntity Counts ----
-    occ.mentity.df <- 
-        as.data.frame(c(grp1.ME,
-              grp2.ME,
-              grp3.ME,
-              grp4.ME, 
-              grp5.ME,
-              grp6.ME,
-              grp7.ME,
-              grp8.ME,
-              grp9.ME,
-              grp10.ME,
-              grp11.ME,
-              grp12.ME,
-              grp13.ME,
-              grp14.ME))
-      
-      colnames(occ.mentity.df)[1] = 'MEntity'
-      
-      occ.mentity.df <- 
-      occ.mentity.df %>% 
-        arrange(MEntity)
-      
-      # Dimension 
-        dim(occ.mentity.df) # 156 Unique MEntity
-        
-        # There were originally 246 unique profit center numbers. This means we lost 90 centers when merging Profit Center with MEntity number. 
-      
-        
- # Profit Center to MEntity Comparison ----
-   profitcenter_to_mentity <- 
-        as.data.frame(profit.center.vector) # Rows = 248
-        
- # Remove NA Profit Centers 
-   profitcenter_to_mentity <- as.data.frame(profitcenter_to_mentity[!is.na(profitcenter_to_mentity)]) 
-   colnames(profitcenter_to_mentity)[1] <- 'Profit_Center'
-   
-     # Left Join Graph Data ----
-       profitcenter_to_mentity <-
-          left_join(profitcenter_to_mentity, Graph.Entity.Info.Local[ , c(3:5, 11:15,21)], by = 'Profit_Center') # Rows = 791
-            # 543 Difference in row count
-  
-     # Extract MEntity from the DF ----
-       d.mentity.check <- 
-       profitcenter_to_mentity %>% 
-         distinct(MEntity) 
-   
-       d.mentity.check[!is.na(d.mentity.check)] # 156 Unique MEntity numbers 
-       
-```
-
-
+### **Collapse Occupancy Lists Into Single Data Frames** ###
 ```{r}
+# Initial Collapse of Occupancy Lists ----
+occ_only_list <- 
+  modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Occupancy") 
 
-# Vector to filter Product Type #
-  #product.type = c("CONTAINER", "DRIVE UP", "INTERIOR", "SPLIT LEVEL", "RV")
+  # Flatten the filtered Occupancy list ----
+  flat_occ_list <-
+    purrr::flatten(occ_only_list)
 
-  
-  # From there, we can calculate our summary fields (Total_SF & Occupied_SF (a sum of these fields respectively)
-    grp1.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp1.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
+  # Omit NA Values ----
+  flat_occ_exl_na <- 
+    na.omit.list(flat_occ_list)
 
-    grp2.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp2.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp3.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp3.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp4.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp4.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp5.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp5.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp6.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp6.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp7.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp7.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp8.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp8.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    grp9.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp9.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp10.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp10.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-  
-#______________________________________________________________________________________________________________________________________________      
-    # As of 3/21/2018 the next two groups are #
-   grp11.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp11.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                  group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-   grp12.unitmix = Occupancy.Table %>% 
-                  filter(`MEntity` %in% grp12.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp13.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp13.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)  
-    
-    
-    grp14.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp14.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)      
-    
-    
-  
-```
+  # Combine Occupancy Data frame ----
+  occ_df <-   
+    map_df(flat_occ_exl_na, `[`)
 
-
-```{r}
-
-# Individual Groups #
-  Group1.UM = collect(grp1.unitmix)
-  Group2.UM = collect(grp2.unitmix)
-  Group3.UM = collect(grp3.unitmix)
-  Group4.UM = collect(grp4.unitmix)
-  Group5.UM = collect(grp5.unitmix)
-  Group6.UM = collect(grp6.unitmix)
-  Group7.UM = collect(grp7.unitmix)
-  Group8.UM = collect(grp8.unitmix)
-  Group9.UM = collect(grp9.unitmix)
-  Group10.UM = collect(grp10.unitmix)
-  Group11.UM = collect(grp11.unitmix)
-  Group12.UM = collect(grp12.unitmix)
-  Group13.UM = collect(grp13.unitmix)
-  Group14.UM = collect(grp14.unitmix)
-  
-
-  # Import Profit Center #
-    Group1.UM = left_join(Group1.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group2.UM = left_join(Group2.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group3.UM = left_join(Group3.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group4.UM = left_join(Group4.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group5.UM = left_join(Group5.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group6.UM = left_join(Group6.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group7.UM = left_join(Group7.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group8.UM = left_join(Group8.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group9.UM = left_join(Group9.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group10.UM = left_join(Group10.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group11.UM = left_join(Group11.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group12.UM = left_join(Group12.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group13.UM = left_join(Group13.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group14.UM = left_join(Group14.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
+    # Group Name and Number Addition ----
+    c_acquisitions_include$Profit_Center <- 
+      as.character(c_acquisitions_include$Profit_Center)
     
-  
-  # Re-name Column #
-    colnames(Group1.UM)[2] = 'MONTH'
-    colnames(Group2.UM)[2] = 'MONTH'
-    colnames(Group3.UM)[2] = 'MONTH'
-    colnames(Group4.UM)[2] = 'MONTH'
-    colnames(Group5.UM)[2] = 'MONTH'
-    colnames(Group6.UM)[2] = 'MONTH'
-    colnames(Group7.UM)[2] = 'MONTH'
-    colnames(Group8.UM)[2] = 'MONTH'
-    colnames(Group9.UM)[2] = 'MONTH'
-    colnames(Group10.UM)[2] = 'MONTH'
-    colnames(Group11.UM)[2] = 'MONTH'
-    colnames(Group12.UM)[2] = 'MONTH'
-    colnames(Group13.UM)[2] = 'MONTH'
-    colnames(Group14.UM)[2] = 'MONTH'
+      grp_dictionary <-
+        left_join(c_acquisitions_include, unique(SAP.Hierarchy[ , c(12, 44)]), by = "Profit_Center")
     
-  # unm_timestamp #
-    # The Date conversion is done here due to how the SQL table pulls through. It comes in as a charcter #
-    Group1.UM$MONTH = as.Date(Group1.UM$MONTH)  
-    Group2.UM$MONTH = as.Date(Group2.UM$MONTH)
-    Group3.UM$MONTH = as.Date(Group3.UM$MONTH)
-    Group4.UM$MONTH = as.Date(Group4.UM$MONTH)
-    Group5.UM$MONTH = as.Date(Group5.UM$MONTH)
-    Group6.UM$MONTH = as.Date(Group6.UM$MONTH)
-    Group7.UM$MONTH = as.Date(Group7.UM$MONTH)
-    Group8.UM$MONTH = as.Date(Group8.UM$MONTH)
-    Group9.UM$MONTH = as.Date(Group9.UM$MONTH)
-    Group10.UM$MONTH = as.Date(Group10.UM$MONTH)
-    Group11.UM$MONTH = as.Date(Group11.UM$MONTH)
-    Group12.UM$MONTH = as.Date(Group12.UM$MONTH)
-    Group13.UM$MONTH = as.Date(Group13.UM$MONTH)
-    Group14.UM$MONTH = as.Date(Group14.UM$MONTH)
-    
-  
-  # Profit Center to Numeric #  
-    Group1.UM$Profit_Center = as.numeric(Group1.UM$Profit_Center)
-    Group2.UM$Profit_Center = as.numeric(Group2.UM$Profit_Center)
-    Group3.UM$Profit_Center = as.numeric(Group3.UM$Profit_Center)
-    Group4.UM$Profit_Center = as.numeric(Group4.UM$Profit_Center)
-    Group5.UM$Profit_Center = as.numeric(Group5.UM$Profit_Center)
-    Group6.UM$Profit_Center = as.numeric(Group6.UM$Profit_Center)
-    Group7.UM$Profit_Center = as.numeric(Group7.UM$Profit_Center)
-    Group8.UM$Profit_Center = as.numeric(Group8.UM$Profit_Center)
-    Group9.UM$Profit_Center = as.numeric(Group9.UM$Profit_Center)
-    Group10.UM$Profit_Center = as.numeric(Group10.UM$Profit_Center)
-    Group11.UM$Profit_Center = as.numeric(Group11.UM$Profit_Center)
-    Group12.UM$Profit_Center = as.numeric(Group12.UM$Profit_Center)
-    Group13.UM$Profit_Center = as.numeric(Group13.UM$Profit_Center)
-    Group14.UM$Profit_Center = as.numeric(Group14.UM$Profit_Center)
-
+      #     
+      
     
 ```
 
-
-Fiscal Year and Group Addition
-```{r}
-
-    FiscalYear.Columns = function(x){
-      
-      
-      
-      
-      x$FY = " "
-      x$FM = " "
-      x$Quarter = " "
-      
-        # Fiscal Year Loop # 
-            for (i in 1:length(x$FY)){
-          
-              if(x$MONTH[i] >= '2015/1/1' & x$MONTH[i] <= '2015/3/31'){
-                
-                x$FY[i] = 2015
-                x$Quarter[i] = 4
-                
-              } else if (x$MONTH[i] >= '2015/4/1' & x$MONTH[i] <= '2015/6/30') { 
-                
-                x$FY[i] = 2016
-                x$Quarter[i] = 1
-                
-              } else if (x$MONTH[i] >= '2015/7/1' & x$MONTH[i] <= '2015/9/30') {
-                
-                x$FY[i] = 2016
-                x$Quarter[i] = 2
-                
-              } else if (x$MONTH[i] >= '2015/10/1' & x$MONTH[i] <= '2015/12/31'){
-               
-                x$FY[i] = 2016
-                x$Quarter[i] = 3 
-                
-              } else if (x$MONTH[i] >= '2016/1/1' & x$MONTH[i] <= '2016/3/31'){
-                
-                x$FY[i] = 2016
-                x$Quarter[i] = 4 
-                  
-              } else if (x$MONTH[i] >= '2016/4/1' & x$MONTH[i] <= '2016/6/30'){
-                
-                x$FY[i] = 2017
-                x$Quarter[i] = 1                 
-                
-              } else if (x$MONTH[i] >= '2016/7/1' & x$MONTH[i] <= '2016/9/30'){
-
-                x$FY[i] = 2017
-                x$Quarter[i] = 2                                 
-                
-              } else if (x$MONTH[i] >= '2016/10/1' & x$MONTH[i] <= '2016/12/31'){ 
-                  
-                x$FY[i] = 2017
-                x$Quarter[i] = 3                
-                
-                } else if (x$MONTH[i] >= '2017/1/1' & x$MONTH[i] <= '2017/3/31'){
-                  
-                x$FY[i] = 2017
-                x$Quarter[i] = 4   
-                
-                } else if (x$MONTH[i] >= '2017/4/1' & x$MONTH[i] <= '2017/6/30'){
-                  
-                x$FY[i] = 2018
-                x$Quarter[i] = 1                    
-                  
-                } else if (x$MONTH[i] >= '2017/7/1' & x$MONTH[i] <= '2017/9/30'){
-                  
-                x$FY[i] = 2018
-                x$Quarter[i] = 2                  
-                  
-                } else if (x$MONTH[i] >= '2017/10/1' & x$MONTH[i] <= '2017/12/31'){
-                  
-                x$FY[i] = 2018
-                x$Quarter[i] = 3   
-                  
-                } else if (x$MONTH[i] >= '2018/1/1' & x$MONTH[i] <= '2018/3/31'){
-                  
-                x$FY[i] = 2018
-                x$Quarter[i] = 4  
-                  
-                } else if (x$MONTH[i] >= '2018/4/1' & x$MONTH[i] <= '2018/6/30'){     
-                  
-                x$FY[i] = 2019
-                x$Quarter[i] = 1                     
-                
-                } else if (x$MONTH[i] >= '2018/7/1' & x$MONTH[i] <= '2018/9/30'){
-                  
-                x$FY[i] = 2019
-                x$Quarter[i] = 2                  
-          
-                } else if (x$MONTH[i] >= '2018/10/1' & x$MONTH[i] <= '2018/12/30'){
-                  
-                x$FY[i] = 2019
-                x$Quarter[i] = 3                  
-          
-                } else if (x$MONTH[i] >= '2019/1/1' & x$MONTH[i] <= '2019/3/31'){
-                  
-                x$FY[i] = 2019
-                x$Quarter[i] = 4                
-              
-                } else if (x$MONTH[i] >= '2019/4/1' & x$MONTH[i] <= '2019/6/30'){
-                  
-                x$FY[i] = 2020
-                x$Quarter[i] = 1                
-              
-                } else if (x$MONTH[i] >= '2019/7/1' & x$MONTH[i] <= '2019/9/30'){
-                  
-                x$FY[i] = 2020
-                x$Quarter[i] = 2
-              
-                } else if (x$MONTH[i] >= '2019/10/1' & x$MONTH[i] <= '2019/12/30'){
-                  
-                x$FY[i] = 2020
-                x$Quarter[i] = 3
-              
-                } else if (x$MONTH[i] >= '2020/1/1' & x$MONTH[i] <= '2020/3/31'){
-                  
-                x$FY[i] = 2020
-                x$Quarter[i] = 4
-                
-                } else if (x$MONTH[i] >= '2020/4/1' & x$MONTH[i] <= '2020/6/30'){
-                  
-                x$FY[i] = 2021
-                x$Quarter[i] = 1
-                
-                } else if (x$MONTH[i] >= '2020/7/1' & x$MONTH[i] <= '2020/9/30'){
-                  
-                x$FY[i] = 2021
-                x$Quarter[i] = 2
-              
-                } else if (x$MONTH[i] >= '2020/10/1' & x$MONTH[i] <= '2020/12/30'){
-                  
-                x$FY[i] = 2021
-                x$Quarter[i] = 3
-              
-                } else if (x$MONTH[i] >= '2021/1/1' & x$MONTH[i] <= '2021/3/31'){
-                  
-                x$FY[i] = 2021
-                x$Quarter[i] = 4
-              
-                } else if (x$MONTH[i] >= '2021/4/1' & x$MONTH[i] <= '2021/6/30'){
-                  
-                x$FY[i] = 2022
-                x$Quarter[i] = 1
-              
-                } else if (x$MONTH[i] >= '2021/7/1' & x$MONTH[i] <= '2021/9/30'){
-                  
-                x$FY[i] = 2022
-                x$Quarter[i] = 2
-              
-              
-                } else if (x$MONTH[i] >= '2021/10/1' & x$MONTH[i] <= '2021/12/30'){
-                  
-                x$FY[i] = 2022
-                x$Quarter[i] = 3
-              
-                } else if (x$MONTH[i] >= '2022/1/1' & x$MONTH[i] <= '2022/3/31'){
-                  
-                x$FY[i] = 2022
-                x$Quarter[i] = 4
-                
-                } else if (x$MONTH[i] >= '2022/4/1' & x$MONTH[i] <= '2022/6/30'){
-                  
-                x$FY[i] = 2023
-                x$Quarter[i] = 1
-                
-                } else if (x$MONTH[i] >= '2022/7/1' & x$MONTH[i] <= '2022/9/30'){
-                  
-                x$FY[i] = 2023
-                x$Quarter[i] = 2
-                
-                } else if (x$MONTH[i] >= '2022/10/1' & x$MONTH[i] <= '2022/12/30'){
-                  
-                x$FY[i] = 2023
-                x$Quarter[i] = 3
-                
-                } else if (x$MONTH[i] >= '2023/1/1' & x$MONTH[i] <= '2023/3/31'){
-                  
-                x$FY[i] = 2023
-                x$Quarter[i] = 4
-                
-                } else if (x$MONTH[i] >= '2023/4/1' & x$MONTH[i] <= '2023/6/30'){
-                  
-                x$FY[i] = 2024
-                x$Quarter[i] = 1
-                
-                } else if (x$MONTH[i] >= '2023/7/1' & x$MONTH[i] <= '2023/9/30'){
-                  
-                x$FY[i] = 2024
-                x$Quarter[i] = 2
-              
-                } else if (x$MONTH[i] >= '2023/10/1' & x$MONTH[i] <= '2023/12/30'){
-                  
-                x$FY[i] = 2024
-                x$Quarter[i] = 3
-                
-                } else if (x$MONTH[i] >= '2024/1/1' & x$MONTH[i] <= '2024/3/31'){
-                  
-                x$FY[i] = 2024
-                x$Quarter[i] = 4
-                
-                } else if (x$MONTH[i] >= '2024/4/1' & x$MONTH[i] <= '2024/6/30'){
-                  
-                x$FY[i] = 2025
-                x$Quarter[i] = 1
-                
-              
-            }}
-          
-          # Month Loop #
-            
-            # Month Column #    
-            x$Month = " "
-            
-              for (i in 1:length(x$Month)){
-                x$Month[i] = format(x$MONTH[i], "%b")
-              }
-              for (i in 1:length(x$FM)){
-                if(month(x$MONTH[i]) >= 4 & month(x$MONTH[i]) <= 12){
-                  x$FM[i] = month(x$MONTH[i]) - 3
-                } else if (month(x$MONTH[i]) == 1) {
-                  x$FM[i] = 10
-                } else if (month(x$MONTH[i]) == 2) {
-                  x$FM[i] = 11
-                } else if (month(x$MONTH[i]) == 3){
-                  x$FM[i] = 12
-                }
-              }
-            
-        return(x)    
-    }
-      
-
-```
-
-
-Fiscal Year Column Addition for Occupancy Metrics
-```{r}
-
-# Individual Compilation #
-  Grp1.UM2 = FiscalYear.Columns(Group1.UM)  
-  Grp2.UM2 = FiscalYear.Columns(Group2.UM)  
-  Grp3.UM2 = FiscalYear.Columns(Group3.UM)
-  Grp4.UM2 = FiscalYear.Columns(Group4.UM)
-  Grp5.UM2 = FiscalYear.Columns(Group5.UM)
-  Grp6.UM2 = FiscalYear.Columns(Group6.UM)
-  Grp7.UM2 = FiscalYear.Columns(Group7.UM)
-  Grp8.UM2 = FiscalYear.Columns(Group8.UM)
-  Grp9.UM2 = FiscalYear.Columns(Group9.UM)
-  Grp10.UM2 = FiscalYear.Columns(Group10.UM)
-  Grp11.UM2 = FiscalYear.Columns(Group11.UM)
-  Grp12.UM2 = FiscalYear.Columns(Group12.UM)
-  Grp13.UM2 = FiscalYear.Columns(Group13.UM)
-  Grp14.UM2 = FiscalYear.Columns(Group14.UM)
-  
-  
-# Data Frame Conversion for Bind
-  Grp1.UM2 = as.data.frame(Grp1.UM2)
-  Grp2.UM2 = as.data.frame(Grp2.UM2)
-  Grp3.UM2 = as.data.frame(Grp3.UM2)
-  Grp4.UM2 = as.data.frame(Grp4.UM2)
-  Grp5.UM2 = as.data.frame(Grp5.UM2)
-  Grp6.UM2 = as.data.frame(Grp6.UM2)
-  Grp7.UM2 = as.data.frame(Grp7.UM2)
-  Grp8.UM2 = as.data.frame(Grp8.UM2)
-  Grp9.UM2 = as.data.frame(Grp9.UM2)
-  Grp10.UM2 = as.data.frame(Grp10.UM2)
-  Grp11.UM2 = as.data.frame(Grp11.UM2)
-  Grp12.UM2 = as.data.frame(Grp12.UM2)
-  Grp13.UM2 = as.data.frame(Grp13.UM2)
-  Grp14.UM2 = as.data.frame(Grp14.UM2)
-  
-# Add Group Column #
-  Grp1.UM2$Group = 'FY15 Q4'
-  Grp2.UM2$Group = 'FY16 Q1'
-  Grp3.UM2$Group = 'FY16 Q2'
-  Grp4.UM2$Group = 'FY16 Q3'
-  Grp5.UM2$Group = 'FY16 Q4'
-  Grp6.UM2$Group = 'FY17 Q1'
-  Grp7.UM2$Group = 'FY17 Q2'
-  Grp8.UM2$Group = 'FY17 Q3'
-  Grp9.UM2$Group = 'FY17 Q4'
-  Grp10.UM2$Group = 'FY18 Q1'
-  Grp11.UM2$Group = 'FY18 Q2'
-  Grp12.UM2$Group = 'FY18 Q3'
-  Grp13.UM2$Group = 'FY18 Q4'
-  Grp14.UM2$Group = 'FY19 Q1'
-
-  
-# Data Frame Conversion for Bind
-  Grp1.UM2 = as.data.frame(Grp1.UM2)
-  Grp2.UM2 = as.data.frame(Grp2.UM2)
-  Grp3.UM2 = as.data.frame(Grp3.UM2)
-  Grp4.UM2 = as.data.frame(Grp4.UM2)
-  Grp5.UM2 = as.data.frame(Grp5.UM2)
-  Grp6.UM2 = as.data.frame(Grp6.UM2)
-  Grp7.UM2 = as.data.frame(Grp7.UM2)
-  Grp8.UM2 = as.data.frame(Grp8.UM2)
-  Grp9.UM2 = as.data.frame(Grp9.UM2)
-  Grp10.UM2 = as.data.frame(Grp10.UM2)  
-  Grp11.UM2 = as.data.frame(Grp11.UM2)  
-  Grp12.UM2 = as.data.frame(Grp12.UM2)  
-  Grp13.UM2 = as.data.frame(Grp13.UM2)
-  Grp14.UM2 = as.data.frame(Grp14.UM2)  
-  
-  
-# Combine Full Data Frame #  
-  UnitMix.Aggregate = bind_rows(Grp1.UM2,
-                           Grp2.UM2,
-                           Grp3.UM2,
-                           Grp4.UM2,
-                           Grp5.UM2,
-                           Grp6.UM2,
-                           Grp7.UM2,
-                           Grp8.UM2,
-                           Grp9.UM2,
-                           Grp10.UM2,
-                           Grp11.UM2,
-                           Grp12.UM2,
-                           Grp13.UM2,
-                           Grp14.UM2)
-  
-
-# Re-name unm_product column #
-  colnames(UnitMix.Aggregate)[3] = 'Product' 
-  
-  
-  UnitMix.Aggregate <- UnitMix.Aggregate %>% arrange(Group, MONTH)
-  
-  UnitMix.Aggregate %>% 
-    group_by(MONTH) %>%
-    summarise(Occupancy = sum(Occupied_Rooms) / sum(Total_Rooms))
-  
-# Count Distinct Profit Centers
-   #occ.d.mentity <- distinct(UnitMix.Aggregate$MEntity)
-   
-   
-```
 
 
 
