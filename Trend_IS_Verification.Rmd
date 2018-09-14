@@ -18,6 +18,9 @@ output: html_document
       Port = 1433)
 
 
+ con.mentity
+ dlr01 <- dplyr::tbl(con.mentity, "ENTITY_DLR01")
+
 # Import Database 
   trend.is.detail <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP") 
 
@@ -102,7 +105,123 @@ mentity.list <-
      # distinct(MEntity)
   
   
+  SAP.Hierarchy
   
+  
+```
+
+
+
+
+# Center Entity Name
+
+```{r}
+
+entity_df <-
+  read.csv("\\\\adfs01.uhi.amerco\\users\\1217543\\Misc\\entity_names.csv", header = TRUE)
+
+entity_df$Profit_Center <- as.character(entity_df$Profit_Center)
+
+# Column type update
+  colnames(entity_df)[8] <- "Entity"
+  colnames(entity_df)[9] <- "Entity_Current"
+  
+  entity_df$Entity <- as.character(entity_df$Entity)
+  entity_df$Entity_Current <- as.character(entity_df$Entity_Current)
+  
+  
+
+
+dlr01 <- 
+  collect(dlr01)
+
+# Update Permanent Entity column to Entity
+  colnames(dlr01)[4] <- "Entity"
+  
+  dlr01$Entity_Current <- dlr01$Entity
+
+  dlr01 <- 
+  dlr01 %>% filter(STATUS == 'O')
+  
+  dlr01$Entity <- as.character(dlr01$Entity)
+  dlr01$Entity_Current <- as.character(dlr01$Entity_Current)
+  
+  
+  # 380 rows
+  names <- 
+    left_join(entity_df, dlr01[ , c(4, 42)], by = "Entity")
+  
+  names2 <-
+    left_join(names, dlr01[ , c(199, 42)], by = "Entity_Current")
+  
+  
+  
+  names2$ENTITY_NAME.x <- 
+  gsub("\\*", "", names2$ENTITY_NAME.x)
+  
+  names2$ENTITY_NAME.y <- 
+    gsub("\\*", "", names2$ENTITY_NAME.y)
+  
+  
+  colnames(names2)[24] <- "Permanent_Entity_Name"
+  colnames(names2)[25] <- "Current_Entity_Name"
+
+  write.csv(names2, "U:\\Jason's Slide 2018\\entity_names.csv" )
+```
+
+
+
+# Using the SAP Hierarchy
+```{r}
+
+
+colnames(SAP.Hierarchy)[12] <- "Profit_Center"
+
+sap_names <- 
+left_join(entity_df, SAP.Hierarchy[ , c(12, 4)], by = "Profit_Center")
+
+sap_names_unique <- 
+unique(sap_names[, c('Profit_Center', 'Name')])
+
+sap_names_unique %>% filter(is.na(sap_names_unique$Name))
+
+
+# NA
+sap_names %>% filter(is.na(Name))
+
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+
+still_missing <- read.csv("\\\\adfs01.uhi.amerco\\users\\1217543\\Jason's Slide 2018\\final_names.csv")
+
+still_missing$Profit_Center <- as.character(still_missing$Profit_Center)
+
+db_names <- left_join(still_missing, SAP.Hierarchy[ ,c( 3, 4)], by = "Profit_Center")
+
+db_names_unique <- 
+unique(db_names[, c('Profit_Center', 'Name')])
+
+
+# Export to csv
+  write.csv(db_names_unique, "U:\\Jason's Slide 2018\\db_names.csv")
+
+
+
+
+grep("Profit_Center", colnames(SAP.Hierarchy))
+
+
 ```
 
 

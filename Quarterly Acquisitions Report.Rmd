@@ -24,8 +24,11 @@ library(dygraphs)
 library(xts)
 library(lubridate)
 library(reshape2)
+
+library(plyr)
 library(dplyr)
 library(dbplyr)
+
 library(R2HTML)
 library(CenterIS)
 
@@ -35,14 +38,20 @@ library(jsonlite)
 library(RCurl)
 
 library(tidyr)
+library(data.table)
+
+library(rlist)
+
+library(testthat)
 
 ```
 
 
-SQL Connections
+## **SQL Connections**
 
 ```{r}
 
+# Finaccounting connection ----
 con.FinAccounting = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -51,7 +60,7 @@ con.FinAccounting = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-
+# Finanalysis connection ----
 con.FinAnalysis = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -60,8 +69,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-  
-# Storage Tables ----
+# Storage connection ----
   con.Storage = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -70,8 +78,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-
-# MEntity       
+# MEntity connection ----      
   con.mentity = DBI::dbConnect(odbc::odbc(), 
       Driver = "SQL Server",
       Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
@@ -80,52 +87,49 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
       PWD = rstudioapi::askForPassword("Database password"),
       Port = 1433)
 
-
-
-
-
-
-
 # Graph MEntity and SAP number combination
   Graph.Entity.Info.Sql <- dplyr::tbl(con.FinAnalysis, "GRAPH_ENTITY_INFO")
     Graph.Entity.Info.Local <- collect(Graph.Entity.Info.Sql)
       colnames(Graph.Entity.Info.Local)[21] <- 'Profit_Center'
         
-      
-    
 ```
 
-Table Import
+
+## **Import Table**
 
 ```{r}
 
+# Finaccounting Tables ----
+  IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")
+  SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") 
 
-# Finaccounting Tables
-IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")  #Main data for income statement compilation
-SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") #SAP Hierarchy Table
-
-# Finanalysis Tables
-SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")# MEntity to SAP number 
-  SAP.DB = collect(SAP_Info) # Save local copy of MEntity_SAP database
-  
-    SAP.DB %>% summarise(n_distinct(MEntity)
-    )
+# Finanalysis Tables ----
+  SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")
+    SAP.DB = collect(SAP_Info)
+      SAP.DB %>% summarise(n_distinct(MEntity))
 
 # Occupancy Table ----  
-Occupancy.Table = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
+  wss_data = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
     
-# Collect SAP Hierarchy
+# Collect SAP Hierarchy ----
   SAP.Hierarchy <- collect(SAP.Hierarchy)
+  colnames(SAP.Hierarchy)[12] <- "Profit_Center"
   
+# %%%%%% #  
+# Inputs ----  
+# %%%%% #
+    
+# Dynamic Variables ----
+  date_occ <-
+    as.Date('2018-06-20') # Enter Current Month Date for data compilation ----
   
-  
-
-
-
 ```
 
 
-Functions
+## **Functions**
+---
+
+### *Aggregate Income Statement*
 
 ```{r}
 
@@ -340,13 +344,15 @@ Aggregate.IS <- function(x){
 
 }
 
-
 ```
 
 
+### **Income Statement Data Check**
+
 ```{r Data Check Function}
 
-DataCheck = function(x) {
+data_check_na <-
+  function(x) {
 
   #%% Check for Data Function %%
   #The function will check for data and return NA if none exists.
@@ -374,903 +380,111 @@ DataCheck = function(x) {
 }
 
 
-```
 
+data_check_flag <- 
+  function(x) {
 
-```{r}
-
-MonthofOperation.Start = function (x){
+  #%% Check for Data Function %%
+  #The function will check for data and return NA if none exists.
 
   #Library
   require("dplyr")
   require("lazyeval")
   require("purrr") #makes iteration problems easier to solve
 
-  start_of_record = min(x$MONTH)
-  return(start_of_record)
-  
-}
-
-```
-
-
-```{r}
-
-na.omit.list <- function(y) {
-  return(y[!sapply(y, function(x) all(is.na(x)))])
-}
-
-```
-
-
-```{r}
-
-Property_Owner = function (x){
+  #vector of list
+  list.vector = list()
+  i = 1
 
   #Filter Criteria
-  d = SAP.Hierarchy %>% filter(`Cost Center` == x)
+  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
 
-  #%Create a local copy of the data frame
-  
+  #Create a local copy of the data frame
   b = collect(d)
-  c = b$`Hierarchy Area`
-  return(c)
-
-  # Rare situations to be aware of
-  # In some instances, the Cost center used to filter will actually return two
-
-}
-
-```
-
-
-```{r}
-
-vector.conv <- function(x){
-  x = as.vector(x$Profit_Center)
-  x = as.character(x)
-}
-
-```
-
-
-Compilation of New Acquisitions List
-
-```{r}
-
-  # Import New List
-    New.Acquisitions <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\New Acquisitions F19 Q1.csv")
-
-    # Rename Column
-      colnames(New.Acquisitions)[3] <- "Entity"
-      New.Acquisitions$Entity <- as.character(New.Acquisitions$Entity)
-      
-      
-      
-
-  # Import Graph File Data
-    Graph.File <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Q1 Graph File.csv", header = TRUE)
-      
-    Graph.File$Entity <- as.character(Graph.File$Entity)
-    Graph.File$MEntity <- as.character(Graph.File$MEntity)
-    
-  # Import Profit Center from Graph File
-    New.Acquisitions = left_join(New.Acquisitions, Graph.Entity.Info.Local[, c(1,3,21)], by = 'Entity')
-    New.Acquisitions <- left_join(New.Acquisitions, Graph.File[ , c(1,10)], by = 'Entity') #Import Owner
-  
-    
-    
-      # Filter for abutting properties.
-        for (i in 1:length(New.Acquisitions$Entity)){
-          
-          if (grepl("?butting", New.Acquisitions$Property.Description[i]) == TRUE){
-            
-            New.Acquisitions$Include[i] = 'No'
-            
-          } else if (grepl("?emote", New.Acquisitions$Property.Description[i]) == TRUE){
-            
-            New.Acquisitions$Include[i] = "No"
-            
-            
-          } else if (grepl("SAC", New.Acquisitions$Owner[i])){
-            
-          
-            New.Acquisitions$Include[i] = "No"
-            
-          } else {
-            
-            New.Acquisitions$Include[i] = "Yes"
-        
-          }
-        }
-
-  
-    # Export to CSV
-     # write.csv(New.Acquisitions, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\NewAcq_Export.csv")
-    
-
-```
-
-
-Completed Acquisitions Spreadsheet
-
-```{r}
-
-# Spreadsheet Import
-  C.Acquisitions = read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
-C.Acquisitions
-
-  # TBL conversion
-     C.Acquisitions = as.tbl(C.Acquisitions)
-     
-      C.Acquisitions.Include = C.Acquisitions %>% filter(Include. == 'Yes')
-      C.Acquisitions.Exclude = C.Acquisitions %>% filter(Include. == 'No')
-      
-```
-
-
-Ensure no Duplicates are included
-
-```{r}
-
- # Extract Profit Center Column
-   C.Acquisitions.Include2 = C.Acquisitions.Include %>% 
-                              select(Profit_Center)
-
-   C.Acquisitions.Include2.Complete <-  C.Acquisitions.Include2[!is.na(C.Acquisitions.Include2), ] #  Remove NA Values
-   
-    # Check for Duplicates
-      C.Acquisitions.Include2.Complete %>%
-        group_by(Profit_Center) %>%
-        mutate(Count = 1) %>%
-        summarise(Total = sum(Count)) %>%
-        filter(Total > 1)
-        
-    # Duplicates have been removed.
-
-```
-
-
-
-
-
-Quarterly Group Compilation
-
-```{r}
-
-# Group Creation
-    grp1 = C.Acquisitions.Include %>% filter(Group == 1)
-      grp2 = C.Acquisitions.Include %>% filter(Group == 2)
-        grp3 = C.Acquisitions.Include %>% filter(Group == 3)
-          grp4 = C.Acquisitions.Include %>% filter(Group == 4)
-            grp5 = C.Acquisitions.Include %>% filter(Group == 5)
-              grp6 = C.Acquisitions.Include %>% filter(Group == 6)
-                grp7 = C.Acquisitions.Include %>% filter(Group == 7)
-                  grp8 = C.Acquisitions.Include %>% filter(Group == 8)
-                    grp9 = C.Acquisitions.Include %>% filter(Group == 9)
-                      grp10 = C.Acquisitions.Include %>% filter(Group == 10)
-                        grp11 = C.Acquisitions.Include %>% filter(Group == 11)
-                          grp12 = C.Acquisitions.Include %>% filter(Group == 12)
-                            grp13 = C.Acquisitions.Include %>% filter(Group == 13)
-                              grp14 = C.Acquisitions.Include %>% filter(Group == 14)
-
-
-
-# THE EXTRACTION OF UNIQUE PROFIT CENTERS CAN BE REMOVED; IT IS COMPLETED ABOVE -----                                                            
-                              
-# Profit Center Selection
-  group1.pc = C.Acquisitions.Include %>% filter(Group == 1) %>% select(Profit_Center)
-    group1.pc <- unique(group1.pc$Profit_Center)
-      group1.pc <- as.character(group1.pc)
-    
-  
-  group2.pc = C.Acquisitions.Include %>% filter(Group == 2) %>% select(Profit_Center)
-    group2.pc <- unique(group2.pc$Profit_Center)
-      group2.pc <- as.character(group2.pc)
-  
-  group3.pc = C.Acquisitions.Include %>% filter(Group == 3) %>% select(Profit_Center) 
-    group3.pc <- unique(group3.pc$Profit_Center)
-      group3.pc <- as.character(group3.pc)
-  
-  
-  group4.pc = C.Acquisitions.Include %>% filter(Group == 4) %>% select(Profit_Center)  
-    group4.pc <- unique(group4.pc$Profit_Center)
-      group4.pc <- as.character(group4.pc)
-
-  
-  group5.pc = C.Acquisitions.Include %>% filter(Group == 5) %>% select(Profit_Center)
-    group5.pc <- unique(group5.pc$Profit_Center)
-      group5.pc <- as.character(group5.pc)
-      
-  
-  group6.pc = C.Acquisitions.Include %>% filter(Group == 6) %>% select(Profit_Center)
-    group6.pc <- unique(group6.pc$Profit_Center)
-      group6.pc <- as.character(group6.pc)
-  
-  
-  group7.pc = C.Acquisitions.Include %>% filter(Group == 7) %>% select(Profit_Center)
-    group7.pc <- unique(group7.pc$Profit_Center)
-      group7.pc <- as.character(group7.pc)
-  
-  
-  
-  group8.pc = C.Acquisitions.Include %>% filter(Group == 8) %>% select(Profit_Center)
-    group8.pc <- unique(group8.pc$Profit_Center)
-      group8.pc <- as.character(group8.pc)
-  
-  
-  group9.pc = C.Acquisitions.Include %>% filter(Group == 9) %>% select(Profit_Center)
-    group9.pc <- unique(group9.pc$Profit_Center)
-      group9.pc <- as.character(group9.pc)
-  
-  
-  group10.pc = C.Acquisitions.Include %>% filter(Group == 10) %>% select(Profit_Center)
-    group10.pc <- unique(group10.pc$Profit_Center)
-      group10.pc <- as.character(group10.pc)
-  
-  
-  group11.pc = C.Acquisitions.Include %>% filter(Group == 11) %>% select(Profit_Center)
-    group11.pc <- unique(group11.pc$Profit_Center)
-      group11.pc <- as.character(group11.pc)
-  
-  
-  group12.pc = C.Acquisitions.Include %>% filter(Group == 12) %>% select(Profit_Center)
-    group12.pc <- unique(group12.pc$Profit_Center)
-      group12.pc <- as.character(group12.pc)  
-  
-      
-  group13.pc = C.Acquisitions.Include %>% filter(Group ==13) %>% select(Profit_Center)
-    group13.pc <- unique(group13.pc$Profit_Center)
-      group13.pc <- as.character(group13.pc)  
-  
-  
-  group14.pc = C.Acquisitions.Include %>% filter(Group ==14) %>% select(Profit_Center)
-    group14.pc <- unique(group14.pc$Profit_Center)
-      group14.pc <- as.character(group14.pc) 
-  
-  
-  
-# List Creation
-  Quarter.list = list(group1.pc, 
-                        group2.pc, 
-                        group3.pc, 
-                        group4.pc, 
-                        group5.pc, 
-                        group6.pc, 
-                        group7.pc, 
-                        group8.pc, 
-                        group9.pc, 
-                        group10.pc, 
-                        group11.pc, 
-                        group12.pc,
-                        group13.pc,
-                        group14.pc)
-  
-  
- profit.center.vector <- unlist(Quarter.list)
-  profit.center.vector <- as.data.frame(profit.center.vector)
-   colnames(profit.center.vector) <- "Profit_Center"
-    profit.center.vector[!duplicated(profit.center.vector$Profit_Center), ]
-    
-    
-    # Count of Unique Profit Centers
-      n_distinct(profit.center.vector) # 246 Unique Profit Centers 
- 
-  
-```
-
-
-# Aggregate Income Statement Compilation
-
-```{r}
-
-# IS Trend Compilation
-  aggregateIS.data.list = map(Quarter.list, Aggregate.IS)
-
-# List Separation
-  group1.data = aggregateIS.data.list[[1]]
-  group2.data = aggregateIS.data.list[[2]]
-  group3.data = aggregateIS.data.list[[3]]
-  group4.data = aggregateIS.data.list[[4]]
-  group5.data = aggregateIS.data.list[[5]]
-  group6.data = aggregateIS.data.list[[6]]
-  group7.data = aggregateIS.data.list[[7]]
-  group8.data = aggregateIS.data.list[[8]]
-  group9.data = aggregateIS.data.list[[9]]
-  group10.data = aggregateIS.data.list[[10]]
-  group11.data = aggregateIS.data.list[[11]]
-  group12.data = aggregateIS.data.list[[12]]
-  group13.data = aggregateIS.data.list[[13]]
-  group14.data = aggregateIS.data.list[[14]]
-  
-# Group Identifier
-  group1.data$Group = 'FY15 Q4'
-  group2.data$Group = 'FY16 Q1'
-  group3.data$Group = 'FY16 Q2'
-  group4.data$Group = 'FY16 Q3'
-  group5.data$Group = 'FY16 Q4'
-  group6.data$Group = 'FY17 Q1'
-  group7.data$Group = 'FY17 Q2'
-  group8.data$Group = 'FY17 Q3'
-  group9.data$Group = 'FY17 Q4'
-  group10.data$Group = 'FY18 Q1'
-  group11.data$Group = 'FY18 Q2'
-  group12.data$Group = 'FY18 Q3'
-  group13.data$Group = 'FY18 Q4'
-  group14.data$Group = 'FY19 Q1'
-
-# Combined Data
-  Data.Combined = bind_rows(group1.data, 
-                      group2.data, 
-                      group3.data, 
-                      group4.data,
-                      group5.data,
-                      group6.data,
-                      group7.data, 
-                      group8.data,
-                      group9.data,
-                      group10.data, 
-                      group11.data, 
-                      group12.data,
-                      group13.data,
-                      group14.data)
-  
-# Export Data
-  write.csv(Data.Combined, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Aggregate_IS_Data.csv')
-  
-  
-# Test CSV Read
- # test <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95b3R2JF_arMzwrMm1JieduB064cBks5bdfwOwA%3D%3D")
-  
-  #test.2 <- read.csv(text = test)
-  
-  
-  
-# Test on Quarter Snapshot Aggregation
- # quarter.test <- 
-  #  Data.Combined %>%
-   # dplyr::filter(Group == 'FY15 Q4' & Data.Combined$`Line Item` == 'Storage_Income') %>%
-   # dplyr::group_by(`Line Item`, FY, Quarter, Group) %>%
-   # dplyr::summarise(Value = sum(Value)) 
-
-
-   # Matrix Test
-    # quarter.matrix <- as.matrix(quarter.test$Value)
-       
-      # Quarter YoY
-      #  df.row <- nrow(quarter.matrix)
-        
-       # yoy.q <- diff(quarter.matrix, lag = 4)
-        
-       # (yoy.q[nrow(yoy.q)] /  quarter.test[nrow(quarter.test), 5]) * 100
-        
-  
-```
-
-
-
-#--- Occupancy Metrics ---#
-
-```{r Occupancy Function}
-
-  Occupancy.Calc = function(x){
-    d <- Occupancy.Table %>% 
-                            filter(x) %>%
-                            group_by(Date, 
-                                     MEntity,
-                                     unm_product, 
-                                     unm_numunits,
-                                     unm_occunits,
-                                     unm_damunits,
-                                     unm_floor,
-                                     unm_elevation,
-                                     unm_climate,
-                                     unm_rentrate)
-    collect(d)
+  if(nrow(b) > 0){
+    list.vector[[i]] = x
+  } else {
+    list.vector[[i]] = paste("Error:", paste(x), sep = " ")
   }
-
-
-```
-
-
-```{r}
-
-Occ.Data.Comp.Function = function(x, list.container){
-    
-    # Filter and select only the profit centers from the individual data frames
-    a <- x %>% select(Profit_Center)
-    
-    # Loop and save each observation in the data frame in a single list row
-    for (i in a){
-      list.container = i
-      i + 1
-    }
-      
-    # List Creation 
-      list.container = as.list(list.container)
-  
-    # Return List 
-      return(list.container)
+  return(list.vector)
 }
 
 
-```
-
-
-Occupancy Data List Containers (Needs Updating Every Quarter)
-
-  The update process includes creating a new group category and associated lists. 
+data_check_center <-
+  function(x){
+    
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
+    
+  #vector of list
+  list.vector = list()
+  list.complete = list()
   
-```{r}
+  i = 1
 
-# Container Creation
-  grp1.pc.list = list()
-  grp2.pc.list = list()
-  grp3.pc.list = list()
-  grp4.pc.list = list()
-  grp5.pc.list = list()
-  grp6.pc.list = list()
-  grp7.pc.list = list()
-  grp8.pc.list = list()
-  grp9.pc.list = list()
-  grp10.pc.list = list()
-  grp11.pc.list = list()
-  grp12.pc.list = list()
-  grp13.pc.list = list()
-  grp14.pc.list = list()
-  
-```
+  #Filter Criteria
+  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
 
-
-Occ Data Compilation 
-```{r}
-
-# List Compilation by Acquisition Group
-  grp1.pc.list = Occ.Data.Comp.Function(grp1, grp1.pc.list) 
-    grp2.pc.list = Occ.Data.Comp.Function(grp2, grp2.pc.list)   
-      grp3.pc.list = Occ.Data.Comp.Function(grp3, grp3.pc.list) 
-        grp4.pc.list = Occ.Data.Comp.Function(grp4, grp4.pc.list) 
-          grp5.pc.list = Occ.Data.Comp.Function(grp5, grp5.pc.list) 
-            grp6.pc.list = Occ.Data.Comp.Function(grp6, grp6.pc.list) 
-              grp7.pc.list = Occ.Data.Comp.Function(grp7, grp7.pc.list) 
-                grp8.pc.list = Occ.Data.Comp.Function(grp8, grp8.pc.list) 
-                  grp9.pc.list = Occ.Data.Comp.Function(grp9, grp9.pc.list) 
-                    grp10.pc.list = Occ.Data.Comp.Function(grp10, grp10.pc.list) 
-                      grp11.pc.list = Occ.Data.Comp.Function(grp11, grp11.pc.list) 
-                        grp12.pc.list = Occ.Data.Comp.Function(grp12, grp12.pc.list) 
-                          grp13.pc.list = Occ.Data.Comp.Function(grp13, grp13.pc.list)
-                            grp14.pc.list = Occ.Data.Comp.Function(grp14, grp14.pc.list)
-                          
-                                                
-# Blank Data Check (Verification of Income Statement Data)
-  grp1.pc.list1 = map(grp1.pc.list, DataCheck)
-    grp1.pc.list2 = unique(na.omit.list(grp1.pc.list1))
+  #Create a local copy of the data frame
+  b = collect(d)
     
-  grp2.pc.list1 = map(grp2.pc.list, DataCheck)
-    grp2.pc.list2 = unique(na.omit.list(grp2.pc.list1))
-    
-  grp3.pc.list1 = map(grp3.pc.list, DataCheck)
-    grp3.pc.list2 = unique(na.omit.list(grp3.pc.list1))
-    
-  grp4.pc.list1 = map(grp4.pc.list, DataCheck)
-    grp4.pc.list2 = unique(na.omit.list(grp4.pc.list1))
-    
-  grp5.pc.list1 = map(grp5.pc.list, DataCheck)
-    grp5.pc.list2 = unique(na.omit.list(grp5.pc.list1))
-    
-  grp6.pc.list1 = map(grp6.pc.list, DataCheck)
-    grp6.pc.list2 = unique(na.omit.list(grp6.pc.list1))
-    
-  grp7.pc.list1 = map(grp7.pc.list, DataCheck)
-    grp7.pc.list2 = unique(na.omit.list(grp7.pc.list1))
-
-  grp8.pc.list1 = map(grp8.pc.list, DataCheck)
-    grp8.pc.list2 = unique(na.omit.list(grp8.pc.list1))
-
-  grp9.pc.list1 = map(grp9.pc.list, DataCheck)
-    grp9.pc.list2 = unique(na.omit.list(grp9.pc.list1))    
-    
-  grp10.pc.list1 = map(grp10.pc.list, DataCheck)
-    grp10.pc.list2 = unique(na.omit.list(grp10.pc.list1)) 
-    
-  grp11.pc.list1 = map(grp11.pc.list, DataCheck)
-    grp11.pc.list2 = unique(na.omit.list(grp11.pc.list1))
-    
-  grp12.pc.list1 = map(grp12.pc.list, DataCheck)
-    grp12.pc.list2 = unique(na.omit.list(grp12.pc.list1))
-
-  grp13.pc.list1 = map(grp13.pc.list, DataCheck)
-    grp13.pc.list2 = unique(na.omit.list(grp13.pc.list1))                          
-
-  grp14.pc.list1 = map(grp14.pc.list, DataCheck)
-    grp14.pc.list2 = unique(na.omit.list(grp14.pc.list1))
-
-```
+  if(nrow(b) > 0){
+    list.vector[[i]] = 1
+  } else {
+    list.complete[[i]] = x
+  }
+  return(list.complete)
+}
 
 
-```{r Needs update}
-
-
-# This portion of the code needs to be updated! Use different database for SAP Profit center to MEntity number #
-
-
-# MEntity compilation Function #
-  SAP2Mentity = function(x){
-    x[[2]] = Graph.Entity.Info.Local  %>% filter(`Profit_Center` == x[1]) %>% select(MEntity)
-  }   
-
-# Groups #
-  grp1.MEntity = unique(map(grp1.pc.list2, SAP2Mentity)) # 8
-  grp2.MEntity = unique(map(grp2.pc.list2, SAP2Mentity)) # 5
-  grp3.MEntity = unique(map(grp3.pc.list2, SAP2Mentity)) # 7
-  grp4.MEntity = unique(map(grp4.pc.list2, SAP2Mentity)) # 11
-  grp5.MEntity = unique(map(grp5.pc.list2, SAP2Mentity)) # 11
-  grp6.MEntity = unique(map(grp6.pc.list2, SAP2Mentity)) # 13
-  grp7.MEntity = unique(map(grp7.pc.list2, SAP2Mentity)) # 13
-  grp8.MEntity = unique(map(grp8.pc.list2, SAP2Mentity)) # 13
-  grp9.MEntity = unique(map(grp9.pc.list2, SAP2Mentity)) # 11
-  grp10.MEntity = unique(map(grp10.pc.list2, SAP2Mentity)) # 9
-  grp11.MEntity = unique(map(grp11.pc.list2, SAP2Mentity)) # 12
-  grp12.MEntity = unique(map(grp12.pc.list2, SAP2Mentity)) # 19
-  grp13.MEntity = unique(map(grp13.pc.list2, SAP2Mentity)) # 25
-  grp14.MEntity = unique(map(grp14.pc.list2, SAP2Mentity)) # 10
-  
-
-
-```
-
-
-```{r Occupancy Data Aggregation}
-
-# Step 3: Occupancy Tables #
-  grp1.ME <- unlist(grp1.MEntity)
-    grp1.ME <- as.character(grp1.ME)
-    
-  grp2.ME <- unlist(grp2.MEntity)
-      grp2.ME <- as.character(grp2.ME)
-    
-  grp3.ME <- unlist(grp3.MEntity)
-      grp3.ME <- as.character(grp3.ME)
-    
-  grp4.ME <- unlist(grp4.MEntity)
-      grp4.ME = as.character(grp4.ME)
-    
-  grp5.ME <- unlist(grp5.MEntity)
-      grp5.ME = as.character(grp5.ME)
-    
-  grp6.ME <- unlist(grp6.MEntity)
-      grp6.ME = as.character(grp6.ME)
-    
-  grp7.ME <- unlist(grp7.MEntity)
-      grp7.ME = as.character(grp7.ME)
-    
-  grp8.ME <- unlist(grp8.MEntity)
-      grp8.ME = as.character(grp8.ME)
-    
-  grp9.ME <- unlist(grp9.MEntity)
-      grp9.ME = as.character(grp9.ME)
-    
-  grp10.ME <- unlist(grp10.MEntity)
-      grp10.ME = as.character(grp10.ME)
-
-  grp11.ME <- unlist(grp11.MEntity)
-      grp11.ME = as.character(grp11.ME)
-    
-  grp12.ME <- unlist(grp12.MEntity)
-      grp12.ME = as.character(grp12.ME)
-      
-  grp13.ME <- unlist(grp13.MEntity)
-      grp13.ME = as.character(grp13.ME)    
-
-  grp14.ME <- unlist(grp14.MEntity)
-      grp14.ME = as.character(grp14.ME)
-      
-      
-  # Check MEntity Counts ----
-    occ.mentity.df <- 
-        as.data.frame(c(grp1.ME,
-              grp2.ME,
-              grp3.ME,
-              grp4.ME, 
-              grp5.ME,
-              grp6.ME,
-              grp7.ME,
-              grp8.ME,
-              grp9.ME,
-              grp10.ME,
-              grp11.ME,
-              grp12.ME,
-              grp13.ME,
-              grp14.ME))
-      
-      colnames(occ.mentity.df)[1] = 'MEntity'
-      
-      occ.mentity.df <- 
-      occ.mentity.df %>% 
-        arrange(MEntity)
-      
-      # Dimension 
-        dim(occ.mentity.df) # 156 Unique MEntity
-        
-        # There were originally 246 unique profit center numbers. This means we lost 90 centers when merging Profit Center with MEntity number. 
-      
-        
- # Profit Center to MEntity Comparison ----
-   profitcenter_to_mentity <- 
-        as.data.frame(profit.center.vector) # Rows = 248
-        
- # Remove NA Profit Centers 
-   profitcenter_to_mentity <- as.data.frame(profitcenter_to_mentity[!is.na(profitcenter_to_mentity)]) 
-   colnames(profitcenter_to_mentity)[1] <- 'Profit_Center'
-   
-     # Left Join Graph Data ----
-       profitcenter_to_mentity <-
-          left_join(profitcenter_to_mentity, Graph.Entity.Info.Local[ , c(3:5, 11:15,21)], by = 'Profit_Center') # Rows = 791
-            # 543 Difference in row count
-  
-     # Extract MEntity from the DF ----
-       d.mentity.check <- 
-       profitcenter_to_mentity %>% 
-         distinct(MEntity) 
-   
-       d.mentity.check[!is.na(d.mentity.check)] # 156 Unique MEntity numbers 
-       
-   
 
 ```
 
 
 ```{r}
 
-# Vector to filter Product Type #
-  #product.type = c("CONTAINER", "DRIVE UP", "INTERIOR", "SPLIT LEVEL", "RV")
+# Nested list creation
+  nested_list_creation <-
+  function(x) {
+    
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
+    
+  list.vector = list()
+  
+    i = 1
+    
+    list.vector[[i]] = x
+    
+  return(list.vector)
+    
+}
 
-  
-  # From there, we can calculate our summary fields (Total_SF & Occupied_SF (a sum of these fields respectively)
-    grp1.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp1.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    grp2.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp2.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp3.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp3.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp4.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp4.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp5.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp5.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp6.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp6.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp7.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp7.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp8.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp8.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    grp9.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp9.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp10.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp10.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-  
-#______________________________________________________________________________________________________________________________________________      
-    # As of 3/21/2018 the next two groups are #
-   grp11.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp11.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                  group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-   grp12.unitmix = Occupancy.Table %>% 
-                  filter(`MEntity` %in% grp12.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)
-    
-    
-    grp13.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp13.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)  
-    
-    
-    grp14.unitmix = Occupancy.Table %>% 
-                   filter(`MEntity` %in% grp14.ME & unm_product != 'UBOX' & Date <= '2018-06-20') %>% 
-                   group_by(MEntity, 
-                        Date, 
-                        unm_product) %>%
-                   summarize(Total_Rooms = sum(unm_numunits),
-                             Occupied_Rooms = sum(unm_occunits)) %>%
-                   arrange(Date)      
-    
-    
-  
 ```
 
+### **FY / FM Column Addition**
 
 ```{r}
 
-# Individual Groups #
-  Group1.UM = collect(grp1.unitmix)
-  Group2.UM = collect(grp2.unitmix)
-  Group3.UM = collect(grp3.unitmix)
-  Group4.UM = collect(grp4.unitmix)
-  Group5.UM = collect(grp5.unitmix)
-  Group6.UM = collect(grp6.unitmix)
-  Group7.UM = collect(grp7.unitmix)
-  Group8.UM = collect(grp8.unitmix)
-  Group9.UM = collect(grp9.unitmix)
-  Group10.UM = collect(grp10.unitmix)
-  Group11.UM = collect(grp11.unitmix)
-  Group12.UM = collect(grp12.unitmix)
-  Group13.UM = collect(grp13.unitmix)
-  Group14.UM = collect(grp14.unitmix)
-  
-
-  # Import Profit Center #
-    Group1.UM = left_join(Group1.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group2.UM = left_join(Group2.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group3.UM = left_join(Group3.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group4.UM = left_join(Group4.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group5.UM = left_join(Group5.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group6.UM = left_join(Group6.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group7.UM = left_join(Group7.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group8.UM = left_join(Group8.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group9.UM = left_join(Group9.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group10.UM = left_join(Group10.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group11.UM = left_join(Group11.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group12.UM = left_join(Group12.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group13.UM = left_join(Group13.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    Group14.UM = left_join(Group14.UM, Graph.Entity.Info.Local[ ,c(3,21)], by = 'MEntity')
-    
-  
-  # Re-name Column #
-    colnames(Group1.UM)[2] = 'MONTH'
-    colnames(Group2.UM)[2] = 'MONTH'
-    colnames(Group3.UM)[2] = 'MONTH'
-    colnames(Group4.UM)[2] = 'MONTH'
-    colnames(Group5.UM)[2] = 'MONTH'
-    colnames(Group6.UM)[2] = 'MONTH'
-    colnames(Group7.UM)[2] = 'MONTH'
-    colnames(Group8.UM)[2] = 'MONTH'
-    colnames(Group9.UM)[2] = 'MONTH'
-    colnames(Group10.UM)[2] = 'MONTH'
-    colnames(Group11.UM)[2] = 'MONTH'
-    colnames(Group12.UM)[2] = 'MONTH'
-    colnames(Group13.UM)[2] = 'MONTH'
-    colnames(Group14.UM)[2] = 'MONTH'
-    
-  # unm_timestamp #
-    # The Date conversion is done here due to how the SQL table pulls through. It comes in as a charcter #
-    Group1.UM$MONTH = as.Date(Group1.UM$MONTH)  
-    Group2.UM$MONTH = as.Date(Group2.UM$MONTH)
-    Group3.UM$MONTH = as.Date(Group3.UM$MONTH)
-    Group4.UM$MONTH = as.Date(Group4.UM$MONTH)
-    Group5.UM$MONTH = as.Date(Group5.UM$MONTH)
-    Group6.UM$MONTH = as.Date(Group6.UM$MONTH)
-    Group7.UM$MONTH = as.Date(Group7.UM$MONTH)
-    Group8.UM$MONTH = as.Date(Group8.UM$MONTH)
-    Group9.UM$MONTH = as.Date(Group9.UM$MONTH)
-    Group10.UM$MONTH = as.Date(Group10.UM$MONTH)
-    Group11.UM$MONTH = as.Date(Group11.UM$MONTH)
-    Group12.UM$MONTH = as.Date(Group12.UM$MONTH)
-    Group13.UM$MONTH = as.Date(Group13.UM$MONTH)
-    Group14.UM$MONTH = as.Date(Group14.UM$MONTH)
-    
-  
-  # Profit Center to Numeric #  
-    Group1.UM$Profit_Center = as.numeric(Group1.UM$Profit_Center)
-    Group2.UM$Profit_Center = as.numeric(Group2.UM$Profit_Center)
-    Group3.UM$Profit_Center = as.numeric(Group3.UM$Profit_Center)
-    Group4.UM$Profit_Center = as.numeric(Group4.UM$Profit_Center)
-    Group5.UM$Profit_Center = as.numeric(Group5.UM$Profit_Center)
-    Group6.UM$Profit_Center = as.numeric(Group6.UM$Profit_Center)
-    Group7.UM$Profit_Center = as.numeric(Group7.UM$Profit_Center)
-    Group8.UM$Profit_Center = as.numeric(Group8.UM$Profit_Center)
-    Group9.UM$Profit_Center = as.numeric(Group9.UM$Profit_Center)
-    Group10.UM$Profit_Center = as.numeric(Group10.UM$Profit_Center)
-    Group11.UM$Profit_Center = as.numeric(Group11.UM$Profit_Center)
-    Group12.UM$Profit_Center = as.numeric(Group12.UM$Profit_Center)
-    Group13.UM$Profit_Center = as.numeric(Group13.UM$Profit_Center)
-    Group14.UM$Profit_Center = as.numeric(Group14.UM$Profit_Center)
-
-    
-```
-
-
-Fiscal Year and Group Addition
-```{r}
-
-    FiscalYear.Columns = function(x){
+  fiscal_year_columns <- function(x){
       
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+  if(nrow(x) == 0) {
+    
+    x = NA
+  
+  } else {
+    
       x$FY = " "
       x$FM = " "
       x$Quarter = " "
       
         # Fiscal Year Loop # 
-      
             for (i in 1:length(x$FY)){
           
               if(x$MONTH[i] >= '2015/1/1' & x$MONTH[i] <= '2015/3/31'){
@@ -1486,130 +700,623 @@ Fiscal Year and Group Addition
                   x$FM[i] = 12
                 }
               }
+      }
             
         return(x)    
     }
-      
 
 ```
 
 
-Fiscal Year Column Addition for Occupancy Metrics
+### **Group Identifier**
+
 ```{r}
 
-# Individual Compilation #
-  Grp1.UM2 = FiscalYear.Columns(Group1.UM)  
-  Grp2.UM2 = FiscalYear.Columns(Group2.UM)  
-  Grp3.UM2 = FiscalYear.Columns(Group3.UM)
-  Grp4.UM2 = FiscalYear.Columns(Group4.UM)
-  Grp5.UM2 = FiscalYear.Columns(Group5.UM)
-  Grp6.UM2 = FiscalYear.Columns(Group6.UM)
-  Grp7.UM2 = FiscalYear.Columns(Group7.UM)
-  Grp8.UM2 = FiscalYear.Columns(Group8.UM)
-  Grp9.UM2 = FiscalYear.Columns(Group9.UM)
-  Grp10.UM2 = FiscalYear.Columns(Group10.UM)
-  Grp11.UM2 = FiscalYear.Columns(Group11.UM)
-  Grp12.UM2 = FiscalYear.Columns(Group12.UM)
-  Grp13.UM2 = FiscalYear.Columns(Group13.UM)
-  Grp14.UM2 = FiscalYear.Columns(Group14.UM)
-  
-  
-# Data Frame Conversion for Bind
-  Grp1.UM2 = as.data.frame(Grp1.UM2)
-  Grp2.UM2 = as.data.frame(Grp2.UM2)
-  Grp3.UM2 = as.data.frame(Grp3.UM2)
-  Grp4.UM2 = as.data.frame(Grp4.UM2)
-  Grp5.UM2 = as.data.frame(Grp5.UM2)
-  Grp6.UM2 = as.data.frame(Grp6.UM2)
-  Grp7.UM2 = as.data.frame(Grp7.UM2)
-  Grp8.UM2 = as.data.frame(Grp8.UM2)
-  Grp9.UM2 = as.data.frame(Grp9.UM2)
-  Grp10.UM2 = as.data.frame(Grp10.UM2)
-  Grp11.UM2 = as.data.frame(Grp11.UM2)
-  Grp12.UM2 = as.data.frame(Grp12.UM2)
-  Grp13.UM2 = as.data.frame(Grp13.UM2)
-  Grp14.UM2 = as.data.frame(Grp14.UM2)
-  
-# Add Group Column #
-  Grp1.UM2$Group = 'FY15 Q4'
-  Grp2.UM2$Group = 'FY16 Q1'
-  Grp3.UM2$Group = 'FY16 Q2'
-  Grp4.UM2$Group = 'FY16 Q3'
-  Grp5.UM2$Group = 'FY16 Q4'
-  Grp6.UM2$Group = 'FY17 Q1'
-  Grp7.UM2$Group = 'FY17 Q2'
-  Grp8.UM2$Group = 'FY17 Q3'
-  Grp9.UM2$Group = 'FY17 Q4'
-  Grp10.UM2$Group = 'FY18 Q1'
-  Grp11.UM2$Group = 'FY18 Q2'
-  Grp12.UM2$Group = 'FY18 Q3'
-  Grp13.UM2$Group = 'FY18 Q4'
-  Grp14.UM2$Group = 'FY19 Q1'
 
-  
-# Data Frame Conversion for Bind
-  Grp1.UM2 = as.data.frame(Grp1.UM2)
-  Grp2.UM2 = as.data.frame(Grp2.UM2)
-  Grp3.UM2 = as.data.frame(Grp3.UM2)
-  Grp4.UM2 = as.data.frame(Grp4.UM2)
-  Grp5.UM2 = as.data.frame(Grp5.UM2)
-  Grp6.UM2 = as.data.frame(Grp6.UM2)
-  Grp7.UM2 = as.data.frame(Grp7.UM2)
-  Grp8.UM2 = as.data.frame(Grp8.UM2)
-  Grp9.UM2 = as.data.frame(Grp9.UM2)
-  Grp10.UM2 = as.data.frame(Grp10.UM2)  
-  Grp11.UM2 = as.data.frame(Grp11.UM2)  
-  Grp12.UM2 = as.data.frame(Grp12.UM2)  
-  Grp13.UM2 = as.data.frame(Grp13.UM2)
-  Grp14.UM2 = as.data.frame(Grp14.UM2)  
-  
-  
-# Combine Full Data Frame #  
-  UnitMix.Aggregate = bind_rows(Grp1.UM2,
-                           Grp2.UM2,
-                           Grp3.UM2,
-                           Grp4.UM2,
-                           Grp5.UM2,
-                           Grp6.UM2,
-                           Grp7.UM2,
-                           Grp8.UM2,
-                           Grp9.UM2,
-                           Grp10.UM2,
-                           Grp11.UM2,
-                           Grp12.UM2,
-                           Grp13.UM2,
-                           Grp14.UM2)
-  
 
-# Re-name unm_product column #
-  colnames(UnitMix.Aggregate)[3] = 'Product' 
-  
-  
-  UnitMix.Aggregate <- UnitMix.Aggregate %>% arrange(Group, MONTH)
-  
-  UnitMix.Aggregate %>% 
-    group_by(MONTH) %>%
-    summarise(Occupancy = sum(Occupied_Rooms) / sum(Total_Rooms))
-  
-# Count Distinct Profit Centers
-   #occ.d.mentity <- distinct(UnitMix.Aggregate$MEntity)
-   
-   
+
 ```
 
 
 
-Export Occupancy Metrics
+
+
+### **Month of Operation Start**
+
+```{r}
+
+MonthofOperation.Start = function (x){
+
+  #Library
+  require("dplyr")
+  require("lazyeval")
+  require("purrr") #makes iteration problems easier to solve
+
+  start_of_record = min(x$MONTH)
+  return(start_of_record)
+  
+}
+
+```
+
+
+### **Omit NA from list**
+
+```{r}
+
+na.omit.list <- function(y) {
+  return(y[!sapply(y, function(x) all(is.na(x)))])
+}
+
+```
+
+
+### **Property Owner Function**
+
+```{r}
+
+Property_Owner = function (x){
+
+  #Filter Criteria
+  d = SAP.Hierarchy %>% filter(`Cost Center` == x)
+
+  #%Create a local copy of the data frame
+  
+  b = collect(d)
+  c = b$`Hierarchy Area`
+  return(c)
+
+  # Rare situations to be aware of
+  # In some instances, the Cost center used to filter will actually return two
+
+}
+
+```
+
+
+### **Vector Conversion Function**
+
+```{r}
+
+vector.conv <- function(x){
+  x = as.vector(x$Profit_Center)
+  x = as.character(x)
+}
+
+```
+
+
+##**Compilation of New Acquisitions List**
+
+```{r This section will need to be updated last}
+
+# Import New Acquisitions List ----
+  New.Acquisitions <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\New Acquisitions F19 Q1.csv")
+
+  # Rename New.Acquisitions 3rd column to "Entity"  ----
+    colnames(New.Acquisitions)[3] <- "Entity"
+      New.Acquisitions$Entity <- as.character(New.Acquisitions$Entity)
+      
+  # Import Graph File Data ----
+    Graph.File <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Q1 Graph File.csv", header = TRUE)
+      
+    Graph.File$Entity <- as.character(Graph.File$Entity)
+    Graph.File$MEntity <- as.character(Graph.File$MEntity)
+    
+  # Import Profit Center from Graph File
+    New.Acquisitions = left_join(New.Acquisitions, Graph.Entity.Info.Local[, c(1,3,21)], by = 'Entity')
+    New.Acquisitions <- left_join(New.Acquisitions, Graph.File[ , c(1,10)], by = 'Entity') #Import Owner
+  
+    
+    
+      # Filter for abutting properties.
+        for (i in 1:length(New.Acquisitions$Entity)){
+          
+          if (grepl("?butting", New.Acquisitions$Property.Description[i]) == TRUE){
+            
+            New.Acquisitions$Include[i] = 'No'
+            
+          } else if (grepl("?emote", New.Acquisitions$Property.Description[i]) == TRUE){
+            
+            New.Acquisitions$Include[i] = "No"
+            
+            
+          } else if (grepl("SAC", New.Acquisitions$Owner[i])){
+            
+          
+            New.Acquisitions$Include[i] = "No"
+            
+          } else {
+            
+            New.Acquisitions$Include[i] = "Yes"
+        
+          }
+        }
+
+    # Export to CSV
+     # write.csv(New.Acquisitions, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\NewAcq_Export.csv")
+  
+```
+
+---
+##**Completed Acquisitions Spreadsheet**
+
+```{r}
+
+# Completed acquisitions spreadsheet import ----
+  c_acquisitions <- 
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
+
+  # completed completed acquisitions tbl conversion ----
+    c_acquisitions <- 
+      as.tbl(c_acquisitions)
+
+      c_acquisitions_include <- 
+        c_acquisitions %>% 
+        filter(Include. == 'Yes')
+      
+        c_acquisitions_exclude <- 
+          c_acquisitions %>% 
+          filter(Include. == 'No')
+      
+```
+
+
+###*Duplicate profit center check*
+
+```{r}
+
+# c.acquisitions extraction of profit center numbers ----
+  c_acquisitions_pc <-
+    c_acquisitions_include %>% 
+    select(Profit_Center)
+
+  # c.aquisitioins removal of NA values ----
+    c_acquisitions_pc_complete <-  
+      c_acquisitions_pc[!is.na(c_acquisitions_pc), ] 
+   
+    # Check for duplicate profit centers within completed acquisitions data frame ----
+      duplicate_pc_check_1 <- 
+        c_acquisitions_pc_complete %>%
+          group_by(Profit_Center) %>%
+          mutate(Count = 1) %>%
+          summarise(Total = sum(Count)) %>%
+          filter(Total > 1)
+      
+      # Kill switch if duplicate profit centers are detected; Check 1 ----
+        if(length(duplicate_pc_check_1$Profit_Center) != 0) {
+        
+          stop() 
+        
+        }
+
+```
+
+
+---
+##**Quarterly Group Compilation**
+---
+
+
+Process
+
+1. Import acquisitions list 
+2. Isolate unique Profit centers within each quarterly acquisition group
+3. Run aggregate Profit Center on aggregate vector set of Unique Profit Centers 
+
+
+```{r}
+
+# Quarterly acquisition group creation (code improvement) ----
+
+# Split Data Frame into Elements within a list ----
+  q_list_container <- 
+    split(c_acquisitions_include, f = c_acquisitions_include$Group)
+
+  # Select Unique Profit Center Numbers ----
+    profit_center_selection <- function(x){
+      
+    # Library
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+        
+        # Extract profit center ----
+        grp_pc = x %>% 
+                   select(Profit_Center)
+        
+        # Isolate Unique Profit Centers ----
+        grp_pc_unique = unique(grp_pc$Profit_Center)
+          grp_pc_unique = as.character(grp_pc_unique)
+          
+      }
+    
+# Quarter group profit centers by list ----
+  quarter_list <- 
+    map(q_list_container, profit_center_selection)
+
+# Remove NA from quarter list (this is a safety on the initial )
+  quarter_list <- 
+    lapply(quarter_list, function(x){x[!is.na(x)]})
+  
+```
+
+
+###**Check for income statement representation**
+
+```{r}
+
+# Nested profit center list ----
+  n_pc_list <- 
+    lapply(quarter_list, as.list)
+
+    n_pc_list_2 <-
+      modify_depth(n_pc_list, 2, nested_list_creation)
+  
+    # Missing income statement data ----
+      missing_income_statement <- 
+       modify_depth(n_pc_list, 2, data_check_center)
+    
+        missing_is_profit_centers <- 
+          unlist(missing_income_statement) # Be careful, the grp number is correct, the index is not
+        
+          missing_is_profit_centers <- 
+            as.data.frame(missing_is_profit_centers)
+          
+            colnames(missing_is_profit_centers) <- 
+              "Profit_Center"
+        
+        # Missing center information ----
+          missing_is_profit_centers <- 
+              left_join(missing_is_profit_centers, SAP.Hierarchy[ , c(4, 12, 44)], by = "Profit_Center") 
+            
+                # The missing centers do not appear to have any MEntity info. 
+                  data.table(missing_is_profit_centers)
+                  
+                    # 7000011179 ; grp 5
+                    # 7000011246 ; grp 6 
+                    # 7000011204 ; grp 6 
+            
+    # Complete income statement data ----
+      complete_income_statement <- 
+        modify_depth(n_pc_list, 2, data_check_na)
+                  
+        complete_is_profit_centers <- 
+          unlist(complete_income_statement)
+        
+          complete_is_profit_centers <- 
+            as.data.frame(complete_is_profit_centers)
+          
+            complete_is_profit_centers <- 
+              as.data.frame(complete_is_profit_centers[!is.na(complete_is_profit_centers)])
+            
+              colnames(complete_is_profit_centers) <- 
+                "Profit_Center" # The data frame will be used to check against a list of occupancy profit centers
+          
+              # List of Quarterly Acquisitions included in the income statement aggregation ----
+                quarterly_acquisitions_list <- 
+                  na.omit.list(n_pc_list_2)
+            
+```
+
+
+---
+##**Aggregate Income Statement Compilation**
+---
+
+```{r Aggregate Income Statement Process}
+
+# Income statement compilation ----
+  aggregate_income_statement <- map(quarter_list, Aggregate.IS)
+
+  # Creation of group identifier table ----
+    grp_number <- c(1:14)
+    grp_name <- c("FY15 Q4", 
+                  "FY16 Q1", 
+                  "FY16 Q2",
+                  "FY16 Q3",
+                  "FY16 Q4",
+                  "FY17 Q1",
+                  "FY17 Q2",
+                  "FY17 Q3",
+                  "FY17 Q4",
+                  "FY18 Q1",
+                  "FY18 Q2", 
+                  "FY18 Q3", 
+                  "FY18 Q4",
+                  "FY19 Q1")
+    
+    grp_table <- 
+      data.frame(grp_number,grp_name)
+    
+    # Enter grp name identifier ----
+      for (i in seq_along(aggregate_income_statement)) { 
+        aggregate_income_statement[[i]]$Group = as.character(grp_table$grp_name[i])
+      }
+    
+# Unlist income statement data into a data frame for excel export ----
+  income_statement_aggregate <-   
+    map_df(aggregate_income_statement, `[`)
+    
+  # Import group number for Dashboard ----
+    colnames(grp_table)[1] <- "Grp_Num"
+    colnames(grp_table)[2] <- "Group"
+      income_statement_aggregate <-
+        left_join(income_statement_aggregate, grp_table, by = 'Group')
+      
+      # Data type adjustments for export ----
+        income_statement_aggregate$FY <- as.numeric(income_statement_aggregate$FY)
+        income_statement_aggregate$FM <- as.numeric(income_statement_aggregate$FM)
+        income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
+
+    # Export Data
+      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
+                    sheetName = "Report42018")
+    
+```
+
+
+---
+##**Occupancy Metric Compilation**##
+---
+
+### **Import MEntity Numbers**
+  
+```{r Import MEntity Numbers}
+
+# MEntity number join on profit center # ----
+  sap2mentity <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    mentity = 
+      SAP.Hierarchy %>%
+        filter(`Profit_Center` %in% x[[1]]) %>%
+        select(MEntity)
+    
+    # Isolates only 1 instance of the MEntity
+    mentity2 = mentity[[1]][[1]] 
+    
+    y =  
+      append(x, mentity2)
+    
+    # Edit name of list elements 
+    names(y) <- c("Profit_Center", "MEntity")
+    
+    return(y)
+    
+     browser()
+    
+  }   
+
+  # Import MEntity on profit center list ----
+    q_acquisitions_list <-
+      modify_depth(quarterly_acquisitions_list, 2, sap2mentity)
+    
+  # Modify names of outer list ----
+  group_names <-
+    c('FY15 Q4', 'FY16 Q1', 'FY16 Q2', 'FY16 Q3', 'FY16 Q4', 'FY17 Q1', 'FY17 Q2', 'FY17 Q3', 'FY17 Q4', 'FY18 Q1', 'FY18 Q2', 'FY18 Q3', 'FY18 Q4', 'FY19 Q1')
+
+    names(q_acquisitions_list) <- group_names
+  
+```
+
+
+### **Filter Profit Centers without MEntity Numbers**
+
+```{r Filter list test}
+
+# MEntity Filter function ----
+nested_list_filter <- function(x, z){
+
+ # z = character string of object to be filtered  
+ y = x[[z]]
+ return(y)
+}
+
+# Test Function (working 9-11-2018)
+  # test <-
+  # modify_depth(nested_profit_center_list_2, 2, mentity_filter, z = "MEntity")  
+
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+# Additional Functions of potential use #
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+# Remove NA from nested list function ----
+  # na_omit_nested_list <- function(x){
+    # x[!is.na(x)]
+  # }
+
+# Filter NA MEntity from nested list ----
+  na_MEntity_filter <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    x %>%
+      list.filter(is.na(MEntity))
+    
+  }
+ 
+  # Extract List Elements where MEntity == NA ---- 
+  na_mentity_list <- 
+    modify_depth(q_acquisitions_list, 1, na_MEntity_filter)
+  
+    # Isolate Profit Center Numbers ----
+    na_mentity_profit_centers <- 
+      unlist(modify_depth(na_mentity_list, 2, nested_list_filter, z = "Profit_Center"))
+
+      # Profit Centers without MEntity numbers. After verification, it turns out these profit centers do not have any income statement data as well. 
+        # Further research is needed into these set of centers
+          print(data.table(na_mentity_profit_centers))
+          
+
+```
+
+
+### **Occupancy Data Compilation**
+
+```{r}
+
+# Occupancy Function ----
+occ_compilation <- function(x){
+  
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+  
+# Occ Data 
+  occ_df =
+    occupancy_data %>%
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-06-01') %>% 
+      group_by(MEntity,
+               Date, 
+               unm_product) %>%
+      summarize(Total_Rooms = sum(unm_numunits),
+                Occupied_Rooms = sum(unm_occunits)) %>%
+      arrange(Date)
+  
+  # Collect Data
+  occ_df_local = 
+    collect(occ_df)
+  
+    # Rename Data Column to "MONTH"
+      colnames(occ_df_local)[2] <- "MONTH"
+    
+      # Convert Month Column to Date 
+        occ_df_local$MONTH <- as.Date(occ_df_local$MONTH)
+        
+        # Create Fiscal Year Columns for Data 
+          occ_df_local <- 
+            fiscal_year_columns(occ_df_local)
+        
+  # Append List 
+    y =
+      append(x, list(occ_df_local))
+  
+  names(y)[[3]] = "Occupancy"
+  
+  return(y)
+  
+  browser()
+  
+}
+
+
+# Append Occ Data to list ----
+  q_acquisitions_list <-
+      modify_depth(q_acquisitions_list, 2, occ_compilation)
+
+```
+
+
+
+### **NA Occupancy MEtrics**
+
+```{r}
+
+# NA Occupancy Metrics ----
+  na_Occupancy_filter <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    x %>%
+      list.filter(is.na(Occupancy))
+    
+  }
+
+# Extract Observations with NA Occupancy Metrics ----
+  na_occupancy_list <-
+    modify_depth(q_acquisitions_list, 1, na_Occupancy_filter)
+
+  # Filter MEntity Numbers for NA Occupancy metrics ----
+    profit_centers_na_occ <-
+      unlist(modify_depth(na_occupancy_list, 2, nested_list_filter, z = "Profit_Center"))
+    
+    # Print Vector of profit_centers with NA occupancy ----
+      profit_centers_na_occ <-
+        as.character(profit_centers_na_occ)
+
+      # Retrieve information regarding profit centers with NA occupancy metrics ----
+        na_occupancy_profit_center_info <- 
+        SAP.Hierarchy %>%
+          filter(Profit_Center %in% profit_centers_na_occ)
+
+        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+        # NA Occupancy MEtric MEntity / Profit Centers ---- #
+        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% #
+
+        # na_occupancy_profit_center_info          
+
+```
+
+
+### **Collapse Occupancy Lists Into Single Data Frames** ###
+```{r}
+# Initial Collapse of Occupancy Lists ----
+occ_only_list <- 
+  modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Occupancy") 
+
+  # Flatten the filtered Occupancy list ----
+  flat_occ_list <-
+    purrr::flatten(occ_only_list)
+
+  # Omit NA Values ----
+  flat_occ_exl_na <- 
+    na.omit.list(flat_occ_list)
+
+  # Combine Occupancy Data frame ----
+  occ_df <-   
+    map_df(flat_occ_exl_na, `[`)
+
+  # Rename Unm_product to "Product" ----
+    colnames(occ_df)[3] <- "Product"
+
+    # Group Name and Number Addition ----
+    c_acquisitions_include$Profit_Center <- 
+      as.character(c_acquisitions_include$Profit_Center)
+    
+      grp_dictionary <-
+        left_join(c_acquisitions_include, unique(SAP.Hierarchy[ , c(12, 44)]), by = "Profit_Center")
+      
+        # Join Group column to occupancy metrics ----
+        occ_df <-
+          left_join(occ_df, grp_dictionary[ , c(24, 1)], by = "MEntity")
+      
+          # Rename group number column ----
+          colnames(occ_df)[10] <- 'Grp_Num'
+      
+          occ_df <- 
+            left_join(occ_df, grp_table, by = 'Grp_Num')
+            
+            # Re-arrange data frame columns to match excel dashboard positions ----
+              occ_df <-
+                occ_df[ , c(1:9, 11, 10)]
+          
+```
+
+
+### **Export Occupancy Metrics**
 
 ```{r eval=FALSE, include=FALSE}
 
- write.csv(UnitMix.Aggregate, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\UnitMix_All.csv', append = FALSE)
+ xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\UnitMix.xlsx', 
+                  append = FALSE,
+                  sheetName = "UnitMix",
+                  col.names = TRUE)
 
 ```
 
+---
+##**Occupancy Predictions**
+---
 
-
-#* Occupancy Predictions *
 
 In this section of the markdown, we will ready forecasted Occupancy data for integration with the dashboard
 
