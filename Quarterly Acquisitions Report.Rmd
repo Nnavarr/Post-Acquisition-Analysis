@@ -115,14 +115,6 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
   SAP.Hierarchy <- collect(SAP.Hierarchy)
   colnames(SAP.Hierarchy)[12] <- "Profit_Center"
   
-# %%%%%% #  
-# Inputs ----  
-# %%%%% #
-    
-# Dynamic Variables ----
-  date_occ <-
-    as.Date('2018-06-20') # Enter Current Month Date for data compilation ----
-  
 ```
 
 
@@ -708,19 +700,6 @@ data_check_center <-
 ```
 
 
-### **Group Identifier**
-
-```{r}
-
-
-
-
-```
-
-
-
-
-
 ### **Month of Operation Start**
 
 ```{r}
@@ -784,6 +763,60 @@ vector.conv <- function(x){
 }
 
 ```
+
+
+---
+## **New Entity Import**
+---
+
+In this section, we will import a list of new acquisitions to be cleaned for integration with our quarterly dashboard. The goal is to combine center information including profit center, MEntity, etc.  
+
+The New Acquisition list is being provided by Michael Kobs
+
+```{r}
+
+# Import New Acquisitions Spreadsheet ----
+F19_properties <- 
+  readxl::read_xlsx("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Properties Jason - August FY19.xlsx",
+                   sheet = "Properties FY19",
+                   range = "A5:J80",
+                   col_names = TRUE)
+
+  # Convert Date column to date format ----
+  F19_properties$Date <-
+    as.Date(F19_properties$Date, format = "%m/%d/%Y")
+
+```
+
+
+```{r}
+
+# Existing Acq to SAP Hierarchy column conversion ----
+current_acq_df_columns <-
+  c("Property.Name", )
+
+new_center_data_columns <-
+  c("   ")
+
+
+
+
+
+```
+
+
+
+
+
+
+
+Existing Acq DF to SAP Hierarchy column conversion
+
+Property.name = Description
+
+
+
+
 
 
 ##**Compilation of New Acquisitions List**
@@ -1215,7 +1248,7 @@ occ_compilation <- function(x){
 
 
 
-### **NA Occupancy MEtrics**
+### ** NA Occupancy MEtrics **
 
 ```{r}
 
@@ -1257,7 +1290,7 @@ occ_compilation <- function(x){
 ```
 
 
-### **Collapse Occupancy Lists Into Single Data Frames** ###
+### ** Collapse Occupancy Lists Into Single Data Frames ** 
 ```{r}
 # Initial Collapse of Occupancy Lists ----
 occ_only_list <- 
@@ -1302,7 +1335,7 @@ occ_only_list <-
 ```
 
 
-### **Export Occupancy Metrics**
+### ** Export Occupancy Metrics **
 
 ```{r eval=FALSE, include=FALSE}
 
@@ -1313,8 +1346,14 @@ occ_only_list <-
 
 ```
 
+
+
+
+
+
+
 ---
-##**Occupancy Predictions**
+## ** Occupancy Predictions **
 ---
 
 
