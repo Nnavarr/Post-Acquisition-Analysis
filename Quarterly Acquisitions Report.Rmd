@@ -792,30 +792,18 @@ F19_properties <-
 ```{r}
 
 # Existing Acq to SAP Hierarchy column conversion ----
-current_acq_df_columns <-
-  c("Property.Name", )
+#current_acq_df_columns <-
+  #c("Property.Name", )
 
-new_center_data_columns <-
-  c("   ")
-
-
-
-
+#new_center_data_columns <-
+ # c("Description")
 
 ```
-
-
-
-
-
 
 
 Existing Acq DF to SAP Hierarchy column conversion
 
 Property.name = Description
-
-
-
 
 
 
@@ -892,6 +880,7 @@ Property.name = Description
           c_acquisitions %>% 
           filter(Include. == 'No')
       
+        
 ```
 
 
@@ -971,6 +960,7 @@ Process
 # Remove NA from quarter list (this is a safety on the initial )
   quarter_list <- 
     lapply(quarter_list, function(x){x[!is.na(x)]})
+  
   
 ```
 

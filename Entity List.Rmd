@@ -1,0 +1,186 @@
+---
+title: "Quarterly Acq Entity List"
+author: "Noe Navarro"
+date: "October 11, 2018"
+output: html_document
+---
+
+
+
+```{r}
+
+library(rstudioapi)
+
+library(ggplot2)
+library(ggvis)
+library(ggthemes)
+
+library(purrr)
+library(lazyeval)
+library(RODBC) # Creates a connection to SQL Database
+library(odbc)
+library(sqldf) # Allows for the use of SQL language
+library(reshape2) #Data Transformation
+library(DT)
+library(dygraphs)
+library(xts)
+library(lubridate)
+library(reshape2)
+
+library(plyr)
+library(dplyr)
+library(dbplyr)
+
+library(R2HTML)
+library(CenterIS)
+
+library(supclust)
+
+library(jsonlite)
+library(RCurl)
+
+library(tidyr)
+library(data.table)
+library(rlist)
+library(testthat)
+
+
+```
+
+
+
+#*Introduction*
+
+This markdown will process the new acquisitions list to be used in our Quarterly Acquisitions Report Process. It will also export a list / details of the centers used within the Quarterly Acquisitions Compilation. 
+
+
+
+###**SQL Databases**
+```{r}
+
+# MEntity connection ----      
+  con.mentity = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "MEntity",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+
+
+# Entity Information ----
+  SAP_db <- dplyr::tbl(con.mentity, "MENTITY_SAP")
+    SAP_db <- collect(SAP_db)
+      SAP_db %>% summarise(n_distinct(MEntity))
+      
+      
+  # DLR01 ----
+  dlr01 <- dplyr::tbl(con.mentity, "ENTITY_DLR01")
+    dlr01 <- collect(dlr01)
+
+    # Rename Dlr01 Entity column ----
+    colnames(dlr01)[4] <- "Entity"
+    
+```
+
+
+
+###**New Acquisitions Spreadsheet**
+
+This section will import and format the new acquisitions list from Michael Kobs. 
+
+```{r}
+
+new_properties <- 
+  readxl::read_xlsx("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Properties Jason - August FY19.xlsx",
+                   sheet = "Properties FY19",
+                   range = "A5:J80",
+                   col_names = TRUE)
+
+  # Convert Date column to date format ----
+  new_properties$Date <-
+    as.Date(new_properties$Date, format = "%m/%d/%Y")
+
+    # Rename Date column ----
+    colnames(new_properties)[3] <- "Close of Escrow"
+    colnames(new_properties)[4] <- "Purchase"
+  
+```
+
+
+```{r Create Entity Column }
+
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+
+
+# Format list ----
+new_properties$Entity <- 
+  sapply(new_properties$Address, substrRight, n = 8)
+
+  # Replace ( ) with blanks ----
+  new_properties$Entity <-
+    gsub("\\(", "", new_properties$Entity)
+
+    new_properties$Entity <- 
+      gsub("\\)", "", new_properties$Entity)
+
+```
+
+
+```{r Import Center Information}
+
+# Merge Entity ----
+new_properties_2 <-
+  left_join(new_properties, dlr01, by = "Entity" )
+
+# grep("MEntity", colnames(dlr01))
+dim(new_properties)
+dim(new_properties_2)
+
+  # Summarize new_properties_2 ----
+  summarize_new_acq <- 
+  new_properties_2 %>%
+    select(Address, `Close of Escrow`, Owner, Purchase, Entity, MEntity)
+
+
+```
+
+
+```{r}
+
+# write.csv(new_properties_2, "Z:\\group\\MIA\\Yusel\\MEntity_Join.csv")
+
+
+# Determine Unique MEntity Numbers ----
+new_properties_2 %>%
+  summarise(MEntity_Count = n_distinct(MEntity))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
