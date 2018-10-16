@@ -81,6 +81,22 @@ This markdown will process the new acquisitions list to be used in our Quarterly
     # Rename Dlr01 Entity column ----
     colnames(dlr01)[4] <- "Entity"
     
+    
+    
+# Real Additions DB ----
+  con.rev_real_additions = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "RealEstateValuation",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+    
+  real_additions <- 
+    dplyr::tbl(con.rev_real_additions, "REV_REAL_ADDITIONS")
+  
+    real_additions <- collect(real_additions)
+    
 ```
 
 
@@ -105,6 +121,7 @@ new_properties <-
     colnames(new_properties)[3] <- "Close of Escrow"
     colnames(new_properties)[4] <- "Purchase"
   
+    
 ```
 
 
@@ -144,14 +161,12 @@ dim(new_properties_2)
   new_properties_2 %>%
     select(Address, `Close of Escrow`, Owner, Purchase, Entity, MEntity)
 
-
 ```
 
 
 ```{r}
 
 # write.csv(new_properties_2, "Z:\\group\\MIA\\Yusel\\MEntity_Join.csv")
-
 
 # Determine Unique MEntity Numbers ----
 new_properties_2 %>%
@@ -161,15 +176,205 @@ new_properties_2 %>%
 ```
 
 
+##** Unique MEntity Numbers**
+
+With some situations, a new acquisiton may not contain a unique MEntity identifier. The following code attempts to create a single process for Entity list compilation. 
+
+Input: New Acquisiton list from Michael Kobs
+Output: List of new Acquistions with Center Descriptions to be fed into Quarterly acquisitions dashboard.
+  
+  The current acquisitions dashboard process only uses profit center numbers to begin compilation. Any layout chosen will work fine as long as it contains   profit center numbers. 
+  
+---
+Columns of Interest 
+---
+
+3 - Close of Escrow
+
+```{r Acquisitions List Layout}
+
+# Columns of Interest ----
+center_list <-
+  new_properties_2 %>%
+  select(Entity, MEntity, ENTITY_NAME, ENTITY_TYPE, `Close of Escrow`, Purchase, Owner, DATE_OPENED, DATE_CLOSED, STATUS, MAIL_STREET1, MAIL_CITY, MAIL_STATE, MAIL_ZIP)
+
+
+  # Import Profit Center from SAP Hierarchy Table ----
+  center_list <-
+    left_join(center_list, SAP_db[ , 2:3], by = "MEntity")
+
+
+  # Import Center Description (Existing, Conversion, etc.)
+  center_list <-
+    left_join(center_list, real_additions[ , c(2,3,4,5, 7:10)], by = c("MEntity", "Entity"))
+
+```
+
+
+
+##**Filtering of Acquisitions List** 
+
+The following code chunk will filter out any incorrect merging. This is a manual check to ensure our list is accurate 
+
+```{r}
+
+# Filter MEntity == NA ----
+center_list <-
+  center_list %>%
+    filter(!is.na(center_list$MEntity))
+
+  # Group by MEntity ----
+  center_list %>% 
+    group_by(MEntity) %>%
+    summarise(Count = n()) %>%
+    arrange(desc(Count))
+
+  # 
+
+
+```
+
+##** Duplicate MEntity Numbers **
+
+1) M0000024619 ; Run Remote / Abutting
+   1st Entity: 754034 (run remote from 754078). All Op Exp from 754034 are being charged to the remote location (754078). 
+   
+   Databases show 754078 as being run remote too. 
+   
+   It appears both should be excluded from the analysis.
+
+2) M0000031767 ; Entity returns acquisition in 2013. Check against IS Start date.
+3) M0000109346 ; Eliminate second entry.
+4) M0000136236 ; Acquired in phases - Eliminate a duplicate
+5) M0000136747 ; Contains an entry with different Purchase Price. Eliminate the duplicate
+6) M0000138316 ; Contains an entry with different Purchase Price. Eliminate the duplicate
+
+
+```{r}
+
+# Eliminate 1 ----
+center_list <- 
+  center_list %>%
+  filter(MEntity != 'M0000024619')
+
+# Eliminate duplicates ----
+unique_mentity <- 
+  center_list[!duplicated(center_list$MEntity), ]
+
+unique_mentity$Include <- " "
+
+# Inclusion Column ----
+
+        for (i in 1:length(unique_mentity$MEntity)){
+          
+          if (grepl("?butting", unique_mentity$Property_Type[i]) == TRUE){
+            
+            unique_mentity$Include[i] = 'No'
+            
+          } else if (grepl("?emote", unique_mentity$Property_Type[i]) == TRUE){
+            
+            unique_mentity$Include[i] = "No"
+            
+            
+          } else if (grepl("SAC", unique_mentity$Owner[i])){
+            
+          
+            unique_mentity$Include[i] = "No"
+            
+          } else {
+            
+            unique_mentity$Include[i] = "Yes"
+        
+          }
+          
+        }
+
+
+```
+
+
+```{r Filter properties that will return}
+
+
+unique_mentity %>%
+  filter(Include == 'Yes')
+
+```
+
+
+
+
+---
+##** Completed Acquisitions Spreadsheet Import & Check **
+---
+
+```{r}
+
+c_acquisitions <- 
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
+
+c_acquisitions$Permanent.Entity.. <- as.character(c_acquisitions$Permanent.Entity..)
+
+
+# completed completed acquisitions tbl conversion ----
+c_acquisitions <- 
+  as.tbl(c_acquisitions)
+
+c_acquisitions_include <- 
+  c_acquisitions %>% 
+  filter(Include. == 'Yes')
+      
+c_acquisitions_exclude <- 
+  c_acquisitions %>% 
+  filter(Include. == 'No')
+
+
+# ----------------------------------------------------------------------------------------------------------------------------
+
+  # Check whether NA Profit center values were updated ----
+  #na_profitcenter_include <- 
+   # c_acquisitions_include %>%
+    #filter(is.na(Profit_Center))
+
+  # Merge profit centers ----
+  #colnames(na_profitcenter_include)[8] <- "Entity"
+  #na_profitcenter_include$Entity <- as.character(na_profitcenter_include$Entity)
+  
+  #na_profitcenter_include <- 
+    #left_join(na_profitcenter_include, dlr01[ ,c(4, 103)], by = "Entity")
+  
+    #na_profitcenter_include <- 
+      l#eft_join(na_profitcenter_include, SAP_db[ , c(2:3)], by = "MEntity")
+    
+    # In this step, we have previously exported all those entities that did not contain Profit Centers 
+    
+  
+```
+
+
+
+```{r}
+
+# Filter Entity that is now closed ----
+c_acquisitions_include <-
+  c_acquisitions_include %>%
+    filter(Permanent.Entity.. != "887001")
+
+```
+
+
+###** Trend IS Start Check**
+
+The following section will check the Income Statement Start date of each profit center for comparison against the close of escrow date. 
+
+```{r}
 
 
 
 
 
 
-
-
-
+```
 
 
 
