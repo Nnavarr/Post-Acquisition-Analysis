@@ -1,0 +1,65 @@
+---
+title: "Income Statement Compilation"
+author: "Noe Navarro"
+date: "October 16, 2018"
+output: html_document
+---
+
+
+```{r}
+library(rstudioapi)
+
+library(ggplot2)
+library(ggvis)
+library(ggthemes)
+
+library(purrr)
+library(lazyeval)
+library(RODBC) # Creates a connection to SQL Database
+library(odbc)
+library(sqldf) # Allows for the use of SQL language
+library(reshape2) #Data Transformation
+library(DT)
+library(dygraphs)
+library(xts)
+library(lubridate)
+library(reshape2)
+
+library(plyr)
+library(dplyr)
+library(dbplyr)
+
+library(R2HTML)
+library(CenterIS)
+
+library(supclust)
+
+library(jsonlite)
+library(RCurl)
+
+library(tidyr)
+library(data.table)
+library(rlist)
+library(testthat)
+
+```
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
