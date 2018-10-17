@@ -344,7 +344,7 @@ c_acquisitions_exclude <-
     #left_join(na_profitcenter_include, dlr01[ ,c(4, 103)], by = "Entity")
   
     #na_profitcenter_include <- 
-      l#eft_join(na_profitcenter_include, SAP_db[ , c(2:3)], by = "MEntity")
+      #eft_join(na_profitcenter_include, SAP_db[ , c(2:3)], by = "MEntity")
     
     # In this step, we have previously exported all those entities that did not contain Profit Centers 
     

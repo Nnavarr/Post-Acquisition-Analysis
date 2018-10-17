@@ -45,8 +45,199 @@ library(testthat)
 ```
 
 
+```{r}
+
+# SQL Database ----
+con.FinAccounting = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "FinAccounting",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+
+
+# collect database ----
+sap_uhi_group <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP")
+test_db <- collect(sap_uhi_group)
+
+```
+
+
+
+#** Lender Reporting Accounts (Rob)**
 
 ```{r}
+
+# Import csv ----
+accounts <-
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\income_statement_accounts.csv")
+
+names(accounts) <- 
+
+colnames(accounts)[1] <- "SAP_number"
+
+```
+
+
+#** SQL Table Import**
+
+In the following code chunk, we will manually compile the income statement format using the SQL DB. 
+
+```{r}
+
+# Income Statement Compilation ----
+storage_income <- 
+  accounts %>%
+  filter(Line.Item == 'STORAGE INCOME')
+
+  sales <-
+    accounts %>%
+    filter(Line.Item == 'SALES')
+
+    cogs <- 
+      accounts %>%
+      filter(Line.Item == 'COST OF SALES')
+
+      misc_income <- 
+        accounts %>%
+        filter(Line.Item == 'MISCELLANEOUS INCOME')
+
+        ubox_income <- 
+          accounts %>%
+          filter(grepl("U-BOX", accounts$Line.Item))
+
+          umove_net_commission <-
+            accounts %>%
+            filter(Line.Item == 'U-MOVE NET COMMISSION')
+          
+            third_party_lease <-
+              accounts %>%
+              filter(Line.Item == 'THIRD PARTY LEASE')
+            
+              intercompany_lease <-
+                accounts %>%
+                filter(Line.Item == 'INTERCOMPANY LEASE')
+            
+
+            # Expenses ----
+              personnel_exp <-
+                accounts %>%
+                filter(Line.Item == 'PERSONNEL')
+              
+                repairs_and_maintenance <- 
+                  accounts %>%
+                  filter(Line.Item == 'REPAIRS AND MAINTENANCE/GENERAL')
+                
+                  utility_exp <- 
+                    accounts %>%
+                    filter(Line.Item == 'UTILITIES')
+                  
+                    telephone_exp <- 
+                      accounts %>% 
+                      filter(Line.Item == 'TELEPHONE')
+                    
+                      advertising_exp <-
+                        accounts %>%
+                        filter(Line.Item == 'ADVERTISING')
+                      
+                        supplies <-
+                          accounts %>%
+                          filter(Line.Item == 'SUPPLIES')
+                        
+                        rent_eqp_land_bldg <- 
+                          accounts %>%
+                          filter(Line.Item == 'RENT-EQUIPMENT/LAND AND BLDGS')
+
+                      liability_insurance <-
+                        accounts %>%
+                        filter(Line.Item == 'LIABILITY INSURANCE')
+                      
+                  property_tax_exp <-
+                    accounts %>%
+                    filter(Line.Item == 'PROPERTY TAX')
+                  
+              bad_debt_expense <- 
+                accounts %>%
+                filter(Line.Item == 'BAD DEBT EXPENSE')
+              
+          other_op_exp <- 
+            accounts %>%
+            filter(Line.Item == "OTHER OPERATING EXPENSE")
+                        
+                        
+                        
+```
+
+
+```{r}
+income_statment_compilation <- function(profitcenters, accounts){
+  
+  require(dplyr)
+  require(lazyeval)
+  require(purrr)
+  
+  # Filter SQL Database ----
+  db <-
+  sap_uhi_group %>% 
+    filter(`PROFIT CENTER` %in% profitcenters & ACCOUNT %in% accounts)
+  
+  # Reformat database ----
+  
+  
+  
+  income_statement = 
+    db %>%
+    group_by()
+    filter(`PROFIT CENTER` %in%  )
+  
+  
+    
+    
+    
+    
+}
+
+
+
+```
+
+
+
+
+---
+# ** Test Environment For Writing of Income Statement Function **
+---
+
+```{r}
+
+# Database: "test_db"
+test_db <- collect(sap_uhi_group)
+
+# Rename Column headers to Months (currently accounting periods) ----
+colnames(test_db)[11] <- "Apr"
+colnames(test_db)[12] <- "May"
+colnames(test_db)[13] <- "Jun"
+colnames(test_db)[14] <- "Jul"
+colnames(test_db)[15] <- "Aug"
+colnames(test_db)[16] <- "Sep"
+colnames(test_db)[17] <- "Oct"
+colnames(test_db)[18] <- "Nov"
+colnames(test_db)[19] <- "Dec"
+colnames(test_db)[20] <- "Jan"
+colnames(test_db)[21] <- "Feb"
+colnames(test_db)[22] <- "Mar"
+
+# Trunkate DB for ease of test ----
+test_db <-
+  test_db[1:100, ]
+
+  # Eliminate Unecessary columns ----
+  test_db <-
+    test_db[ , -c(1,3,4,5,9,10,23,24,26, 27)]
+
+test_melt <- 
+  melt(test_db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
 
 
 
@@ -56,6 +247,16 @@ library(testthat)
 
 
 ```
+
+
+
+
+
+
+
+
+
+
 
 
 
