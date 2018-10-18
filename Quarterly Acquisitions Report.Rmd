@@ -431,6 +431,9 @@ data_check_center <-
 
 
 
+
+
+
 ```
 
 
@@ -830,7 +833,6 @@ Property.name = Description
     New.Acquisitions <- left_join(New.Acquisitions, Graph.File[ , c(1,10)], by = 'Entity') #Import Owner
   
     
-    
       # Filter for abutting properties.
         for (i in 1:length(New.Acquisitions$Entity)){
           
@@ -1074,8 +1076,8 @@ Process
         income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
 
     # Export Data
-      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
-                    sheetName = "Report42018")
+      #xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
+                    #sheetName = "Report42018")
     
 ```
 
