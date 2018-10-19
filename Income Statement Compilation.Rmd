@@ -42,6 +42,7 @@ library(data.table)
 library(rlist)
 library(testthat)
 
+
 ```
 
 
@@ -202,30 +203,37 @@ chart_of_accounts <-
 
 
 
-# Test SAP Account Filter 
+# *Data Check Function Update*
 
 ```{r}
 
-filter_test <- function(x){
-
+data_check_center <-
   
-sap_uhi_group %>%
-  filter(`PROFIT CENTER` %in% x & ACCOUNT %in% sap_accounts$ACCOUNT) 
-
-  db = collect(sap_uhi_group)
-
-  return(db)
+  function(x){
     
-}
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
+    
+  #vector of list
+  list.vector = list()
+  list.complete = list()
   
+  i = 1
 
-test_function <- map(quarter_list, filter_test)
+  #Filter Criteria
+  d = IS.Trend.Cash %>% filter(CURRENCY == 'Group' & SPLIT == 'ALL' & `PROFIT CENTER` == x & `NET OPERATING INCOME` != 0) %>% arrange(MONTH)
 
-
-
-
-
-
+  #Create a local copy of the data frame
+  b = collect(d)
+    
+  if(nrow(b) > 0){
+    list.vector[[i]] = 1
+  } else {
+    list.complete[[i]] = x
+  }
+  return(list.complete)
+}
 
 
 
@@ -351,7 +359,19 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       
     }
       
-    }
+  }
+    
+    
+  # Calculate NOI ----
+  cast_db <-
+    tidyr::spread(db, `Line Item`, Amount)  
+      
+    cast_db <-
+      mutate(NOI = )
+    
+    
+    
+    
     
 
   # Import Fiscal Year Columns ----
@@ -555,6 +575,14 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
    
    
    colnames(test_melt)[10] <- "Line Item"
+   
+   
+   # Reshape to Calculate NOI and U-Box Aggregations ----
+   test_cast <- 
+     tidyr::spread(test_melt, `Line Item`, Amount)
+   
+   
+   
   
   test_income_statement <-     
   test_melt %>%
@@ -573,18 +601,9 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
 ```{r}
 
 
-test_function <- map(q1, income_statment_compilation, accounts = sap_accounts$SAP_number)
+test_function <- map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
 
 test_df <- test_function[[1]]
-
-
-  # Determine Negative value line items ----
-  negative_df <-
-    test_df[test_df$Value < 0, ]
-
-    # Pull distinct Line Items ----
-    negative_df %>%
-      distinct(`Line Item`)
 
 
 ```
