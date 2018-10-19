@@ -361,20 +361,25 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       
   }
     
+ # Convert to horizontal format ----
+ db <- 
+     tidyr::spread(db, `Line Item`, Value)
+ 
+   # Replace NA with 0 ----
+   db[is.na(db)] <- 0    
+ 
+ # Calculate NOI ----   
+ db <- 
+ db %>%
+   mutate(UBox = `U-BOX DELIVERY INCOME` + `U-BOX OTHER INCOME` + `U-BOX STORAGE INCOME`,
+          NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
+ 
+ # Melt back to vertical format ----
+ db <-
+   melt(db, id = c("MONTH"))
     
-  # Calculate NOI ----
-  cast_db <-
-    tidyr::spread(db, `Line Item`, Amount)  
-      
-    cast_db <-
-      mutate(NOI = )
     
-    
-    
-    
-    
-
-  # Import Fiscal Year Columns ----
+# Import Fiscal Year Columns ----
   db$FY = " "
   db$FM = " "
   db$Quarter = " "
@@ -479,17 +484,177 @@ for (i in 1:length(db$`PROFIT CENTER`)){
     }
   }
   
-
   # Rename Columns ----
-  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month")
- 
+  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
+  
+  # Filter Date column (the database will often have slots ready for future dates. We do not want these.) ----
+  
+    
+    
   return(db)
   
 }
 
 
+```
+
+
+
+```{r Last portion of function}
+
+    
+ # Melt back to vertical format ----
+ db <-
+   melt(db, id = c("MONTH"))
+  
+    
+ # Import Fiscal Year Columns ----
+  db$FY = " "
+  db$FM = " "
+  db$Quarter = " "
+   
+  
+  for (i in 1:length(db$FY)){
+
+    if(db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
+
+      db$FY[i] = 2015
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2015/4/1' & db$MONTH[i] <= '2015/6/1') {
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2015/7/1' & db$MONTH[i] <= '2015/9/1') {
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2015/10/1' & db$MONTH[i] <= '2015/12/1'){
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2016/1/1' & db$MONTH[i] <= '2016/3/1'){
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2016/4/1' & db$MONTH[i] <= '2016/6/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2016/7/1' & db$MONTH[i] <= '2016/9/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2016/10/1' & db$MONTH[i] <= '2016/12/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2017/1/1' & db$MONTH[i] <= '2017/3/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2017/4/1' & db$MONTH[i] <= '2017/6/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2017/7/1' & db$MONTH[i] <= '2017/9/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2017/10/1' & db$MONTH[i] <= '2017/12/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2018/1/1' & db$MONTH[i] <= '2018/3/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2018/4/1' & db$MONTH[i] <= '2018/6/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2018/7/1' & db$MONTH[i] <= '2018/9/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 2
+
+    }
+  }
+  
+  
+   # Addition of Month Column ----
+   db$Month = " "
+
+  for (i in 1:length(db$Month)){
+    db$Month[i] = format(db$MONTH[i], "%b")
+  }
+  for (i in 1:length(db$FM)){
+    if(month(db$MONTH[i]) >= 4 & month(db$MONTH[i]) <= 12){
+      db$FM[i] = month(db$MONTH[i]) - 3
+    } else if (month(db$MONTH[i]) == 1) {
+      db$FM[i] = 10
+    } else if (month(db$MONTH[i]) == 2) {
+      db$FM[i] = 11
+    } else if (month(db$MONTH[i]) == 3){
+      db$FM[i] = 12
+    }
+  }
+  
+  # Rename Columns ----
+  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month")      
+  
+
+
 
 ```
+
+
+
+
+
+```{r}
+
+# If else statements ----
+
+ # Calculate NOI ----
+  if(db$`Line Item` %in% grepl("U-BOX", db$`Line Item`)){
+    
+  db <-   
+   db %>%
+   mutate(UBox = `U-BOX DELIVERY INCOME` + `U-BOX OTHER INCOME` + `U-BOX STORAGE INCOME`,
+          NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
+    
+    
+  } else if(db$`Line Item` %in% grepl("STORAGE", db$`Line Item`)) {
+    
+  db <-   
+   db %>%
+   mutate(NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`) 
+    
+  } else if(db$`Line Item` != 'SALES') {
+    
+   db <-   
+   db %>%
+   mutate(NOI = `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)   
+
+
+```
+
+
+
 
 
 ------------------------------------------------------------------
@@ -540,7 +705,6 @@ colnames(test_melt)[6] <- "Cal_Month"
   test_melt$SAP_number <- as.character(test_melt$SAP_number)
   
 
-      
 # Creation of Calendar "MONTH" column ----
 test_melt$Cal_Year = " "
 
@@ -577,17 +741,19 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
    colnames(test_melt)[10] <- "Line Item"
    
    
-   # Reshape to Calculate NOI and U-Box Aggregations ----
-   test_cast <- 
-     tidyr::spread(test_melt, `Line Item`, Amount)
-   
-   
-   
-  
   test_income_statement <-     
   test_melt %>%
   group_by(MONTH, `Line Item`) %>%
    summarise(Value = sum(Amount)) 
+  
+  
+  # Reshape to Calculate NOI and U-Box Aggregations ----
+   test_cast <- 
+     tidyr::spread(test_income_statement, `Line Item`, Value)
+  
+   test_cast %>%
+     mutate(NOI = `STORAGE INCOME` +  )
+  
    
 
 ```
@@ -600,11 +766,7 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
 
 ```{r}
 
-
 test_function <- map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
-
-test_df <- test_function[[1]]
-
 
 ```
 
