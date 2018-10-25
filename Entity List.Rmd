@@ -676,24 +676,20 @@ print(acq_list_final %>%
 
 
 
-
-
-
-
 ###** Trend IS Start Check**
 
-The following section will check the Income Statement Start date of each profit center for comparison against the close of escrow date. 
+The following section will check the Income Statement Start date of each profit center for comparison against the close of escrow date. This is done due to some centers using the same profit center numbers which have not been acquired in the quarter of interest. For example, a property acquired in F19 Q1 showing data since F15 Q4. This section will identify and eliminate centers experiencing this phenomena.  
 
 ```{r}
 
 # Compile individual income statements ----
-test_list <-
-as.list(c_acquisitions_include$Profit_Center) 
-
+individual_pc_list <-
+as.list(acq_list_final$Profit_Center) 
 
   # Nested Income Statement Compilation ----
-  test_is <-
-    lapply(test_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
+  individual_IS <-
+    lapply(individual_pc_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
+
 
 
 
