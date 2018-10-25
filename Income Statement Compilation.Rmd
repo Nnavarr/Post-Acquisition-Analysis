@@ -243,6 +243,51 @@ data_check_center <-
 
 ```{r}
 
+# Original Function ----
+MonthofOperation.Start = function (x){
+
+  #Library
+  require("dplyr")
+  require("lazyeval")
+  require("purrr") #makes iteration problems easier to solve
+
+  start_of_record = min(x$MONTH)
+  return(start_of_record)
+  
+}
+
+# --------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# New Function ----
+month_opertation_start <- function(x) {
+  
+  require(dplyr)
+  require(lazyeval)
+  require(purrr)
+  
+  IS_trend <- income_statment_compilation(x, accounts = sap_accounts$SAP_number)
+
+  min_month <- 
+    IS_trend %>%
+    filter(`Line Item` == 'NOI' & Value != 0)
+  
+    min_month <- 
+      min(min_month$Date)
+  
+      return(min_month)
+
+}
+
+
+
+```
+
+
+
+
+
+```{r}
+
 income_statment_compilation <- function(x, accounts){
   
   require(dplyr)
@@ -361,6 +406,45 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       
   }
     
+    
+  # Flag Revenue and Expense Line Items; this is done to avoid errors when summing columns that may not exist ----
+  #for (i in 1:length(db$Value)){
+    
+   # if(db$`Line Item`[i] == 'STORAGE INCOME') {
+      
+    #  db$`Line Item`[i] == 'Storage Income_Rev'
+      
+   # } else if(db$`Line Item`[i] == 'SALES'){
+      
+     # db$`Line Item`[i] == 'Sales_Rev'
+      
+    #} else if(db$`Line Item`[i] == 'MISCELLANEOUS INCOME'){
+      
+    #  db$`Line Item`[i] == 'Misc Income_Rev'
+        
+  #  } else if(db$`Line Item`[i] == 'U-MOVE NET COMMISSION'){
+      
+   #   db$`Line Item`[i] == 'U-Move Net Comm_Rev'{  
+        
+ #   } else if(db$`Line Item`[i] == 'THIRD PARTY LEASE'){
+    
+   #   db$`Line Item`[i] == 'Third Party Lease_Rev'
+        
+ #   } else if(db$`Line Item`[i] == 'INTERCOMPANY LEASE'){
+      
+   #   db$`Line Item`[i] == 'Intercompany Lease_Rev'
+      
+  #  } else if(db$`Line Item`[i] == 'INTERCOMPANY LEASE'){ 
+      
+    #  else if(    )
+      
+  #  }
+      
+      
+    
+    
+    
+    
  # Convert to horizontal format ----
  db <- 
      tidyr::spread(db, `Line Item`, Value)
@@ -369,10 +453,22 @@ for (i in 1:length(db$`PROFIT CENTER`)){
    db[is.na(db)] <- 0    
  
  # Calculate NOI ----   
+
+# if(!grepl("U-BOX", colnames(db))){
+   
+# db <- 
+# db %>%
+#   mutate(NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
+   
+ 
+# } else {        
+    
  db <- 
  db %>%
    mutate(UBox = `U-BOX DELIVERY INCOME` + `U-BOX OTHER INCOME` + `U-BOX STORAGE INCOME`,
           NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
+ 
+# }
  
  # Melt back to vertical format ----
  db <-
@@ -486,11 +582,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
   
   # Rename Columns ----
   colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
-  
-  # Filter Date column (the database will often have slots ready for future dates. We do not want these.) ----
-  
-    
-    
+
   return(db)
   
 }
@@ -500,9 +592,96 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 
 
+```{r Income Statement Line Items }
+
+storage_income <- 
+  accounts %>%
+  filter(Line.Item == 'STORAGE INCOME')
+
+  sales <-
+    accounts %>%
+    filter(Line.Item == 'SALES')
+
+    cogs <- 
+      accounts %>%
+      filter(Line.Item == 'COST OF SALES')
+
+      misc_income <- 
+        accounts %>%
+        filter(Line.Item == 'MISCELLANEOUS INCOME')
+
+        ubox_income <- 
+          accounts %>%
+          filter(grepl("U-BOX", accounts$Line.Item))
+
+          umove_net_commission <-
+            accounts %>%
+            filter(Line.Item == 'U-MOVE NET COMMISSION')
+          
+            third_party_lease <-
+              accounts %>%
+              filter(Line.Item == 'THIRD PARTY LEASE')
+            
+              intercompany_lease <-
+                accounts %>%
+                filter(Line.Item == 'INTERCOMPANY LEASE')
+            
+
+            # Expenses ----
+              personnel_exp <-
+                accounts %>%
+                filter(Line.Item == 'PERSONNEL')
+              
+                repairs_and_maintenance <- 
+                  accounts %>%
+                  filter(Line.Item == 'REPAIRS AND MAINTENANCE/GENERAL')
+                
+                  utility_exp <- 
+                    accounts %>%
+                    filter(Line.Item == 'UTILITIES')
+                  
+                    telephone_exp <- 
+                      accounts %>% 
+                      filter(Line.Item == 'TELEPHONE')
+                    
+                      advertising_exp <-
+                        accounts %>%
+                        filter(Line.Item == 'ADVERTISING')
+                      
+                        supplies <-
+                          accounts %>%
+                          filter(Line.Item == 'SUPPLIES')
+                        
+                        rent_eqp_land_bldg <- 
+                          accounts %>%
+                          filter(Line.Item == 'RENT-EQUIPMENT/LAND AND BLDGS')
+
+                      liability_insurance <-
+                        accounts %>%
+                        filter(Line.Item == 'LIABILITY INSURANCE')
+                      
+                  property_tax_exp <-
+                    accounts %>%
+                    filter(Line.Item == 'PROPERTY TAX')
+                  
+              bad_debt_expense <- 
+                accounts %>%
+                filter(Line.Item == 'BAD DEBT EXPENSE')
+              
+          other_op_exp <- 
+            accounts %>%
+            filter(Line.Item == "OTHER OPERATING EXPENSE")
+                        
+
+```
+
+
+
+
+
+
 ```{r Last portion of function}
 
-    
  # Melt back to vertical format ----
  db <-
    melt(db, id = c("MONTH"))
@@ -593,7 +772,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
     }
   }
-  
+
   
    # Addition of Month Column ----
    db$Month = " "
@@ -619,41 +798,8 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 
 
-```
-
-
-
-
-
-```{r}
-
-# If else statements ----
-
- # Calculate NOI ----
-  if(db$`Line Item` %in% grepl("U-BOX", db$`Line Item`)){
-    
-  db <-   
-   db %>%
-   mutate(UBox = `U-BOX DELIVERY INCOME` + `U-BOX OTHER INCOME` + `U-BOX STORAGE INCOME`,
-          NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
-    
-    
-  } else if(db$`Line Item` %in% grepl("STORAGE", db$`Line Item`)) {
-    
-  db <-   
-   db %>%
-   mutate(NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`) 
-    
-  } else if(db$`Line Item` != 'SALES') {
-    
-   db <-   
-   db %>%
-   mutate(NOI = `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)   
-
 
 ```
-
-
 
 
 
@@ -747,15 +893,19 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
    summarise(Value = sum(Amount)) 
   
   
+  # Logical check for ADVERTISING column ----
+  test_filter <- !grepl("AD", colnames(test_cast))
+  
+  
+  
+  
   # Reshape to Calculate NOI and U-Box Aggregations ----
    test_cast <- 
      tidyr::spread(test_income_statement, `Line Item`, Value)
   
-   test_cast %>%
-     mutate(NOI = `STORAGE INCOME` +  )
   
-   
 
+  
 ```
 
 

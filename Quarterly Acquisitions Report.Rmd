@@ -396,6 +396,35 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 ```
 
 
+### *Minimum IS Trend Data Date*
+
+```{r}
+
+month_opertation_start <- function(x) {
+  
+  require(dplyr)
+  require(lazyeval)
+  require(purrr)
+  
+  IS_trend <- income_statment_compilation(x, accounts = sap_accounts$SAP_number)
+
+  min_month <- 
+    IS_trend %>%
+    filter(`Line Item` == 'NOI' & Value != 0)
+  
+    min_month <- 
+      min(min_month$Date)
+  
+      return(min_month)
+
+}
+
+```
+
+
+
+
+
 ### **Income Statement Data Check**
 
 ```{r Data Check Function}
@@ -757,23 +786,7 @@ data_check_center <-
 ```
 
 
-### **Month of Operation Start**
 
-```{r}
-
-MonthofOperation.Start = function (x){
-
-  #Library
-  require("dplyr")
-  require("lazyeval")
-  require("purrr") #makes iteration problems easier to solve
-
-  start_of_record = min(x$MONTH)
-  return(start_of_record)
-  
-}
-
-```
 
 
 ### **Omit NA from list**
@@ -822,99 +835,6 @@ vector.conv <- function(x){
 ```
 
 
----
-## **New Entity Import**
----
-
-In this section, we will import a list of new acquisitions to be cleaned for integration with our quarterly dashboard. The goal is to combine center information including profit center, MEntity, etc.  
-
-The New Acquisition list is being provided by Michael Kobs
-
-```{r}
-
-# Import New Acquisitions Spreadsheet ----
-F19_properties <- 
-  readxl::read_xlsx("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Properties Jason - August FY19.xlsx",
-                   sheet = "Properties FY19",
-                   range = "A5:J80",
-                   col_names = TRUE)
-
-  # Convert Date column to date format ----
-  F19_properties$Date <-
-    as.Date(F19_properties$Date, format = "%m/%d/%Y")
-
-
-```
-
-
-```{r}
-
-# Existing Acq to SAP Hierarchy column conversion ----
-#current_acq_df_columns <-
-  #c("Property.Name", )
-
-#new_center_data_columns <-
- # c("Description")
-
-```
-
-
-Existing Acq DF to SAP Hierarchy column conversion
-
-Property.name = Description
-
-
-
-##**Compilation of New Acquisitions List**
-
-```{r This section will need to be updated last}
-
-# Import New Acquisitions List ----
-  New.Acquisitions <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\New Acquisitions F19 Q1.csv")
-
-  # Rename New.Acquisitions 3rd column to "Entity"  ----
-    colnames(New.Acquisitions)[3] <- "Entity"
-      New.Acquisitions$Entity <- as.character(New.Acquisitions$Entity)
-      
-  # Import Graph File Data ----
-    Graph.File <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Q1 Graph File.csv", header = TRUE)
-      
-    Graph.File$Entity <- as.character(Graph.File$Entity)
-    Graph.File$MEntity <- as.character(Graph.File$MEntity)
-    
-  # Import Profit Center from Graph File
-    New.Acquisitions = left_join(New.Acquisitions, Graph.Entity.Info.Local[, c(1,3,21)], by = 'Entity')
-    New.Acquisitions <- left_join(New.Acquisitions, Graph.File[ , c(1,10)], by = 'Entity') #Import Owner
-  
-    
-      # Filter for abutting properties.
-        for (i in 1:length(New.Acquisitions$Entity)){
-          
-          if (grepl("?butting", New.Acquisitions$Property.Description[i]) == TRUE){
-            
-            New.Acquisitions$Include[i] = 'No'
-            
-          } else if (grepl("?emote", New.Acquisitions$Property.Description[i]) == TRUE){
-            
-            New.Acquisitions$Include[i] = "No"
-            
-            
-          } else if (grepl("SAC", New.Acquisitions$Owner[i])){
-            
-          
-            New.Acquisitions$Include[i] = "No"
-            
-          } else {
-            
-            New.Acquisitions$Include[i] = "Yes"
-        
-          }
-        }
-
-    # Export to CSV
-     # write.csv(New.Acquisitions, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\NewAcq_Export.csv")
-  
-```
 
 ---
 ##**Completed Acquisitions Spreadsheet**
@@ -941,35 +861,46 @@ Property.name = Description
 ```
 
 
+```{r Updated Entity List 10/25/2018}
+
+acq_list_final
+
+```
+
+
+
 ###*Duplicate profit center check*
 
 ```{r}
 
-# c.acquisitions extraction of profit center numbers ----
-  c_acquisitions_pc <-
-    c_acquisitions_include %>% 
+# Extraction of profit center numbers ----
+  acq_pc <-
+    acq_list_final %>% 
     select(Profit_Center)
 
-  # c.aquisitioins removal of NA values ----
-    c_acquisitions_pc_complete <-  
-      c_acquisitions_pc[!is.na(c_acquisitions_pc), ] 
+  # Removal of NA values ----
+    acq_pc <-  
+      acq_pc[!is.na(acq_pc), ] 
    
     # Check for duplicate profit centers within completed acquisitions data frame ----
-      duplicate_pc_check_1 <- 
-        c_acquisitions_pc_complete %>%
+      acq_pc_check <- 
+        acq_pc %>%
           group_by(Profit_Center) %>%
           mutate(Count = 1) %>%
           summarise(Total = sum(Count)) %>%
           filter(Total > 1)
       
       # Kill switch if duplicate profit centers are detected; Check 1 ----
-        if(length(duplicate_pc_check_1$Profit_Center) != 0) {
+        if(length(acq_pc_check$Profit_Center) != 0) {
         
           stop() 
         
         }
 
+
 ```
+
+
 
 
 ---
@@ -990,7 +921,7 @@ Process
 
 # Split Data Frame into Elements within a list ----
   q_list_container <- 
-    split(c_acquisitions_include, f = c_acquisitions_include$Group)
+    split(acq_list_final, f = acq_list_final$Group)
 
   # Select Unique Profit Center Numbers ----
     profit_center_selection <- function(x){
@@ -1084,13 +1015,23 @@ Process
 ##**Aggregate Income Statement Compilation**
 ---
 
+
+```{r}
+
+test <- 
+aggregate_income_statement[[15]]
+
+
+```
+
+
 ```{r Aggregate Income Statement Process}
 
 # Income statement compilation ----
   aggregate_income_statement <- map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
 
   # Creation of group identifier table ----
-    grp_number <- c(1:14)
+    grp_number <- c(1:15)
     grp_name <- c("FY15 Q4", 
                   "FY16 Q1", 
                   "FY16 Q2",
@@ -1104,7 +1045,8 @@ Process
                   "FY18 Q2", 
                   "FY18 Q3", 
                   "FY18 Q4",
-                  "FY19 Q1")
+                  "FY19 Q1",
+                  "FY19 Q2")
     
     grp_table <- 
       data.frame(grp_number,grp_name)
@@ -1386,10 +1328,10 @@ occ_only_list <-
 
 ```{r eval=FALSE, include=FALSE}
 
- xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\UnitMix.xlsx', 
-                  append = FALSE,
-                  sheetName = "UnitMix",
-                  col.names = TRUE)
+# xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\UnitMix.xlsx', 
+               #   append = FALSE,
+                #  sheetName = "UnitMix",
+               #   col.names = TRUE)
 
 ```
 
