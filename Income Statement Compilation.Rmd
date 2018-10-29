@@ -106,7 +106,10 @@ storage_income <-
         ubox_income <- 
           accounts %>%
           filter(grepl("U-BOX", accounts$Line.Item))
-
+        
+          ubox_income$Line.Item = 'U-BOX'
+          
+          
           umove_net_commission <-
             accounts %>%
             filter(Line.Item == 'U-MOVE NET COMMISSION')
@@ -188,6 +191,7 @@ chart_of_accounts <-
             bad_debt_expense,
             other_op_exp)
           
+          
   # Character conversion ----
   chart_of_accounts$SAP_number <-
     as.character(chart_of_accounts$SAP_number)
@@ -197,8 +201,18 @@ chart_of_accounts <-
     chart_of_accounts %>%
     select(SAP_number)
           
+  
           
-                        
+  # List of Line Item Descriptions ----
+  line_items <-         
+    chart_of_accounts %>%
+      distinct(Line.Item)
+          
+    line_items <- line_items$Line.Item
+    
+    # List Creation ----      
+    line_item_list <- lapply(line_items, as.list)
+      
 ```
 
 
@@ -295,6 +309,10 @@ income_statment_compilation <- function(x, accounts){
   require(purrr)
   require(reshape2)
   
+  # ------------------------------------------------
+  # Step 1: Filter for Profit Center & Account List 
+  # ------------------------------------------------
+  
   # Filter SQL Database  & Collect ----
   db <-
   sap_uhi_group %>% 
@@ -365,6 +383,13 @@ for (i in 1:length(db$`PROFIT CENTER`)){
    
     colnames(db)[10] <- "Line Item"
     
+    
+  #------------------------------------------
+  # Step 2: Individual Line Item Compilation
+  # -----------------------------------------
+  
+  # This step will ensure all Line Items and Months are represented within the income statement for NOI calculation. If they are not, dedault value = 0
+    
   # Summarize Income Statement ----
   db <-
     db %>%
@@ -407,43 +432,10 @@ for (i in 1:length(db$`PROFIT CENTER`)){
   }
     
     
-  # Flag Revenue and Expense Line Items; this is done to avoid errors when summing columns that may not exist ----
-  #for (i in 1:length(db$Value)){
     
-   # if(db$`Line Item`[i] == 'STORAGE INCOME') {
-      
-    #  db$`Line Item`[i] == 'Storage Income_Rev'
-      
-   # } else if(db$`Line Item`[i] == 'SALES'){
-      
-     # db$`Line Item`[i] == 'Sales_Rev'
-      
-    #} else if(db$`Line Item`[i] == 'MISCELLANEOUS INCOME'){
-      
-    #  db$`Line Item`[i] == 'Misc Income_Rev'
-        
-  #  } else if(db$`Line Item`[i] == 'U-MOVE NET COMMISSION'){
-      
-   #   db$`Line Item`[i] == 'U-Move Net Comm_Rev'{  
-        
- #   } else if(db$`Line Item`[i] == 'THIRD PARTY LEASE'){
-    
-   #   db$`Line Item`[i] == 'Third Party Lease_Rev'
-        
- #   } else if(db$`Line Item`[i] == 'INTERCOMPANY LEASE'){
-      
-   #   db$`Line Item`[i] == 'Intercompany Lease_Rev'
-      
-  #  } else if(db$`Line Item`[i] == 'INTERCOMPANY LEASE'){ 
-      
-    #  else if(    )
-      
-  #  }
-      
-      
-    
-    
-    
+# -------------------------
+# Step 3: Horizontal Format
+# -------------------------
     
  # Convert to horizontal format ----
  db <- 
@@ -602,8 +594,15 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```{r}
 
-# Database: "test_db"
-test_db <- collect(sap_uhi_group)
+# Final Acquisition list ----
+acq_list_final
+
+acq_test <-
+  acq_list_final[328:330,   ]
+
+profitcenter_list <- acq_test$Profit_Center
+
+
 
 # Rename Column headers to Months (currently accounting periods) ----
 colnames(test_db)[11] <- 4
@@ -619,22 +618,37 @@ colnames(test_db)[20] <- 1
 colnames(test_db)[21] <- 2
 colnames(test_db)[22] <- 3
 
-# Trunkate DB for ease of test ----
-test_db <-
-  test_db[1:100, ]
+
+# Two step filter process ----
+
+  # SAP Accounts ----
+  sap_accounts
+
+  # 1 filter for profit centers & accounts (total) ----
+  # Convert Profit Center column to Character ----
+  test_db$`PROFIT CENTER` <- as.character(test_db$`PROFIT CENTER`)
+  test_db$ACCOUNT <- as.character(test_db$ACCOUNT)
+
+
+ db <-
+  test_db %>% 
+    filter(`PROFIT CENTER` %in% profitcenter_list &
+            `ACCOUNT` %in% sap_accounts$SAP_number &
+             `Fiscal Year` >= 2015)
 
   # Eliminate Unecessary columns ----
-  test_db <-
-    test_db[ , -c(1,3,4,5,9,10,23,24,26, 27)]
+  db <-
+    db[ , -c(1,3,4,5,9,10,23,24,26, 27)]
 
+ 
     test_melt <- 
-      melt(test_db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
+      melt(db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
+    
     
 # Rename columns ----
 colnames(test_melt)[3] <- "SAP_number" 
 colnames(test_melt)[7] <- "Amount"
 colnames(test_melt)[6] <- "Cal_Month"
-
 
 
   test_melt$Cal_Month <- as.character(test_melt$Cal_Month)
@@ -670,12 +684,146 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
      test_melt %>%
      filter(SAP_number %in% sap_accounts$SAP_number)
    
+   # Convert Chart of Accounts "SAP_Number" into character ----
+   chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
+   
    
    test_melt <-
      left_join(test_melt, chart_of_accounts[ ,c(1,4)], by = "SAP_number")
    
    
    colnames(test_melt)[10] <- "Line Item"
+   
+   
+   # At this point, the data is set up in a way that we have individual account numbers and their associated Line Items that we can aggregate. This next step is what we will need to compile in order to avoid an error when account numbers and their line items are not present in the database. The goal is to determine the minimum Month and create a default value of 0 should the accounts and line items not be available. 
+   
+   
+   # ------------------
+   # Creation of Shell 
+   # ------------------
+   
+   line_item_function <- as.function(x, df){
+     
+     require(dplyr)
+     require(purrr)
+     
+     min_is_month <- min(df$MONTH)
+     max_is_month <- as.Date('2018-09-01')
+     
+     
+     
+     
+     
+     
+     
+     
+   }
+   
+   
+   
+   # Determine Minimum Income Statement Data Month ----
+   min_is_month <- min(test_melt$MONTH)
+   max_is_month <- as.Date('2018-09-01')
+   
+   # --------
+   # Storage 
+   # --------
+   
+   # Individual Line item compilation ----
+   storage_income_is <- 
+     test_melt %>%
+     filter(Line.Item == 'STORAGE INCOME') %>%
+     group_by(MONTH, Line.Item) %>%
+     summarize(Amount = sum(Amount))
+   
+   # Calculate the date difference between min income statement data and line item data ----
+   monnb <- function(d) { lt <- as.POSIXlt(as.Date(d, origin = "1900-01-01")); lt$year*12 + lt$mon } 
+   
+   mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
+   
+   storage_date_diff <- mondf(min_is_month, min(storage_income_is$MONTH))
+   
+     # Date Difference Logical Flow. 
+     # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ----
+   
+   if(storage_date_diff > 0){
+   
+   date_seq <-
+     seq.Date(from = min_is_month, to = min(storage_income_is$MONTH) - 1, by = "month")
+   
+   fill_df <-
+     as.data.frame(date_seq)
+   
+     # Rename column ----
+     colnames(fill_df) <- "MONTH"
+     
+     fill_df$Line.Item <- storage_income_is$Line.Item
+     fill_df$Amount = 0
+   
+   
+     # Bind Dataframes ----
+     storage_income_is_test <-
+       bind_rows(fill_df, storage_income_is)
+   
+   } else if (sum(test_melt$`Line Item` == "STORAGE INCOME") == 0) {
+     
+     full_date <- 
+       seq.Date(from = min_is_month, to = max_is_month, by = "month")
+     
+     full_fill <- 
+       as.data.frame(full_date)
+     
+     # Rename to Month ----
+     colnames(full_fill) <- "MONTH"
+     
+     full_fill$Line.Item <- "STORAGE INCOME"
+     full_fill$Amount = 0
+     
+   }
+   
+
+   
+   
+   
+   # ------
+   # Sales 
+   # ------
+   
+   # Individual Line item compilation ----
+   sales_is <- 
+     test_melt %>%
+     filter(Line.Item == 'SALES') %>%
+     group_by(MONTH, Line.Item) %>%
+     summarize(Amount = sum(Amount))
+   
+   # Calculate the date difference between min income statement data and line item data ----
+   storage_date_diff <- mondf(min_is_month, min(storage_income_is$MONTH))
+   
+     # Date Difference Logical Flow. 
+     # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ----
+   
+   if(storage_date_diff > 0){
+   
+   date_seq <-
+     seq.Date(from = min_is_month, to = min(storage_income_is$MONTH) - 1, by = "month")
+   
+   fill_df <-
+     as.data.frame(date_seq)
+   
+     # Rename column ----
+     colnames(fill_df) <- "MONTH"
+     
+     fill_df$Line.Item <- storage_income_is$Line.Item
+     fill_df$Amount = 0
+   
+   
+     # Bind Dataframes ----
+     storage_income_is_test <-
+       bind_rows(fill_df, storage_income_is)
+   
+   } 
+   
+   
    
    
   test_income_statement <-     
@@ -688,14 +836,10 @@ for (i in 1:length(test_melt$`PROFIT CENTER`)){
   test_filter <- !grepl("AD", colnames(test_cast))
   
   
-  
-  
   # Reshape to Calculate NOI and U-Box Aggregations ----
    test_cast <- 
      tidyr::spread(test_income_statement, `Line Item`, Value)
   
-  
-
   
 ```
 
