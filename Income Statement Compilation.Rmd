@@ -298,11 +298,312 @@ month_opertation_start <- function(x) {
 
 
 
+```{r Date Difference Function }
+
+monnb <- function(d) { lt <- as.POSIXlt(as.Date(d, origin = "1900-01-01")); lt$year*12 + lt$mon } 
+mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
+
+```
+
+```{r Individual Line Item Function }
+
+  
+ line_item_function <- function(x){
+     
+    # x = list of line items 
+   
+     require(dplyr)
+     require(purrr)
+     
+     # Date Range for missing line items ----
+     min_is_month <- min(test_melt$MONTH)
+     max_is_month <- as.Date('2018-09-01')
+     
+     # Line Item IS compilation ----
+     line_item_is <- 
+       test_melt %>%
+       filter(`Line Item` == x[1]) %>%
+       group_by(MONTH, `Line Item`) %>%
+       summarize(Amount = sum(Amount))
+    
+     # Calculate date difference ----
+     date_diff <- 
+       mondf(min_is_month, min(line_item_is$MONTH))
+     
+     # Date Difference Logical Flow. 
+     # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ---- 
+    
+   if(date_diff > 0){
+   
+     date_seq <-
+     seq.Date(from = min_is_month, to = min(line_item_is$MONTH) - 1, by = "month")
+   
+     fill_df <-
+     as.data.frame(date_seq)
+   
+     # Rename column ----
+     colnames(fill_df) <- "MONTH"
+     
+     fill_df$`Line Item` <- paste(x[1])
+     fill_df$Amount = 0
+   
+     # Bind Dataframes ----
+     line_item_is <-
+       bind_rows(fill_df, line_item_is)
+     
+   }else if (sum(test_melt$`Line Item` == x[1]) == 0) {
+     
+     full_date <- 
+       seq.Date(from = min_is_month, to = max_is_month, by = "month")
+     
+     full_fill <- 
+       as.data.frame(full_date)
+     
+     # Rename to Month ----
+     colnames(full_fill) <- "MONTH"
+     
+     full_fill$Line.Item <- as.character(paste(x[1]))
+     full_fill$Amount = 0
+     
+   }
+}
+
+
+
+
+
+```
+
+
+
 
 
 ```{r}
 
 income_statment_compilation <- function(x, accounts){
+  
+  # x = list of profit centers 
+  # accounts = sap accounts to be used 
+  
+  require(dplyr)
+  require(lazyeval)
+  require(purrr)
+  require(reshape2)
+  
+  # ------------------------------------------------
+  # Step 1: Filter for Profit Center & Account List 
+  # ------------------------------------------------
+  
+  # Filter SQL Database  & Collect ----
+  db <-
+  sap_uhi_group %>% 
+    filter(`PROFIT CENTER` %in% x & 
+             ACCOUNT %in% accounts &
+             `Fiscal Year` >= 2015)
+  
+    db <- collect(db)
+  
+# Reformat database ----
+colnames(db)[11] <- 4
+colnames(db)[12] <- 5
+colnames(db)[13] <- 6
+colnames(db)[14] <- 7
+colnames(db)[15] <- 8
+colnames(db)[16] <- 9
+colnames(db)[17] <- 10
+colnames(db)[18] <- 11
+colnames(db)[19] <- 12
+colnames(db)[20] <- 1
+colnames(db)[21] <- 2
+colnames(db)[22] <- 3
+  
+
+  # Eliminate Unecessary columns ----
+  db <-
+    db[ , -c(1,3,4,5,9,10,23,24,26,27)]
+
+    db <- 
+      melt(db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
+    
+# Rename columns ----
+colnames(db)[3] <-  "SAP_number"   
+colnames(db)[7] <- "Amount"
+colnames(db)[6] <- "Cal_Month"
+
+  db$Cal_Month <- as.character(db$Cal_Month)
+  db$Cal_Month <- as.numeric(db$Cal_Month)
+  db$SAP_number <- as.character(db$SAP_number)
+
+# Creation of Calendar "MONTH" column ----
+db$Cal_Year = " "
+
+for (i in 1:length(db$`PROFIT CENTER`)){
+  
+  if(db$Cal_Month[i] >= 4 & db$Cal_Month[i] <= 12){
+    
+    db$Cal_Year[i] = db$`Fiscal Year`[i] - 1
+    
+  } else {
+    
+    db$Cal_Year[i] = db$`Fiscal Year`[i] 
+    
+  }
+  
+}
+
+  
+ db$MONTH <- 
+   paste(db$Cal_Year, db$Cal_Month, 1, sep = "-")
+  
+   db$MONTH <- as.Date(db$MONTH, format = "%Y-%m-%d") 
+
+    
+  # Compilation of income statement ----
+  db <-
+    left_join(db, chart_of_accounts[ ,c(1,4)], by = "SAP_number")
+   
+    colnames(db)[10] <- "Line Item"
+    
+    
+#------------------------------------------
+# Step 2: Individual Line Item Compilation
+# -----------------------------------------
+  
+  # This step will ensure all Line Items and Months are represented within the income statement for NOI calculation. If they are not, dedault value = 0
+    
+  
+  
+
+
+```
+
+
+```{r}
+
+# Step by Step TEst of Line Item Function ----
+line_item_function <- function(x){
+     
+    # x = list of line items 
+     require(dplyr)
+     require(purrr)
+     
+     # Date Range for missing line items ----
+     min_is_month <- min(test_melt$MONTH)
+     max_is_month <- as.Date('2018-09-01')
+     
+     # Line Item IS compilation ----
+     line_item_is <- 
+       test_melt %>%
+       filter(`Line Item` == x[1]) %>%
+       group_by(MONTH, `Line Item`) %>%
+       summarize(Amount = sum(Amount))
+     
+     # Calculate date difference ----
+     date_diff <- 
+       mondf(min_is_month, min(line_item_is$MONTH))
+     
+     
+    # Check for date_diff NA ----
+    if(is.na(date_diff) == TRUE){  
+     
+    full_date <- 
+       seq.Date(from = min_is_month, to = max_is_month, by = "month")
+     
+     full_fill <- 
+       as.data.frame(full_date)
+     
+     # Rename to Month ----
+     colnames(full_fill) <- "MONTH"
+     
+     full_fill$`Line Item` <- as.character(paste(x[1]))
+     full_fill$Amount = 0
+     
+     line_item_is <- as.tbl(full_fill)
+     
+     # Filter for max date
+     line_item_is <-
+        line_item_is %>%
+        filter(MONTH < '2018-10-01')
+     
+     
+    } else if(date_diff > 0){
+     
+     
+  # Date Difference Logical Flow. 
+  # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ---- 
+
+     date_seq <-
+     seq.Date(from = min_is_month, to = min(line_item_is$MONTH) - 1, by = "month")
+   
+     fill_df <-
+     as.data.frame(date_seq)
+   
+    # Rename column ----
+     colnames(fill_df) <- "MONTH"
+     
+     fill_df$`Line Item` <- paste(x[1])
+     fill_df$Amount = 0
+   
+    # Bind Dataframes ----
+     line_item_is <-
+       bind_rows(fill_df, line_item_is)
+     
+     # tbl conversion ----
+     line_item_is <- as.tbl(line_item_is)
+     
+      # Filter for max date ----
+      line_item_is <-
+        line_item_is %>%
+        filter(MONTH < '2018-10-01')
+     
+    } else if(date_diff == 0){
+    
+      line_item_is <- as.tbl(line_item_is)
+      
+      # Filter for max date ----
+      line_item_is <-
+        line_item_is %>%
+        filter(MONTH < '2018-10-01')
+      
+    }
+  
+        
+  # Collapse List of Data Frames into 1 ----
+
+     
+     
+     
+
+     return(line_item_is)
+     
+}
+
+# ------------------------------------
+# Test Collapse of Data Frame ----
+
+test_function <- 
+  lapply(line_item_list, line_item_function)
+
+  # Collapse List of Data Frames into 1 ----
+  aggregate_df <-
+    ldply(test_function, as.data.frame)
+    
+  # Need to flip signs of certain accounts ----
+  # Apply this to multiple profit centers ----
+
+```
+
+
+
+
+```{r Original Income Statement Function }
+
+
+
+income_statment_compilation <- function(x, accounts){
+  
+  # x = list of profit centers 
+  # accounts = sap accounts to be used 
   
   require(dplyr)
   require(lazyeval)
@@ -580,8 +881,10 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 }
 
 
-```
 
+
+
+```
 
 
 
