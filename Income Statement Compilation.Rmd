@@ -430,6 +430,9 @@ income_statment_compilation <- function(x, accounts){
              `Fiscal Year` >= 2015)
   
     db <- collect(db)
+    
+    db$`PROFIT CENTER` <- as.character(db$`PROFIT CENTER`)
+    db$ACCOUNT <- as.character(db$ACCOUNT)
   
 # Reformat database ----
 colnames(db)[11] <- 4
@@ -479,12 +482,16 @@ for (i in 1:length(db$`PROFIT CENTER`)){
   
 }
 
-  
+ # MONTH column update ----  
  db$MONTH <- 
    paste(db$Cal_Year, db$Cal_Month, 1, sep = "-")
   
    db$MONTH <- as.Date(db$MONTH, format = "%Y-%m-%d") 
-
+   
+   
+   # Convert Chart of Accounts "SAP_Number" into character ----
+   chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
+   
     
   # Compilation of income statement ----
   db <-
@@ -493,16 +500,214 @@ for (i in 1:length(db$`PROFIT CENTER`)){
     colnames(db)[10] <- "Line Item"
     
     
+
 #------------------------------------------
 # Step 2: Individual Line Item Compilation
 # -----------------------------------------
   
   # This step will ensure all Line Items and Months are represented within the income statement for NOI calculation. If they are not, dedault value = 0
-  aggregate_df <- 
-    lapply(line_item_list, line_item_function)  
+  line_item <- 
+    lapply(line_item_list, line_item_function, df = db)
+
+  # Collapse List of Data Frames into 1 ----
+  aggregate_df <-
+    ldply(line_item, as.data.frame)
+    
+    
+  # Reversal of Line Item Signs ----
+    for(i in 1:length(aggregate_df$`Line Item`)){
+    
+    if(aggregate_df$`Line Item`[i] == 'STORAGE INCOME'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'SALES'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'MISCELLANEOUS INCOME'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'U-BOX'){
+    
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
     
       
-  return(aggregate_df)
+    } else if(aggregate_df$`Line Item`[i] == 'U-MOVE NET COMMISSION'){
+    
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'INTERCOMPANY LEASE'){  
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1 
+      
+    }
+    
+  }
+    
+
+# -------------------------
+# Step 3: Horizontal Format
+# -------------------------
+    
+ # Convert to horizontal format ----
+ aggregate_df <- 
+     tidyr::spread(aggregate_df, `Line Item`, Amount)
+ 
+   # Replace NA with 0 ----
+   aggregate_df[is.na(aggregate_df)] <- 0          
+  
+   # Calculate NOI ----
+  aggregate_df <-  
+   aggregate_df %>%
+      mutate(NOI =
+               `STORAGE INCOME` +
+               `SALES` -
+               `COST OF SALES` +
+               `MISCELLANEOUS INCOME` +
+               `U-BOX` +
+               `U-MOVE NET COMMISSION` +
+               `INTERCOMPANY LEASE` -
+               `PERSONNEL` -
+               `REPAIRS AND MAINTENANCE/GENERAL` -
+               `UTILITIES` -
+               `TELEPHONE` -
+               `ADVERTISING` -
+               `SUPPLIES` -
+               `RENT-EQUIPMENT/LAND AND BLDGS` -
+               `LIABILITY INSURANCE` - 
+               `PROPERTY TAX` -
+               `BAD DEBT EXPENSE` -
+               `OTHER OPERATING EXPENSE`
+               )
+    
+  # Rename for ease of function ----
+  db <- aggregate_df  
+    
+    # Trim for NOI != 0 (eliminate blank rows from income statement) ----
+    db <-
+      db %>% 
+      filter(NOI != 0)
+    
+  # Melt back to vertical format ----
+ db <-
+   melt(db, id = c("MONTH"))
+    
+    
+# Import Fiscal Year Columns ----
+  db$FY = " "
+  db$FM = " "
+  db$Quarter = " "
+   
+  
+  for (i in 1:length(db$FY)){
+
+    if(db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
+
+      db$FY[i] = 2015
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2015/4/1' & db$MONTH[i] <= '2015/6/1') {
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2015/7/1' & db$MONTH[i] <= '2015/9/1') {
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2015/10/1' & db$MONTH[i] <= '2015/12/1'){
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2016/1/1' & db$MONTH[i] <= '2016/3/1'){
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2016/4/1' & db$MONTH[i] <= '2016/6/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2016/7/1' & db$MONTH[i] <= '2016/9/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2016/10/1' & db$MONTH[i] <= '2016/12/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2017/1/1' & db$MONTH[i] <= '2017/3/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2017/4/1' & db$MONTH[i] <= '2017/6/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2017/7/1' & db$MONTH[i] <= '2017/9/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2017/10/1' & db$MONTH[i] <= '2017/12/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2018/1/1' & db$MONTH[i] <= '2018/3/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2018/4/1' & db$MONTH[i] <= '2018/6/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2018/7/1' & db$MONTH[i] <= '2018/9/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 2
+
+    }
+  }
+  
+  
+   # Addition of Month Column ----
+   db$Month = " "
+
+  for (i in 1:length(db$Month)){
+    db$Month[i] = format(db$MONTH[i], "%b")
+  }
+  for (i in 1:length(db$FM)){
+    if(month(db$MONTH[i]) >= 4 & month(db$MONTH[i]) <= 12){
+      db$FM[i] = month(db$MONTH[i]) - 3
+    } else if (month(db$MONTH[i]) == 1) {
+      db$FM[i] = 10
+    } else if (month(db$MONTH[i]) == 2) {
+      db$FM[i] = 11
+    } else if (month(db$MONTH[i]) == 3){
+      db$FM[i] = 12
+    }
+  }
+  
+  # Rename Columns ----
+  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
+    
+  return(db)
 
 }
 
@@ -512,8 +717,22 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```{r Test New Income Statement Function }
 
+q1_list <- quarter_list[1]
 
-map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
+test_function <- 
+  map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
+
+
+
+  first_set <- test_function[[1]]
+  
+   # Unique Line Items ----
+   firs_set %>%
+    distinct(`Line Item`)
+
+  
+  first_set["Line Item"] == 'STORAGE INCOME'
+
 
 
 ```
@@ -522,22 +741,23 @@ map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_numbe
 
 
 
-```{r}
+```{r Line_Item Function Test}
 
 # Step by Step TEst of Line Item Function ----
-line_item_function <- function(x){
+line_item_function <- function(x, df){
      
     # x = list of line items 
+  
      require(dplyr)
      require(purrr)
      
      # Date Range for missing line items ----
-     min_is_month <- min(db$MONTH)
+     min_is_month <- min(df$MONTH)
      max_is_month <- as.Date('2018-09-01')
      
      # Line Item IS compilation ----
      line_item_is <- 
-       db %>%
+       df %>%
        filter(`Line Item` == x[1]) %>%
        group_by(MONTH, `Line Item`) %>%
        summarize(Amount = sum(Amount))
