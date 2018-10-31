@@ -104,7 +104,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
   SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") 
   sap_uhi_group <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP")
 
-# Finanalysis Tables ----
+# MEntity Tables ----
   SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")
     SAP.DB = collect(SAP_Info)
       SAP.DB %>% summarise(n_distinct(MEntity))
@@ -1549,8 +1549,8 @@ Process
         income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
 
     # Export Data
-      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
-                   sheetName = "Report42018")
+      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\Dashboard Connections\\Income_Statement.xlsx",
+                   sheetName = "Income_Statement")
     
       
 ```
@@ -1780,6 +1780,7 @@ occ_compilation <- function(x){
 ```
 
 
+
 ### ** Collapse Occupancy Lists Into Single Data Frames ** 
 ```{r}
 # Initial Collapse of Occupancy Lists ----
@@ -1816,7 +1817,7 @@ occ_only_list <-
             
             # Re-arrange data frame columns to match excel dashboard positions ----
               occ_df <-
-                occ_df[ , c(1:9, 11, 10)]
+                occ_df[ , c(1:9, 12, 11)]
           
           
           
@@ -1828,16 +1829,12 @@ occ_only_list <-
 
 ```{r eval=FALSE, include=FALSE}
 
-xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\UnitMix.xlsx', 
+xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx', 
                   append = FALSE,
-                  sheetName = "UnitMix 1",
+                  sheetName = "UnitMix",
                   col.names = TRUE)
 
 ```
-
-
-
-
 
 
 
@@ -1845,10 +1842,220 @@ xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Re
 ## ** Occupancy Predictions **
 ---
 
+```{r Forecasted Occ DB connection}
+
+# Forecasted tables use the Finanalysis Database ----
+forecasted_occ_db <-dplyr::tbl(con.FinAnalysis, "Storage_Forecast")
+
+
+```
+
+
+## *Forecasted Occ Function*
+
+```{r}
+
+forecasted_occ_function <- function(x){
+  
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
+
+
+# Filter DB ----    
+db <-
+  forecasted_occ_db %>%
+  filter(MEntity %in% x[["MEntity"]]) %>%
+  group_by(MEntity,
+           FC_Date) %>%
+  arrange(FC_Date)
+  
+  
+# Collect Local Version ----
+db_local <-
+  collect(db)
+
+  # Rename Data Column to "MONTH"
+      colnames(db_local)[5] <- "MONTH"
+    
+      # Convert Month Column to Date 
+        db_local$MONTH <- as.Date(db_local$MONTH)
+        
+        # Create Fiscal Year Columns for Data 
+          db_local <- 
+            fiscal_year_columns(db_local)
+
+# Append List 
+    y =
+      append(x, list(db_local))
+  
+  names(y)[[4]] = "FC_Occ"
+  
+  return(y)
+
+  
+}
+
+
+# Append Forecasted Occupancy to existing function ----
+q_acquisitions_list <-
+      modify_depth(q_acquisitions_list, 2, forecasted_occ_function)
+
+
+# Collapse Forecasted Occupancy into single data frame -----
+forecast_only_list <- 
+  modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "FC_Occ") 
+
+  # Flatten the filtered Occupancy list ----
+  flat_forecast_list <-
+    purrr::flatten(forecast_only_list)
+
+  # Omit NA Values ----
+  flat_fc_occ_exl_na <- 
+    na.omit.list(flat_forecast_list)
+
+  # Combine Occupancy Data frame ----
+  fc_occ_df <-   
+    map_df(flat_fc_occ_exl_na, `[`)
+
+
+        # Join Group column to occupancy metrics ----
+        fc_occ_df <-
+          left_join(fc_occ_df, acq_list_final[ , c(1, 8,6)], by = "MEntity")
+
+          # Rename group number column ----
+          colnames(fc_occ_df)[13] <- 'Grp_Num'
+
+          # Left Join -----
+          fc_occ_df <- 
+            left_join(fc_occ_df, grp_table, by = 'Grp_Num')
+            
+            # Re-arrange data frame columns to match excel dashboard positions ----
+              fc_occ_df <-
+                fc_occ_df[ , c(3, 5, 6, 15, 9, 10, 11, 12)]
+
+
+            # Process to merge total rooms into forecasted data frame ----
+
+               # Join Occ DF for Total Rooms Column -----  7,260 rows 
+               occ_df_2 <- 
+                 occ_df %>%
+                 group_by(MEntity, MONTH) %>%
+                 summarize(Total_Rooms = sum(Total_Rooms))
+               
+               # Return Max Date for Unique MEntity Combination -----
+               occ_df_2 <-
+                 occ_df_2 %>% 
+                   group_by(MEntity) %>%
+                   slice(which.max(MONTH))
+
+               # Join ----
+               fc_occ_df_2 <-
+                 left_join(fc_occ_df, occ_df_2[ , c(1,3)], by = c("MEntity"))
+               
+                
+               # Rename Forecasted Occupancy Column ----
+               colnames(fc_occ_df_2)[3] <- "Forecasted_Rooms"
+            
+
+```
+
+
+## *Export forecasted occupancy metrics to excel format* ##
+```{r}
+
+xlsx::write.xlsx(fc_occ_df_2,
+                           "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\occ_rooms_forecast.xls",
+                           sheetName = 'Forecasted_Rooms', col.names = TRUE)
+
+
+
+```
+
+
+
+
+# *Extract Observations Missing Forecasts* #
+```{r}
+
+
+# --------------------------------------------------------------------------------------------------------------------------------------------
+
+# Filter for MEntity numbers that contain Occ data but no forecasted Occ data ----
+
+# NA Forecasted Occ Filter ----
+  na_fc_occ <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    x %>%
+      list.filter(nrow(FC_Occ) == 0)
+  }
+
+
+# Not NA Occupansy Filter ----
+not_NA_occ <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    x %>%
+      list.filter(nrow(Occupancy) > 0 )
+  }
+
+
+
+# Extract Observations with NA Occupancy Metrics ----
+  na_fc_occ_list <-
+    modify_depth(q_acquisitions_list, 1, na_fc_occ)
+
+  # Filter for MEntity Numbers that have Occupancy Data but Not Forecasted Occupancy -----
+  na_fc_n_occ_list <- 
+    modify_depth(na_fc_occ_list, 1, not_NA_occ)
+
+
+    # Filter MEntity Numbers for NA Occupancy metrics ----
+    mentity_missing_fc_occ <-
+      unlist(modify_depth(na_fc_n_occ_list, 2, nested_list_filter, z = "MEntity"))
+
+
+    profitcenter_missing_fc_occ <- 
+      unlist(modify_depth(na_fc_n_occ_list, 2, nested_list_filter, z = "Profit_Center"))
+
+
+    # Print Vector of profit_centers with NA occupancy ----
+      mentity_missing_fc_occ <-
+        as.character(mentity_missing_fc_occ)
+
+      profitcenter_missing_fc <- 
+        as.character(profitcenter_missing_fc_occ)
+    
+        
+        # Information regarding centers missing forecasted data ----
+        profitcenter_missing_fc_info <- 
+        SAP.Hierarchy %>%
+          filter(Profit_Center %in% profitcenter_missing_fc)
+      
+        # Export to Excel for research ----
+        #write.csv(profitcenter_missing_fc_info,"Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\profitcenter_missing_forecast.csv")
+      
+      
+        #write.csv(mentity_missing_fc_occ, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\mentity_missing_forecast.csv")
+      
+      
+```
+
+
+
+
+## Old Forecasted Occupancy Compolation ##
 
 In this section of the markdown, we will ready forecasted Occupancy data for integration with the dashboard
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 
 # Extract MEntity number from Aggregate Unit Mix ----
@@ -2012,7 +2219,7 @@ UnitMix.Aggregate %>%
 
 #####*Extract NA Values *
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
  # Missing Projections
   missingdata.f <- 
@@ -2023,7 +2230,7 @@ UnitMix.Aggregate %>%
  # distinct.missingdata.f <- 
     unique(missingdata.f)
   
-  
+
   # Export Missing Forecasts ----
     write.csv(distinct.missingdata.f, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Occupancy Forecast\\Missing_Forecast.csv")
 
