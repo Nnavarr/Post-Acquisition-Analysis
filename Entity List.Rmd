@@ -667,6 +667,25 @@ acq_list_final <-
     filter(Entity_Type != 'Z')
   
   
+  # Final Filter (based on Income statement compilation) -----
+  removed_Mentity <- c("M0000000135", "M0000032042", "M0000000914", "M0000124790", "M0000000300", "M0000109346", "M0000001085")
+  
+  
+  acq_list_final <-
+    acq_list_final %>%
+    filter(MEntity != "M0000000135" &
+           MEntity != "M0000032042" &
+           MEntity != "M0000000914" &
+           MEntity != "M0000124790" &
+           MEntity != "M0000000300" &
+           MEntity != "M0000109346" &
+           MEntity != "M0000001085")
+  
+  
+  
+  
+  
+  
 ```
 
 
