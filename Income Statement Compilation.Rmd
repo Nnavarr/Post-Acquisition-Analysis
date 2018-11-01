@@ -116,7 +116,7 @@ storage_income <-
           
             third_party_lease <-
               accounts %>%
-              filter(Line.Item == 'THIRD PARTY LEASE')
+              filter(Line.Item == 'THIRD PARTY LEASE ')
             
               intercompany_lease <-
                 accounts %>%
@@ -594,6 +594,23 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       db %>% 
       filter(NOI != 0)
     
+ return(db)
+
+}
+
+```
+
+
+
+
+
+
+```{r}
+    # Trim for NOI != 0 (eliminate blank rows from income statement) ----
+    db <-
+      db %>% 
+      filter(NOI != 0)
+    
   # Melt back to vertical format ----
  db <-
    melt(db, id = c("MONTH"))
@@ -715,24 +732,29 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 ```
 
 
+
+
 ```{r Test New Income Statement Function }
 
-q1_list <- quarter_list[1]
+q1_list <- quarter_list[14]
 
 test_function <- 
-  map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
+  map(q1_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
 
 
 
   first_set <- test_function[[1]]
   
-   # Unique Line Items ----
-   firs_set %>%
-    distinct(`Line Item`)
-
   
-  first_set["Line Item"] == 'STORAGE INCOME'
-
+  
+  
+# Check individual income statements. 
+  
+  test_list <-
+  q_acquisitions_list[14]
+  
+  test_function <- 
+    modify_depth(test_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number)
 
 
 ```
