@@ -690,6 +690,15 @@ acq_list_final <-
            MEntity != "M0000127701")
   
   
+  # Round 2 of eliminations ----
+  acq_list_final <- 
+    acq_list_final %>%
+    filter(MEntity != "M0000126399" &
+           MEntity != "M0000000940" &
+           MEntity != "M0000001312" &
+           MEntity != "M0000031767" &
+           MEntity != "M0000000385")
+  
   
 ```
 
@@ -705,9 +714,43 @@ print(acq_list_final %>%
 
 
 
+## Chart of Account Comparison ##
+
+```{r}
+
+
+old_coa <- 
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Previously Used Chart of Accounts.csv")
+
+colnames(old_coa)[1] <- "SAP_number"
+
+old_coa$SAP_number <- as.character(old_coa$SAP_number)
+
+
+# Update Chart of accounts to integer for separation ----
+chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
 
 
 
+
+
+# Anti join old coa & new coa ----
+difference_in_coa <- 
+  anti_join(old_coa$SAP_number, chart_of_accounts$SAP_number)
+
+
+
+
+
+
+# Return the accounts not present within the new chart of accounts from the lender reporting ----
+difference_in_coa <- old_coa[which( !(old_coa$SAP_number %in% chart_of_accounts$SAP_number))]
+
+
+old_coa
+?inner_join
+
+```
 
 
 

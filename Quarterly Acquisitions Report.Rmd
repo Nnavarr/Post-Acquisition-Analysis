@@ -1413,9 +1413,13 @@ vector.conv <- function(x){
 ```
 
 
-```{r Updated Entity List 10/25/2018}
+```{r Updated Entity List 11/1/2018}
 
 acq_list_final
+
+# Export List <----
+write.csv(acq_list_final, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Acq_list_final.csv")
+
 
 ```
 
@@ -1892,7 +1896,7 @@ occ_only_list <-
 
 ### ** Export Occupancy Metrics **
 
-```{r eval=FALSE, include=FALSE}
+```{r include=FALSE}
 
 xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx', 
                   append = FALSE,
@@ -2026,6 +2030,33 @@ forecast_only_list <-
 ```
 
 
+## **Quarterly Acquisitions  
+
+```{r}
+
+# Representation of Forecast ----
+
+in_fc <- 
+  fc_occ_df_2 %>%
+    filter(MEntity %in% fc_occ_df_2$MEntity)
+
+
+# Group by Quarterly Acquisitions group ----
+in_fc_summary <- 
+  in_fc %>%
+    group_by(MEntity, Group) %>%
+    distinct(MEntity)
+
+  # Export Summary to csv ----
+  
+
+
+```
+
+
+
+
+
 ## *Export forecasted occupancy metrics to excel format* ##
 ```{r}
 
@@ -2036,7 +2067,6 @@ xlsx::write.xlsx(fc_occ_df_2,
 
 
 ```
-
 
 
 
