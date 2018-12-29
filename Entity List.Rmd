@@ -1,0 +1,761 @@
+---
+title: "Quarterly Acq Entity List"
+author: "Noe Navarro"
+date: "October 11, 2018"
+output: html_document
+---
+
+
+
+```{r}
+
+library(rstudioapi)
+
+library(ggplot2)
+library(ggvis)
+library(ggthemes)
+
+library(purrr)
+library(lazyeval)
+library(RODBC) # Creates a connection to SQL Database
+library(odbc)
+library(sqldf) # Allows for the use of SQL language
+library(reshape2) #Data Transformation
+library(DT)
+library(dygraphs)
+library(xts)
+library(lubridate)
+library(reshape2)
+
+library(plyr)
+library(dplyr)
+library(dbplyr)
+
+library(R2HTML)
+library(CenterIS)
+
+library(supclust)
+
+library(jsonlite)
+library(RCurl)
+
+library(tidyr)
+library(data.table)
+library(rlist)
+library(testthat)
+
+library(xlsx)
+
+
+```
+
+
+
+#*Introduction*
+
+This markdown will process the new acquisitions list to be used in our Quarterly Acquisitions Report Process. It will also export a list / details of the centers used within the Quarterly Acquisitions Compilation. 
+
+
+
+###**SQL Databases**
+```{r}
+
+# MEntity connection ----      
+  con.mentity = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "MEntity",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+
+
+# Entity Information ----
+  SAP_db <- dplyr::tbl(con.mentity, "MENTITY_SAP")
+    SAP_db <- collect(SAP_db)
+      SAP_db %>% summarise(n_distinct(MEntity))
+      
+      
+  # DLR01 ----
+  dlr01 <- dplyr::tbl(con.mentity, "ENTITY_DLR01")
+    dlr01 <- collect(dlr01)
+
+    # Rename Dlr01 Entity column ----
+    colnames(dlr01)[4] <- "Entity"
+    
+    
+    
+# Real Additions DB ----
+  con.rev_real_additions = DBI::dbConnect(odbc::odbc(), 
+      Driver = "SQL Server",
+      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
+      Database = "RealEstateValuation",
+      UID = rstudioapi::askForPassword("Database user"),
+      PWD = rstudioapi::askForPassword("Database password"),
+      Port = 1433)
+    
+  real_additions <- 
+    dplyr::tbl(con.rev_real_additions, "REV_REAL_ADDITIONS")
+  
+    real_additions <- collect(real_additions)
+    
+```
+
+
+
+###**New Acquisitions Spreadsheet**
+
+This section will import and format the new acquisitions list from Michael Kobs. 
+
+```{r}
+
+new_properties <- 
+  readxl::read_xlsx("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Properties Jason - September FY19.xlsx",
+                   sheet = "Properties FY19",
+                   range = "A5:J106",
+                   col_names = TRUE)
+
+  # Convert Date column to date format ----
+  new_properties$Date <-
+    as.Date(new_properties$Date, format = "%m/%d/%Y")
+
+    # Rename Date column ----
+    colnames(new_properties)[3] <- "Close of Escrow"
+    colnames(new_properties)[4] <- "Purchase"
+
+    
+```
+
+
+```{r Create Entity Column }
+
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+
+
+# Format list ----
+new_properties$Entity <- 
+  sapply(new_properties$Address, substrRight, n = 8)
+
+  # Replace ( ) with blanks ----
+  new_properties$Entity <-
+    gsub("\\(", "", new_properties$Entity)
+
+    new_properties$Entity <- 
+      gsub("\\)", "", new_properties$Entity)
+    
+    # Update two observations with tax parcel in front ----
+    new_properties$Entity[grepl("4112 MLK Jr Blvd New Bern", new_properties$Address)] <- "782076"
+
+
+```
+
+
+```{r Import Center Information}
+
+# Merge Entity ----
+new_properties_2 <-
+  left_join(new_properties, dlr01, by = "Entity" )
+
+# grep("MEntity", colnames(dlr01))
+dim(new_properties) # 101 rows 10-23-2018
+dim(new_properties_2) # 105 after merge 10-23-2018
+
+  # Summarize new_properties_2; Truncate information for further aggregation ----
+  summarize_new_acq <- 
+  new_properties_2 %>%
+    select(Address, `Close of Escrow`, Owner, Purchase, Entity, MEntity)
+
+```
+
+
+```{r}
+
+# write.csv(new_properties_2, "Z:\\group\\MIA\\Yusel\\MEntity_Join.csv")
+
+# Determine Unique MEntity Numbers ----
+new_properties_2 %>%
+  summarise(MEntity_Count = n_distinct(MEntity))
+
+# 101 distinct MEntity Numbers ----
+
+
+
+```
+
+
+##** Unique MEntity Numbers**
+
+With some situations, a new acquisiton may not contain a unique MEntity identifier. The following code attempts to create a single process for Entity list compilation. 
+
+Input: New Acquisiton list from Michael Kobs
+Output: List of new Acquistions with Center Descriptions to be fed into Quarterly acquisitions dashboard.
+  
+  The current acquisitions dashboard process only uses profit center numbers to begin compilation. Any layout chosen will work fine as long as it contains   profit center numbers. 
+  
+---
+Columns of Interest 
+---
+
+3 - Close of Escrow
+
+```{r Acquisitions List Layout}
+
+# Columns of Interest ----
+center_list <-
+  new_properties_2 %>%
+  select(Entity, MEntity, ENTITY_NAME, ENTITY_TYPE, `Close of Escrow`, Purchase, Owner, DATE_OPENED, DATE_CLOSED, STATUS, MAIL_STREET1, MAIL_CITY, MAIL_STATE, MAIL_ZIP)
+
+
+  # Import Profit Center from SAP Hierarchy Table ----
+  center_list <-
+    left_join(center_list, SAP_db[ , 2:3], by = "MEntity")
+
+
+  # Import Center Description (Existing, Conversion, etc.)
+  center_list <-
+    left_join(center_list, real_additions[ , c(2,3,4,5, 7:10)], by = c("MEntity", "Entity"))
+
+```
+
+
+
+##**Filtering of Acquisitions List** 
+
+The following code chunk will filter out any incorrect merging. This is a manual check to ensure our list is accurate 
+
+```{r}
+
+# Filter MEntity == NA ----
+center_list <-
+  center_list %>%
+    filter(!is.na(center_list$MEntity))
+
+  # Group by MEntity ----
+  center_list %>% 
+    group_by(MEntity) %>%
+    summarise(Count = n()) %>%
+    arrange(desc(Count))
+
+
+```
+
+##** Duplicate MEntity Numbers **
+
+1) M0000024619 ; Run Remote / Abutting
+   1st Entity: 754034 (run remote from 754078). All Op Exp from 754034 are being charged to the remote location (754078). 
+   
+   Databases show 754078 as being run remote too. 
+   
+   It appears both should be excluded from the analysis.
+
+2) M0000031767 ; Entity returns acquisition in 2013. Check against IS Start date.
+3) M0000109346 ; Eliminate second entry.
+4) M0000136236 ; Acquired in phases - Eliminate a duplicate
+5) M0000136747 ; Contains an entry with different Purchase Price. Eliminate the duplicate
+6) M0000138316 ; Contains an entry with different Purchase Price. Eliminate the duplicate
+7) M0000138982 ; Two rows with a different purchase amount present. Eliminate the duplicate
+
+
+```{r}
+
+# Eliminate 1 ----
+center_list <- 
+  center_list %>%
+  filter(MEntity != 'M0000024619')
+
+# Eliminate duplicates ----
+unique_mentity <- 
+  center_list[!duplicated(center_list$MEntity), ]
+
+unique_mentity$Include <- " "
+
+# Inclusion Column ----
+
+        for (i in 1:length(unique_mentity$MEntity)){
+          
+          if (grepl("?butting", unique_mentity$Property_Type[i]) == TRUE){
+            
+            unique_mentity$Include[i] = 'No'
+            
+          } else if (grepl("?emote", unique_mentity$Property_Type[i]) == TRUE){
+            
+            unique_mentity$Include[i] = "No"
+            
+            
+          } else if (grepl("SAC", unique_mentity$Owner[i])){
+            
+          
+            unique_mentity$Include[i] = "No"
+            
+          } else {
+            
+            unique_mentity$Include[i] = "Yes"
+        
+          }
+          
+        }
+
+
+# Manual Check for Parent MEntity ----
+# There is one center that shows as having a parent MEntity but not listed as abutting / remote  under property type / structure type. We will eliminate this center from the analysis manually below: 
+
+unique_mentity$Include[grepl("751075", unique_mentity$Entity)] <- 'No' 
+
+```
+
+
+```{r Filter properties that will return}
+
+# Filter for Open Properties ----
+unique_mentity <- 
+unique_mentity %>%
+  filter(STATUS == 'O')
+
+
+# Included properties vs not ----
+unique_mentity_include <- 
+unique_mentity %>%
+  filter(Include == 'Yes')
+
+  # Not included ----
+  not_included <- 
+    unique_mentity %>%
+    filter(Include == 'No')
+
+
+ # Export not included MEntity ----
+   # write.xlsx(not_included, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\excluded_MEntity.xlsx")
+
+```
+
+
+---
+## ** Final Check on Profit Centers** 
+---
+
+With our profit centers included within the list, we will now make a final check on these numbers. There are some observsations that contain NA profit center numbers. We will need to address why they are NA. 
+
+
+```{r}
+
+# NA profit center numbers ----
+missing_profitcenter <- 
+unique_mentity_include[is.na(unique_mentity_include$Profit_Center), ]
+
+  # Export missing profit center numbers ----
+  #write.xlsx(missing_profitcenter, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\missing_profitcenter.xlsx"    ) 
+
+
+```
+
+
+```{r}
+
+# Final list ----
+unique_mentity_include <- 
+unique_mentity_include %>%
+  filter(MEntity != 'M0000139998' & MEntity != 'M0000137990' & MEntity != 'M0000138980')
+
+```
+
+
+
+
+
+---
+##** Completed Acquisitions Spreadsheet Import & Check **
+---
+
+```{r}
+
+c_acquisitions <- 
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
+
+c_acquisitions$Permanent.Entity.. <- as.character(c_acquisitions$Permanent.Entity..)
+
+
+# completed completed acquisitions tbl conversion ----
+c_acquisitions <- 
+  as.tbl(c_acquisitions)
+
+c_acquisitions_include <- 
+  c_acquisitions %>% 
+  filter(Include. == 'Yes')
+      
+c_acquisitions_exclude <- 
+  c_acquisitions %>% 
+  filter(Include. == 'No')
+
+
+# ----------------------------------------------------------------------------------------------------------------------------
+
+  # Check whether NA Profit center values were updated ----
+  #na_profitcenter_include <- 
+   # c_acquisitions_include %>%
+    #filter(is.na(Profit_Center))
+
+  # Merge profit centers ----
+  #colnames(na_profitcenter_include)[8] <- "Entity"
+  #na_profitcenter_include$Entity <- as.character(na_profitcenter_include$Entity)
+  
+  #na_profitcenter_include <- 
+    #left_join(na_profitcenter_include, dlr01[ ,c(4, 103)], by = "Entity")
+  
+    #na_profitcenter_include <- 
+      #eft_join(na_profitcenter_include, SAP_db[ , c(2:3)], by = "MEntity")
+    
+    # In this step, we have previously exported all those entities that did not contain Profit Centers 
+    
+  
+```
+
+
+
+```{r}
+
+# Filter Entity that is now closed ----
+c_acquisitions_include <-
+  c_acquisitions_include %>%
+    filter(Permanent.Entity.. != "887001")
+
+```
+
+
+---
+## *Merge Tables*
+---
+
+In the following section, we will begin to create a single version of the Entity list that takes into account our new aggregation process. As a result, the new output will be used as a template. 
+
+        New Output Table: unique_mentity_include 
+        Previous Output: c_acquisitions_include
+
+
+```{r}
+
+# Arranged by close of escrow date ----
+unique_mentity_include <-
+  unique_mentity_include %>% 
+  dplyr::arrange(`Close of Escrow`)
+
+
+# Addition of Fiscal Year & Quarter Column ----
+unique_mentity_include$FY = ""
+unique_mentity_include$Quarter = ""
+
+
+# Addition of Group Column ----
+for (i in 1:length(unique_mentity_include$Entity)){
+  
+  if(unique_mentity_include$`Close of Escrow`[i] >= '2018-04-01' & unique_mentity_include$`Close of Escrow`[i] <= '2018-06-30'){
+    
+    unique_mentity_include$Group[i] = 14
+    unique_mentity_include$FY[i] = 2019
+    unique_mentity_include$Quarter[i] = 1 
+    
+    
+  } else if(unique_mentity_include$`Close of Escrow`[i] >= '2018-07-01' & unique_mentity_include$`Close of Escrow`[i] <= '2018-09-30'){
+    
+    unique_mentity_include$Group[i] = 15
+    unique_mentity_include$FY[i] = 2019
+    unique_mentity_include$Quarter[i] = 2
+      
+  }
+}
+
+# Removal of Parent Entity & MEntity columns ----
+unique_mentity_include <- 
+  unique_mentity_include[ ,-c(16, 17)]
+
+  # Column Name Updates ----
+  colnames(unique_mentity_include)[3] <- "Entity_Name"
+  colnames(unique_mentity_include)[4] <- "Entity_Type"
+  colnames(unique_mentity_include)[8] <- "Date_Opened"
+  colnames(unique_mentity_include)[9] <- "Date_Closed"
+  colnames(unique_mentity_include)[10] <- "Status"
+  colnames(unique_mentity_include)[11] <- "Address"
+  colnames(unique_mentity_include)[12] <- "City"
+  colnames(unique_mentity_include)[13] <- "State"
+  colnames(unique_mentity_include)[14] <- "Zip"
+  
+# Removal of "Property_Type", "Structure_Type" columns ----
+unique_mentity_include <- 
+unique_mentity_include[ , -c(16, 17, 18)]
+  
+  # Re-arrange columns ----
+  new_acq_list <- 
+    unique_mentity_include[ ,c("Group", "FY", "Quarter", "Close of Escrow", "Entity_Name", "MEntity", "Entity", "Profit_Center", "Entity_Type", "Date_Opened", "Date_Closed", "Status", "Address", "City", "State", "Purchase", "Owner", "Construction_Type" )] 
+  
+  # Re-arrange existing completed acquisitions data frame ---- 
+  colnames(c_acquisitions_include)[2] <- "FY"
+  colnames(c_acquisitions_include)[4] <- "Close of Escrow"
+  colnames(c_acquisitions_include)[8] <- "Entity"
+  colnames(c_acquisitions_include)[13] <- "Entity_Name"
+  colnames(c_acquisitions_include)[23] <- "Construction_Type"
+  colnames(c_acquisitions_include)[17] <- "Purchase"
+  colnames(c_acquisitions_include)[23] <- "Construction_Type"
+  colnames(c_acquisitions_include)[19] <- "Owner"
+  
+  # Add missing columns ----
+  c_acquisitions_include$MEntity = ""
+  c_acquisitions_include$Entity_Type = ""
+  c_acquisitions_include$Date_Opened = ""
+  c_acquisitions_include$Date_Closed = ""
+  c_acquisitions_include$Status = ""
+  
+```
+
+
+```{r}
+
+ old_acq_list <- 
+    c_acquisitions_include[ , c("Group", "FY", "Quarter", "Close of Escrow", "Entity_Name", "MEntity", "Entity", "Profit_Center", "Entity_Type","Date_Opened", "Date_Closed", "Status", "Address", "City", "State", "Purchase", "Owner", "Construction_Type")]
+  
+  # Convert FY column in old acquisitions list to character ----
+  old_acq_list$FY <- as.character(old_acq_list$FY)
+  old_acq_list$Quarter <- as.character(old_acq_list$Quarter)
+  old_acq_list$`Close of Escrow` <- as.character(old_acq_list$`Close of Escrow`)
+    old_acq_list$`Close of Escrow` <- as.Date(old_acq_list$`Close of Escrow`, format = "%m/%d/%Y")
+  old_acq_list$Profit_Center <- as.character(old_acq_list$Profit_Center)
+  old_acq_list$Purchase <- as.character(old_acq_list$Purchase)
+    old_acq_list$Purchase <- as.numeric(old_acq_list$Purchase)
+  
+    
+  # Open Status Centers for DLR01 ----
+  dlr01 <- 
+    dlr01 %>%
+    filter(STATUS == 'O')
+    
+    
+  # Import Information regarding previously used profit centers ----
+  old_acq_list_2 <-
+      left_join(old_acq_list, dlr01[,c(4, 42)], by = 'Entity')
+    
+    # merging the entity name creates 35 duplicate records. We will need to remove these. To ensure we are using unique values, we will remove duplicate profit centers. The old acq list contained a duplocate profit center. Because there are other checks for duplicates before compilation of the report, it is not an issue. However, it will be removed in the following step for data cleanliness. It was 7000011912 (a duplicate row) this will be removed from data set.
+  
+  old_acq_list_2 <-    
+  old_acq_list_2[!duplicated(old_acq_list_2$Profit_Center), ]  # 279 Rows 
+  
+  # Check whether the same elements are present in both character vectors
+  #setequal(pc_old, pc_old2) Returns TRUE. Profit Centers are the same.  The list is safe to continue. 
+  
+# ------------------------------------------------------------------  
+
+  # Merge MEntity ----
+  old_acq_list_2 <- 
+    left_join(old_acq_list_2, SAP_db[ , c(2, 3)], by = "Profit_Center")
+  
+    # Replace Mentity.x with newly imported MEntity.y ----
+    old_acq_list_2$MEntity.x <- old_acq_list_2$MEntity.y
+   
+    # Rename MEntity Column to remove ".x" at the end ----
+    colnames(old_acq_list_2)[6] <- "MEntity"
+      
+      # Eliminate MEntity.y ----
+      old_acq_list_2 <- 
+        old_acq_list_2[ ,-20]
+      
+    # Replace Entity_Name.x with Entity_Name.y ----
+    old_acq_list_2$Entity_Name = old_acq_list_2$ENTITY_NAME
+    
+      # Eliminate Entity_Name.y ----
+      old_acq_list_2 <- 
+        old_acq_list_2[ , -19]
+  
+# --------------------------------------------------------------------
+  
+  # Merge remaining Columns ----
+  old_acq_list_2 <- 
+    left_join(old_acq_list_2, dlr01[ , c(6, 9, 10, 15, 103)], by = "MEntity")
+  
+  # Columns needing import 
+    # Entity_Type
+    # Date_Opened
+    # Date_Closed 
+    # Status 
+    # Owner 
+  
+  # merge by: MEntity
+  
+  # Replace merged column values with existing names ----
+  old_acq_list_2$Entity_Type = old_acq_list_2$ENTITY_TYPE
+  old_acq_list_2$Date_Opened = old_acq_list_2$DATE_OPENED
+  old_acq_list_2$Date_Closed = old_acq_list_2$DATE_CLOSED
+  old_acq_list_2$Status = old_acq_list_2$STATUS
+    
+  # Remove additional columns importing when merging DLR01 ----
+  old_acq_list_2 <-
+    old_acq_list_2[ ,-c(19:22)]
+  
+  # Remove duplicate Profit Centers ----
+  old_acq_list_2 <-
+    old_acq_list_2[!duplicated(old_acq_list_2$Profit_Center), ]
+  
+  
+        # End wrangling of previously included profit centers ----
+  
+```
+
+
+
+```{r}
+
+# Owner, removal of USD/CAN ----
+new_acq_list$Owner <-
+  gsub("USD", "", new_acq_list$Owner)
+
+new_acq_list$Owner <- 
+  gsub("CAN", "", new_acq_list$Owner)
+
+  # Final Check for Dupliates in New_acq list ----
+  new_acq_list <-  
+  new_acq_list[!duplicated(new_acq_list$Profit_Center), ]
+
+  # Comparison of Grp14 old vs new list, they should be identical ----
+  grp_14_old <- 
+    old_acq_list_2 %>%
+    filter(Group == 14)
+
+  grp_14_new <-
+    new_acq_list %>%
+    filter(Group == 14)
+  
+  # The list comparison reveals the two are not identical. In this situation, we will need to combine the new acq list and remove any duplicates that might have pulled through. 
+
+# ---------------------------------------------------------------
+
+# Merge two data frames ----
+acq_list_final <- 
+  rbind(old_acq_list_2, new_acq_list)
+
+# Removal Q1 F19 duplicates with New Acquisitions list ----
+acq_list_final <-
+  acq_list_final[!duplicated(acq_list_final$Profit_Center), ]
+  
+  # 331 unique profit centers ----
+
+# ----------------------------------------------------------------
+  
+    # MEntity needing Owner Update ----
+  mentity_na_owner <- c("M0000135287",
+                        "M0000134863",
+                        "M0000135261",
+                        "M0000136358",
+                        "M0000133954",
+                        "M0000138032",
+                        "M0000133960",
+                        "M0000134490",
+                        "M0000135045",
+                        "M0000136447",
+                        "M0000138444",
+                        "M0000137801",
+                        "M0000135564"
+                        )
+  
+
+  # Boolean vector of values we would like to update based on the MEntity list above ----
+  na_owner_boolean <- acq_list_final$MEntity %in% mentity_na_owner
+  
+  # Replace Onwer with UHI (manually verified)
+  acq_list_final$Owner[na_owner_boolean] <- 'UHI' 
+  
+  # Removal of any Type Z Entity Type ----
+  acq_list_final <-
+    acq_list_final %>%
+    filter(Entity_Type != 'Z')
+  
+  
+  # Final Filter (based on Income statement compilation) -----
+  
+  acq_list_final <-
+    acq_list_final %>%
+    filter(MEntity != "M0000000135" &
+           MEntity != "M0000032042" &
+           MEntity != "M0000000914" &
+           MEntity != "M0000124790" &
+           MEntity != "M0000000300" &
+           MEntity != "M0000109346" &
+           MEntity != "M0000001085")
+  
+  # Additional removal of MEntity numbers based on further research into Graph File ----
+  acq_list_final <-
+    acq_list_final %>%
+    filter(MEntity != "M0000120652" &
+           MEntity != "M0000021213" &
+           MEntity != "M0000120652" &
+           MEntity != "M0000121555" &
+           MEntity != "M0000126872" &
+           MEntity != "M0000127701")
+  
+  
+  # Round 2 of eliminations ----
+  acq_list_final <- 
+    acq_list_final %>%
+    filter(MEntity != "M0000126399" &
+           MEntity != "M0000000940" &
+           MEntity != "M0000001312" &
+           MEntity != "M0000031767" &
+           MEntity != "M0000000385")
+  
+  
+```
+
+
+```{r Summarize Entity List }
+
+print(acq_list_final %>%
+  group_by(Group) %>%
+  summarize(Total = n_distinct(Profit_Center)))
+
+```
+
+
+
+
+## Chart of Account Comparison ##
+
+```{r}
+
+
+old_coa <- 
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Previously Used Chart of Accounts.csv")
+
+colnames(old_coa)[1] <- "SAP_number"
+
+old_coa$SAP_number <- as.character(old_coa$SAP_number)
+
+
+# Update Chart of accounts to integer for separation ----
+chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
+
+
+
+
+
+# Anti join old coa & new coa ----
+difference_in_coa <- 
+  anti_join(old_coa$SAP_number, chart_of_accounts$SAP_number)
+
+
+
+
+
+
+# Return the accounts not present within the new chart of accounts from the lender reporting ----
+difference_in_coa <- old_coa[which( !(old_coa$SAP_number %in% chart_of_accounts$SAP_number))]
+
+
+old_coa
+?inner_join
+
+```
+
+
+
+
+
+
+
+

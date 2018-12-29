@@ -102,249 +102,879 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
 # Finaccounting Tables ----
   IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")
   SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") 
+  sap_uhi_group <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP")
 
-# Finanalysis Tables ----
+# MEntity Tables ----
   SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")
     SAP.DB = collect(SAP_Info)
       SAP.DB %>% summarise(n_distinct(MEntity))
 
 # Occupancy Table ----  
-  wss_data = dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
+  wss_data <- dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
+  
+      
     
 # Collect SAP Hierarchy ----
   SAP.Hierarchy <- collect(SAP.Hierarchy)
   colnames(SAP.Hierarchy)[12] <- "Profit_Center"
   
-# %%%%%% #  
-# Inputs ----  
-# %%%%% #
-    
-# Dynamic Variables ----
-  date_occ <-
-    as.Date('2018-06-20') # Enter Current Month Date for data compilation ----
-  
+```
+
+
+## **Accounts**
+---
+
+```{r}
+
+# SAP Accounts ----
+accounts <-
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\income_statement_accounts.csv")
+
+
+colnames(accounts)[1] <- "SAP_number"
+
+
 ```
 
 
 ## **Functions**
 ---
 
+### *Date Difference Function*
+
+```{r}
+
+monnb <- function(d) { lt <- as.POSIXlt(as.Date(d, origin = "1900-01-01")); lt$year*12 + lt$mon } 
+mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
+
+```
+
+
+
+### *Line Item Function*
+
+```{r}
+
+# Step by Step TEst of Line Item Function ----
+line_item_function <- function(x, df){
+     
+    # x = list of line items 
+  
+     require(dplyr)
+     require(purrr)
+     
+     # Date Range for missing line items ----
+     min_is_month <- min(df$MONTH)
+     max_is_month <- as.Date('2018-09-01')
+     
+     # Line Item IS compilation ----
+     line_item_is <- 
+       df %>%
+       filter(`Line Item` == x[1]) %>%
+       group_by(MONTH, `Line Item`) %>%
+       summarize(Amount = sum(Amount))
+     
+     # Calculate date difference ----
+     date_diff <- 
+       mondf(min_is_month, min(line_item_is$MONTH))
+     
+     
+    # Check for date_diff NA ----
+    if(is.na(date_diff) == TRUE){  
+     
+    full_date <- 
+       seq.Date(from = min_is_month, to = max_is_month, by = "month")
+     
+     full_fill <- 
+       as.data.frame(full_date)
+     
+     # Rename to Month ----
+     colnames(full_fill) <- "MONTH"
+     
+     full_fill$`Line Item` <- as.character(paste(x[1]))
+     full_fill$Amount = 0
+     
+     line_item_is <- as.tbl(full_fill)
+     
+     # Filter for max date
+     line_item_is <-
+        line_item_is %>%
+        filter(MONTH < '2018-10-01')
+     
+     
+    } else if(date_diff > 0){
+     
+     
+  # Date Difference Logical Flow. 
+  # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ---- 
+
+     date_seq <-
+     seq.Date(from = min_is_month, to = min(line_item_is$MONTH) - 1, by = "month")
+   
+     fill_df <-
+     as.data.frame(date_seq)
+   
+    # Rename column ----
+     colnames(fill_df) <- "MONTH"
+     
+     fill_df$`Line Item` <- paste(x[1])
+     fill_df$Amount = 0
+   
+    # Bind Dataframes ----
+     line_item_is <-
+       bind_rows(fill_df, line_item_is)
+     
+     # tbl conversion ----
+     line_item_is <- as.tbl(line_item_is)
+     
+      # Filter for max date ----
+      line_item_is <-
+        line_item_is %>%
+        filter(MONTH < '2018-10-01')
+     
+    } else if(date_diff == 0){
+    
+      line_item_is <- as.tbl(line_item_is)
+      
+      # Filter for max date ----
+      line_item_is <-
+        line_item_is %>%
+        filter(MONTH < '2018-10-01')
+      
+    }
+  
+     
+     return(line_item_is)
+     
+}
+
+
+```
+
+
+
 ### *Aggregate Income Statement*
 
 ```{r}
 
-Aggregate.IS <- function(x){
-
+income_statment_compilation <- function(x, accounts){
+  
+  # x = list of profit centers 
+  # accounts = sap accounts to be used 
+  
   require(dplyr)
   require(lazyeval)
   require(purrr)
+  require(reshape2)
+  
+  # ------------------------------------------------
+  # Step 1: Filter for Profit Center & Account List 
+  # ------------------------------------------------
+  
+  # Filter SQL Database  & Collect ----
+  db <-
+  sap_uhi_group %>% 
+    filter(`PROFIT CENTER` %in% x & 
+             ACCOUNT %in% accounts &
+             `Fiscal Year` >= 2015)
+  
+    db <- collect(db)
+    
+    db$`PROFIT CENTER` <- as.character(db$`PROFIT CENTER`)
+    db$ACCOUNT <- as.character(db$ACCOUNT)
+  
+# Reformat database ----
+colnames(db)[11] <- 4
+colnames(db)[12] <- 5
+colnames(db)[13] <- 6
+colnames(db)[14] <- 7
+colnames(db)[15] <- 8
+colnames(db)[16] <- 9
+colnames(db)[17] <- 10
+colnames(db)[18] <- 11
+colnames(db)[19] <- 12
+colnames(db)[20] <- 1
+colnames(db)[21] <- 2
+colnames(db)[22] <- 3
+  
 
-  Income_Statement = IS.Trend.Cash %>% group_by(`MONTH`) %>%
-    filter(`PROFIT CENTER` %in% x & MONTH >= '2015-01-01' & MONTH <= '2018-6-01' & SPLIT == 'All' & CURRENCY == 'Group' & `CONTROLLING AREA` == 'UHAL' & `NET OPERATING INCOME` != 0) %>%
-    select(`MONTH`,
-           `STORAGE INCOME`,
-           SALES,
-           `SALES - SYSTEM`,
-           `COST OF SALES`,
-           `COST OF SALES - SYSTEM`,
-           `MISCELLANEOUS INCOME`,
-           `U-BOX INCOME NET COMMISSION`,
-           `U-MOVE NET COMMISSION`,
-           `THIRD PARTY RENT/LEASE INCOME`,
-           `PERSONNEL EXPENSE`,
-           `REPAIRS & MAINTENACE EXPENSE`,
-           `UTILITY EXPENSE`,
-           `TELEPHONE EXPENSE`,
-           `ADVERTISING EXPENSE`,
-           SUPPLIES,
-           `LEASE EXPENSE - LAND & BLDG`,
-           `LIABILITY INSURANCE`,
-           `PROPERTY TAX EXPENSE`,
-           `BAD DEBT EXPENSE`,
-           `OTHER OPERATING EXPENSE`) %>%
-    summarize(Storage_Income = sum(`STORAGE INCOME`),
-              Sales = sum(`SALES`),
-              Sales_System = sum(`SALES - SYSTEM`),
-              Cost_of_Sales = sum(`COST OF SALES`),
-              Cost_of_Sales_System = sum(`COST OF SALES - SYSTEM`),
-              Misc_Income = sum(`MISCELLANEOUS INCOME`),
-              UBox_Net = sum(`U-BOX INCOME NET COMMISSION`),
-              UMove_Net = sum(`U-MOVE NET COMMISSION`),
-              Third_Party_Rent_Lease_Income = sum(`THIRD PARTY RENT/LEASE INCOME`),
-              Personnel_Exp = sum(`PERSONNEL EXPENSE`),
-              Repairs_and_Maintenance = sum(`REPAIRS & MAINTENACE EXPENSE`),
-              Utility_Exp = sum(`UTILITY EXPENSE`),
-              Telephone_Exp = sum(`TELEPHONE EXPENSE`),
-              Advertising_Exp = sum(`ADVERTISING EXPENSE`),
-              Supplies = sum(`SUPPLIES`),
-              Lease_Exp = sum(`LEASE EXPENSE - LAND & BLDG`),
-              Liab_Insurance = sum(`LIABILITY INSURANCE`),
-              Property_Tax = sum(`PROPERTY TAX EXPENSE`),
-              Bad_Debt_Exp = sum(`BAD DEBT EXPENSE`),
-              Other_Op_Exp = sum(`OTHER OPERATING EXPENSE`))
+  # Eliminate Unecessary columns ----
+  db <-
+    db[ , -c(1,3,4,5,9,10,23,24,26,27)]
 
-  Income_Statement.Local = collect(Income_Statement)
+    db <- 
+      melt(db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
+    
+# Rename columns ----
+colnames(db)[3] <-  "SAP_number"   
+colnames(db)[7] <- "Amount"
+colnames(db)[6] <- "Cal_Month"
 
-  Income_Statement.Local[is.na(Income_Statement.Local)] = 0 #Replace NA values with 0
+  db$Cal_Month <- as.character(db$Cal_Month)
+  db$Cal_Month <- as.numeric(db$Cal_Month)
+  db$SAP_number <- as.character(db$SAP_number)
 
-  ##Updating line##
-  Income_Statement.Local = Income_Statement.Local %>%
-    mutate(Adj_Sales = Sales - Sales_System,
-           Adj_COS = Cost_of_Sales - Cost_of_Sales_System,
-           Adj_NetSales = (Sales - Sales_System) + (Cost_of_Sales - Cost_of_Sales_System),
-           Op_TotalIncome = Storage_Income + Adj_Sales + Adj_COS + Misc_Income + UBox_Net + UMove_Net + Third_Party_Rent_Lease_Income,
-           Op_Expense = Personnel_Exp + Repairs_and_Maintenance + Utility_Exp + Telephone_Exp + Advertising_Exp + Supplies + Lease_Exp + Liab_Insurance +  Property_Tax + Bad_Debt_Exp + Other_Op_Exp,
-           OP_NOI = Op_TotalIncome + Op_Expense)
+# Creation of Calendar "MONTH" column ----
+db$Cal_Year = " "
 
-  #Change "Month" to Date
-  Income_Statement.Local$MONTH = as.Date(Income_Statement.Local$MONTH)
+for (i in 1:length(db$`PROFIT CENTER`)){
+  
+  if(db$Cal_Month[i] >= 4 & db$Cal_Month[i] <= 12){
+    
+    db$Cal_Year[i] = db$`Fiscal Year`[i] - 1
+    
+  } else {
+    
+    db$Cal_Year[i] = db$`Fiscal Year`[i] 
+    
+  }
+  
+}
 
-  #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  #%% Flip expense signs to positive %%
-  #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ # MONTH column update ----  
+ db$MONTH <- 
+   paste(db$Cal_Year, db$Cal_Month, 1, sep = "-")
+  
+   db$MONTH <- as.Date(db$MONTH, format = "%Y-%m-%d") 
+   
+   
+   # Convert Chart of Accounts "SAP_Number" into character ----
+   chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
+   
+    
+  # Compilation of income statement ----
+  db <-
+    left_join(db, chart_of_accounts[ ,c(1,4)], by = "SAP_number")
+   
+    colnames(db)[10] <- "Line Item"
+    
+    
 
-  Income_Statement.Local$Cost_of_Sales = -(Income_Statement.Local$Cost_of_Sales)
-  Income_Statement.Local$Adj_COS = -(Income_Statement.Local$Adj_COS)
-  Income_Statement.Local$Cost_of_Sales_System = -(Income_Statement.Local$Cost_of_Sales_System)
-  Income_Statement.Local$Personnel_Exp = -(Income_Statement.Local$Personnel_Exp)
-  Income_Statement.Local$Repairs_and_Maintenance = -(Income_Statement.Local$Repairs_and_Maintenance)
-  Income_Statement.Local$Utility_Exp = -(Income_Statement.Local$Utility_Exp)
-  Income_Statement.Local$Telephone_Exp = -(Income_Statement.Local$Telephone_Exp)
-  Income_Statement.Local$Advertising_Exp = -(Income_Statement.Local$Advertising_Exp)
-  Income_Statement.Local$Supplies = -(Income_Statement.Local$Supplies)
-  Income_Statement.Local$Lease_Exp = -(Income_Statement.Local$Lease_Exp)
-  Income_Statement.Local$Liab_Insurance = -(Income_Statement.Local$Liab_Insurance)
-  Income_Statement.Local$Property_Tax = -(Income_Statement.Local$Property_Tax)
-  Income_Statement.Local$Bad_Debt_Exp = -(Income_Statement.Local$Bad_Debt_Exp)
-  Income_Statement.Local$Other_Op_Exp = -(Income_Statement.Local$Other_Op_Exp)
-  Income_Statement.Local$Op_Expense = -(Income_Statement.Local$Op_Expense)
+#------------------------------------------
+# Step 2: Individual Line Item Compilation
+# -----------------------------------------
+  
+  # This step will ensure all Line Items and Months are represented within the income statement for NOI calculation. If they are not, dedault value = 0
+  line_item <- 
+    lapply(line_item_list, line_item_function, df = db)
 
+  # Collapse List of Data Frames into 1 ----
+  aggregate_df <-
+    ldply(line_item, as.data.frame)
+    
+    
+  # Reversal of Line Item Signs ----
+    for(i in 1:length(aggregate_df$`Line Item`)){
+    
+    if(aggregate_df$`Line Item`[i] == 'STORAGE INCOME'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'SALES'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'MISCELLANEOUS INCOME'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'U-BOX'){
+    
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+    
+      
+    } else if(aggregate_df$`Line Item`[i] == 'U-MOVE NET COMMISSION'){
+    
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'INTERCOMPANY LEASE'){  
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1 
+      
+    } else if(aggregate_df$`Line Item`[i] == 'THIRD PARTY LEASE '){  
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1 
+    
+    }
+    }
+    
 
-  #Melt Dataframe
-  melt.data = melt(Income_Statement.Local, id = "MONTH")
+# -------------------------
+# Step 3: Horizontal Format
+# -------------------------
+    
+ # Convert to horizontal format ----
+ aggregate_df <- 
+     tidyr::spread(aggregate_df, `Line Item`, Amount)
+ 
+   # Replace NA with 0 ----
+   aggregate_df[is.na(aggregate_df)] <- 0          
+  
+    # Calculate NOI ----
+  aggregate_df <-  
+   aggregate_df %>%
+      mutate(
+        NET_SALES = `SALES` - `COST OF SALES`,
+        
+        REVENUE = 
+               `STORAGE INCOME` +
+                NET_SALES +   
+                `MISCELLANEOUS INCOME` +   
+                `U-BOX` +
+                `U-MOVE NET COMMISSION` +
+                `INTERCOMPANY LEASE` +
+                `THIRD PARTY LEASE `, 
+             
+             TOTAL_OP_EXPENSE = 
+               `PERSONNEL` +
+               `REPAIRS AND MAINTENANCE/GENERAL` +
+               `UTILITIES` +
+               `TELEPHONE` +
+               `ADVERTISING` +
+               `SUPPLIES` +
+               `RENT-EQUIPMENT/LAND AND BLDGS` +
+               `LIABILITY INSURANCE` + 
+               `PROPERTY TAX` +
+               `BAD DEBT EXPENSE` +
+               `OTHER OPERATING EXPENSE`,
+               
+        NOI =
+               `STORAGE INCOME` +
+               `SALES` -
+               `COST OF SALES` +
+               `MISCELLANEOUS INCOME` +
+               `U-BOX` +
+               `U-MOVE NET COMMISSION` +
+               `INTERCOMPANY LEASE` +
+               `THIRD PARTY LEASE ` -
+               `PERSONNEL` -
+               `REPAIRS AND MAINTENANCE/GENERAL` -
+               `UTILITIES` -
+               `TELEPHONE` -
+               `ADVERTISING` -
+               `SUPPLIES` -
+               `RENT-EQUIPMENT/LAND AND BLDGS` -
+               `LIABILITY INSURANCE` - 
+               `PROPERTY TAX` -
+               `BAD DEBT EXPENSE` -
+               `OTHER OPERATING EXPENSE`
+               )
+    
+  # Rename for ease of function ----
+  db <- aggregate_df  
+    
+    # Trim for NOI != 0 (eliminate blank rows from income statement) ----
+    db <-
+      db %>% 
+      filter(NOI != 0)
+    
+  # Melt back to vertical format ----
+ db <-
+   melt(db, id = c("MONTH"))
+    
+    
+# Import Fiscal Year Columns ----
+  db$FY = " "
+  db$FM = " "
+  db$Quarter = " "
+   
+  
+  for (i in 1:length(db$FY)){
 
-  #Fiscal Year / Month Qualifications
-  melt.data$FY = ""
-  melt.data$FM = " "
-  melt.data$Quarter = ""
+    if(db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
 
+      db$FY[i] = 2015
+      db$Quarter[i] = 4
 
-  #%%%%%%%%%%%%%%%%%%%%%
-  #%% FY and Quarter Loop %%
-  #%%%%%%%%%%%%%%%%%%%%%
+    } else if (db$MONTH[i] >= '2015/4/1' & db$MONTH[i] <= '2015/6/1') {
 
-  for (i in 1:length(melt.data$FY)){
+      db$FY[i] = 2016
+      db$Quarter[i] = 1
 
-    if(melt.data$MONTH[i] >= '2015/1/1' & melt.data$MONTH[i] <= '2015/3/1'){
+    } else if (db$MONTH[i] >= '2015/7/1' & db$MONTH[i] <= '2015/9/1') {
 
-      melt.data$FY[i] = 2015
-      melt.data$Quarter[i] = 4
+      db$FY[i] = 2016
+      db$Quarter[i] = 2
 
-    } else if (melt.data$MONTH[i] >= '2015/4/1' & melt.data$MONTH[i] <= '2015/6/1') {
+    } else if (db$MONTH[i] >= '2015/10/1' & db$MONTH[i] <= '2015/12/1'){
 
-      melt.data$FY[i] = 2016
-      melt.data$Quarter[i] = 1
+      db$FY[i] = 2016
+      db$Quarter[i] = 3
 
-    } else if (melt.data$MONTH[i] >= '2015/7/1' & melt.data$MONTH[i] <= '2015/9/1') {
+    } else if (db$MONTH[i] >= '2016/1/1' & db$MONTH[i] <= '2016/3/1'){
 
-      melt.data$FY[i] = 2016
-      melt.data$Quarter[i] = 2
+      db$FY[i] = 2016
+      db$Quarter[i] = 4
 
-    } else if (melt.data$MONTH[i] >= '2015/10/1' & melt.data$MONTH[i] <= '2015/12/1'){
+    } else if (db$MONTH[i] >= '2016/4/1' & db$MONTH[i] <= '2016/6/1'){
 
-      melt.data$FY[i] = 2016
-      melt.data$Quarter[i] = 3
+      db$FY[i] = 2017
+      db$Quarter[i] = 1
 
-    } else if (melt.data$MONTH[i] >= '2016/1/1' & melt.data$MONTH[i] <= '2016/3/1'){
+    } else if (db$MONTH[i] >= '2016/7/1' & db$MONTH[i] <= '2016/9/1'){
 
-      melt.data$FY[i] = 2016
-      melt.data$Quarter[i] = 4
+      db$FY[i] = 2017
+      db$Quarter[i] = 2
 
-    } else if (melt.data$MONTH[i] >= '2016/4/1' & melt.data$MONTH[i] <= '2016/6/1'){
+    } else if (db$MONTH[i] >= '2016/10/1' & db$MONTH[i] <= '2016/12/1'){
 
-      melt.data$FY[i] = 2017
-      melt.data$Quarter[i] = 1
+      db$FY[i] = 2017
+      db$Quarter[i] = 3
 
-    } else if (melt.data$MONTH[i] >= '2016/7/1' & melt.data$MONTH[i] <= '2016/9/1'){
+    } else if (db$MONTH[i] >= '2017/1/1' & db$MONTH[i] <= '2017/3/1'){
 
-      melt.data$FY[i] = 2017
-      melt.data$Quarter[i] = 2
+      db$FY[i] = 2017
+      db$Quarter[i] = 4
 
-    } else if (melt.data$MONTH[i] >= '2016/10/1' & melt.data$MONTH[i] <= '2016/12/1'){
+    } else if (db$MONTH[i] >= '2017/4/1' & db$MONTH[i] <= '2017/6/1'){
 
-      melt.data$FY[i] = 2017
-      melt.data$Quarter[i] = 3
+      db$FY[i] = 2018
+      db$Quarter[i] = 1
 
-    } else if (melt.data$MONTH[i] >= '2017/1/1' & melt.data$MONTH[i] <= '2017/3/1'){
+    } else if (db$MONTH[i] >= '2017/7/1' & db$MONTH[i] <= '2017/9/1'){
 
-      melt.data$FY[i] = 2017
-      melt.data$Quarter[i] = 4
+      db$FY[i] = 2018
+      db$Quarter[i] = 2
 
-    } else if (melt.data$MONTH[i] >= '2017/4/1' & melt.data$MONTH[i] <= '2017/6/1'){
+    } else if (db$MONTH[i] >= '2017/10/1' & db$MONTH[i] <= '2017/12/1'){
 
-      melt.data$FY[i] = 2018
-      melt.data$Quarter[i] = 1
+      db$FY[i] = 2018
+      db$Quarter[i] = 3
 
-    } else if (melt.data$MONTH[i] >= '2017/7/1' & melt.data$MONTH[i] <= '2017/9/1'){
+    } else if (db$MONTH[i] >= '2018/1/1' & db$MONTH[i] <= '2018/3/1'){
 
-      melt.data$FY[i] = 2018
-      melt.data$Quarter[i] = 2
+      db$FY[i] = 2018
+      db$Quarter[i] = 4
 
-    } else if (melt.data$MONTH[i] >= '2017/10/1' & melt.data$MONTH[i] <= '2017/12/1'){
+    } else if (db$MONTH[i] >= '2018/4/1' & db$MONTH[i] <= '2018/6/1'){
 
-      melt.data$FY[i] = 2018
-      melt.data$Quarter[i] = 3
+      db$FY[i] = 2019
+      db$Quarter[i] = 1
 
-    } else if (melt.data$MONTH[i] >= '2018/1/1' & melt.data$MONTH[i] <= '2018/3/1'){
+    } else if (db$MONTH[i] >= '2018/7/1' & db$MONTH[i] <= '2018/9/1'){
 
-      melt.data$FY[i] = 2018
-      melt.data$Quarter[i] = 4
-
-    } else if (melt.data$MONTH[i] >= '2018/4/1' & melt.data$MONTH[i] <= '2018/6/1'){
-
-      melt.data$FY[i] = 2019
-      melt.data$Quarter[i] = 1
-
-    } else if (melt.data$MONTH[i] >= '2018/7/1' & melt.data$MONTH[i] <= '2018/9/1'){
-
-      melt.data$FY[i] = 2019
-      melt.data$Quarter[i] = 2
+      db$FY[i] = 2019
+      db$Quarter[i] = 2
 
     }
   }
+  
+  
+   # Addition of Month Column ----
+   db$Month = " "
 
-  #%%%%%%%%%%%%%
-  #%% Month Loop %%
-  #%%%%%%%%%%%%
-
-  melt.data$Month = " "
-
-  for (i in 1:length(melt.data$Month)){
-    melt.data$Month[i] = format(melt.data$MONTH[i], "%b")
+  for (i in 1:length(db$Month)){
+    db$Month[i] = format(db$MONTH[i], "%b")
   }
-  for (i in 1:length(melt.data$FM)){
-    if(month(melt.data$MONTH[i]) >= 4 & month(melt.data$MONTH[i]) <= 12){
-      melt.data$FM[i] = month(melt.data$MONTH[i]) - 3
-    } else if (month(melt.data$MONTH[i]) == 1) {
-      melt.data$FM[i] = 10
-    } else if (month(melt.data$MONTH[i]) == 2) {
-      melt.data$FM[i] = 11
-    } else if (month(melt.data$MONTH[i]) == 3){
-      melt.data$FM[i] = 12
+  for (i in 1:length(db$FM)){
+    if(month(db$MONTH[i]) >= 4 & month(db$MONTH[i]) <= 12){
+      db$FM[i] = month(db$MONTH[i]) - 3
+    } else if (month(db$MONTH[i]) == 1) {
+      db$FM[i] = 10
+    } else if (month(db$MONTH[i]) == 2) {
+      db$FM[i] = 11
+    } else if (month(db$MONTH[i]) == 3){
+      db$FM[i] = 12
     }
   }
+  
+  # Rename Columns ----
+  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
+    
+  return(db)
 
-  #%%%%%%%%%%%%%%%%
-  #%% Rename Columns %%
-  #%%%%%%%%%%%%%%%%%
+}
 
-  colnames(melt.data) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month")
 
-  return(melt.data)
+```
+
+
+```{r}
+
+income_statment_compilation_append <- function(x, accounts){
+  
+  # x = list of profit centers 
+  # accounts = sap accounts to be used 
+  
+  require(dplyr)
+  require(lazyeval)
+  require(purrr)
+  require(reshape2)
+  
+  # ------------------------------------------------
+  # Step 1: Filter for Profit Center & Account List 
+  # ------------------------------------------------
+  
+  # Filter SQL Database  & Collect ----
+  db <-
+  sap_uhi_group %>% 
+    filter(`PROFIT CENTER` %in% x[["Profit_Center"]] & 
+             ACCOUNT %in% accounts &
+             `Fiscal Year` >= 2015)
+  
+    db <- collect(db)
+    
+    db$`PROFIT CENTER` <- as.character(db$`PROFIT CENTER`)
+    db$ACCOUNT <- as.character(db$ACCOUNT)
+  
+# Reformat database ----
+colnames(db)[11] <- 4
+colnames(db)[12] <- 5
+colnames(db)[13] <- 6
+colnames(db)[14] <- 7
+colnames(db)[15] <- 8
+colnames(db)[16] <- 9
+colnames(db)[17] <- 10
+colnames(db)[18] <- 11
+colnames(db)[19] <- 12
+colnames(db)[20] <- 1
+colnames(db)[21] <- 2
+colnames(db)[22] <- 3
+  
+
+  # Eliminate Unecessary columns ----
+  db <-
+    db[ , -c(1,3,4,5,9,10,23,24,26,27)]
+
+    db <- 
+      melt(db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
+    
+# Rename columns ----
+colnames(db)[3] <-  "SAP_number"   
+colnames(db)[7] <- "Amount"
+colnames(db)[6] <- "Cal_Month"
+
+  db$Cal_Month <- as.character(db$Cal_Month)
+  db$Cal_Month <- as.numeric(db$Cal_Month)
+  db$SAP_number <- as.character(db$SAP_number)
+
+# Creation of Calendar "MONTH" column ----
+db$Cal_Year = " "
+
+for (i in 1:length(db$`PROFIT CENTER`)){
+  
+  if(db$Cal_Month[i] >= 4 & db$Cal_Month[i] <= 12){
+    
+    db$Cal_Year[i] = db$`Fiscal Year`[i] - 1
+    
+  } else {
+    
+    db$Cal_Year[i] = db$`Fiscal Year`[i] 
+    
+  }
+  
+}
+
+ # MONTH column update ----  
+ db$MONTH <- 
+   paste(db$Cal_Year, db$Cal_Month, 1, sep = "-")
+  
+   db$MONTH <- as.Date(db$MONTH, format = "%Y-%m-%d") 
+   
+   
+   # Convert Chart of Accounts "SAP_Number" into character ----
+   chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
+   
+    
+  # Compilation of income statement ----
+  db <-
+    left_join(db, chart_of_accounts[ ,c(1,4)], by = "SAP_number")
+   
+    colnames(db)[10] <- "Line Item"
+    
+    
+
+#------------------------------------------
+# Step 2: Individual Line Item Compilation
+# -----------------------------------------
+  
+  # This step will ensure all Line Items and Months are represented within the income statement for NOI calculation. If they are not, dedault value = 0
+  line_item <- 
+    lapply(line_item_list, line_item_function, df = db)
+
+  # Collapse List of Data Frames into 1 ----
+  aggregate_df <-
+    ldply(line_item, as.data.frame)
+    
+    
+  # Reversal of Line Item Signs ----
+    for(i in 1:length(aggregate_df$`Line Item`)){
+    
+    if(aggregate_df$`Line Item`[i] == 'STORAGE INCOME'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'SALES'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'MISCELLANEOUS INCOME'){
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'U-BOX'){
+    
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+    
+      
+    } else if(aggregate_df$`Line Item`[i] == 'U-MOVE NET COMMISSION'){
+    
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1
+      
+      
+    } else if(aggregate_df$`Line Item`[i] == 'INTERCOMPANY LEASE'){  
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1 
+      
+    } else if(aggregate_df$`Line Item`[i] == 'THIRD PARTY LEASE '){  
+      
+      aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1 
+    
+  }
+    } 
+
+# -------------------------
+# Step 3: Horizontal Format
+# -------------------------
+    
+ # Convert to horizontal format ----
+ aggregate_df <- 
+     tidyr::spread(aggregate_df, `Line Item`, Amount)
+ 
+   # Replace NA with 0 ----
+   aggregate_df[is.na(aggregate_df)] <- 0          
+  
+   # Calculate NOI ----
+  aggregate_df <-  
+   aggregate_df %>%
+      mutate(
+        
+        NET_SALES = `SALES` - `COST OF SALES`,
+        
+        REVENUE = 
+               `STORAGE INCOME` +
+                NET_SALES +   
+                `MISCELLANEOUS INCOME` +   
+                `U-BOX` +
+                `U-MOVE NET COMMISSION` +
+                `INTERCOMPANY LEASE` +
+                `THIRD PARTY LEASE `, 
+      
+   
+             
+             TOTAL_OP_EXPENSE = 
+               `PERSONNEL` +
+               `REPAIRS AND MAINTENANCE/GENERAL` +
+               `UTILITIES` +
+               `TELEPHONE` +
+               `ADVERTISING` +
+               `SUPPLIES` +
+               `RENT-EQUIPMENT/LAND AND BLDGS` +
+               `LIABILITY INSURANCE` + 
+               `PROPERTY TAX` +
+               `BAD DEBT EXPENSE` +
+               `OTHER OPERATING EXPENSE`,
+               
+        NOI =
+               `STORAGE INCOME` +
+               `SALES` -
+               `COST OF SALES` +
+               `MISCELLANEOUS INCOME` +
+               `U-BOX` +
+               `U-MOVE NET COMMISSION` +
+               `INTERCOMPANY LEASE` +
+               `THIRD PARTY LEASE ` -
+               `PERSONNEL` -
+               `REPAIRS AND MAINTENANCE/GENERAL` -
+               `UTILITIES` -
+               `TELEPHONE` -
+               `ADVERTISING` -
+               `SUPPLIES` -
+               `RENT-EQUIPMENT/LAND AND BLDGS` -
+               `LIABILITY INSURANCE` - 
+               `PROPERTY TAX` -
+               `BAD DEBT EXPENSE` -
+               `OTHER OPERATING EXPENSE`
+        
+        
+        
+        
+               )
+    
+    
+  # Rename for ease of function ----
+  db <- aggregate_df  
+    
+    # Trim for NOI != 0 (eliminate blank rows from income statement) ----
+    db <-
+      db %>% 
+      filter(NOI != 0)
+    
+  # Melt back to vertical format ----
+ db <-
+   melt(db, id = c("MONTH"))
+    
+    
+# Import Fiscal Year Columns ----
+  db$FY = " "
+  db$FM = " "
+  db$Quarter = " "
+   
+  
+  for (i in 1:length(db$FY)){
+
+    if(db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
+
+      db$FY[i] = 2015
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2015/4/1' & db$MONTH[i] <= '2015/6/1') {
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2015/7/1' & db$MONTH[i] <= '2015/9/1') {
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2015/10/1' & db$MONTH[i] <= '2015/12/1'){
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2016/1/1' & db$MONTH[i] <= '2016/3/1'){
+
+      db$FY[i] = 2016
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2016/4/1' & db$MONTH[i] <= '2016/6/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2016/7/1' & db$MONTH[i] <= '2016/9/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2016/10/1' & db$MONTH[i] <= '2016/12/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2017/1/1' & db$MONTH[i] <= '2017/3/1'){
+
+      db$FY[i] = 2017
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2017/4/1' & db$MONTH[i] <= '2017/6/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2017/7/1' & db$MONTH[i] <= '2017/9/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 2
+
+    } else if (db$MONTH[i] >= '2017/10/1' & db$MONTH[i] <= '2017/12/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 3
+
+    } else if (db$MONTH[i] >= '2018/1/1' & db$MONTH[i] <= '2018/3/1'){
+
+      db$FY[i] = 2018
+      db$Quarter[i] = 4
+
+    } else if (db$MONTH[i] >= '2018/4/1' & db$MONTH[i] <= '2018/6/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 1
+
+    } else if (db$MONTH[i] >= '2018/7/1' & db$MONTH[i] <= '2018/9/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 2
+
+    }
+  }
+  
+  
+   # Addition of Month Column ----
+   db$Month = " "
+
+  for (i in 1:length(db$Month)){
+    db$Month[i] = format(db$MONTH[i], "%b")
+  }
+  for (i in 1:length(db$FM)){
+    if(month(db$MONTH[i]) >= 4 & month(db$MONTH[i]) <= 12){
+      db$FM[i] = month(db$MONTH[i]) - 3
+    } else if (month(db$MONTH[i]) == 1) {
+      db$FM[i] = 10
+    } else if (month(db$MONTH[i]) == 2) {
+      db$FM[i] = 11
+    } else if (month(db$MONTH[i]) == 3){
+      db$FM[i] = 12
+    }
+  }
+  
+  # Rename Columns ----
+  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
+  
+  # Append List ----
+    y <-
+      append(x, list(db))
+  
+  names(y)[[4]] = "Income_Statement"
+  
+  return(y)
+
+}
+
+
+```
+
+
+
+
+
+
+### *Minimum IS Trend Data Date*
+
+```{r}
+
+month_opertation_start <- function(x) {
+  
+  require(dplyr)
+  require(lazyeval)
+  require(purrr)
+  
+  IS_trend <- income_statment_compilation(x, accounts = sap_accounts$SAP_number)
+
+  min_month <- 
+    IS_trend %>%
+    filter(`Line Item` == 'NOI' & Value != 0)
+  
+    min_month <- 
+      min(min_month$Date)
+  
+      return(min_month)
 
 }
 
 ```
+
+
+
 
 
 ### **Income Statement Data Check**
@@ -438,11 +1068,10 @@ data_check_center <-
 }
 
 
-
 ```
 
 
-```{r}
+```{r Nested List Creation}
 
 # Nested list creation
   nested_list_creation <-
@@ -464,9 +1093,10 @@ data_check_center <-
 
 ```
 
-### **FY / FM Column Addition**
 
-```{r}
+### **FY / FM Column Addition (Occupancy Metrics)**
+
+```{r FY n FM Column Creation}
 
   fiscal_year_columns <- function(x){
       
@@ -708,36 +1338,7 @@ data_check_center <-
 ```
 
 
-### **Group Identifier**
 
-```{r}
-
-
-
-
-```
-
-
-
-
-
-### **Month of Operation Start**
-
-```{r}
-
-MonthofOperation.Start = function (x){
-
-  #Library
-  require("dplyr")
-  require("lazyeval")
-  require("purrr") #makes iteration problems easier to solve
-
-  start_of_record = min(x$MONTH)
-  return(start_of_record)
-  
-}
-
-```
 
 
 ### **Omit NA from list**
@@ -786,57 +1387,6 @@ vector.conv <- function(x){
 ```
 
 
-##**Compilation of New Acquisitions List**
-
-```{r This section will need to be updated last}
-
-# Import New Acquisitions List ----
-  New.Acquisitions <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\New Acquisitions F19 Q1.csv")
-
-  # Rename New.Acquisitions 3rd column to "Entity"  ----
-    colnames(New.Acquisitions)[3] <- "Entity"
-      New.Acquisitions$Entity <- as.character(New.Acquisitions$Entity)
-      
-  # Import Graph File Data ----
-    Graph.File <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Q1 Graph File.csv", header = TRUE)
-      
-    Graph.File$Entity <- as.character(Graph.File$Entity)
-    Graph.File$MEntity <- as.character(Graph.File$MEntity)
-    
-  # Import Profit Center from Graph File
-    New.Acquisitions = left_join(New.Acquisitions, Graph.Entity.Info.Local[, c(1,3,21)], by = 'Entity')
-    New.Acquisitions <- left_join(New.Acquisitions, Graph.File[ , c(1,10)], by = 'Entity') #Import Owner
-  
-    
-    
-      # Filter for abutting properties.
-        for (i in 1:length(New.Acquisitions$Entity)){
-          
-          if (grepl("?butting", New.Acquisitions$Property.Description[i]) == TRUE){
-            
-            New.Acquisitions$Include[i] = 'No'
-            
-          } else if (grepl("?emote", New.Acquisitions$Property.Description[i]) == TRUE){
-            
-            New.Acquisitions$Include[i] = "No"
-            
-            
-          } else if (grepl("SAC", New.Acquisitions$Owner[i])){
-            
-          
-            New.Acquisitions$Include[i] = "No"
-            
-          } else {
-            
-            New.Acquisitions$Include[i] = "Yes"
-        
-          }
-        }
-
-    # Export to CSV
-     # write.csv(New.Acquisitions, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\NewAcq_Export.csv")
-  
-```
 
 ---
 ##**Completed Acquisitions Spreadsheet**
@@ -859,38 +1409,54 @@ vector.conv <- function(x){
           c_acquisitions %>% 
           filter(Include. == 'No')
       
+        
 ```
+
+
+```{r Updated Entity List 11/1/2018}
+
+acq_list_final
+
+# Export List <----
+write.csv(acq_list_final, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Acq_list_final.csv")
+
+
+```
+
 
 
 ###*Duplicate profit center check*
 
 ```{r}
 
-# c.acquisitions extraction of profit center numbers ----
-  c_acquisitions_pc <-
-    c_acquisitions_include %>% 
+# Extraction of profit center numbers ----
+  acq_pc <-
+    acq_list_final %>% 
     select(Profit_Center)
 
-  # c.aquisitioins removal of NA values ----
-    c_acquisitions_pc_complete <-  
-      c_acquisitions_pc[!is.na(c_acquisitions_pc), ] 
+  # Removal of NA values ----
+    acq_pc <-  
+      acq_pc[!is.na(acq_pc), ] 
    
     # Check for duplicate profit centers within completed acquisitions data frame ----
-      duplicate_pc_check_1 <- 
-        c_acquisitions_pc_complete %>%
+      acq_pc_check <- 
+        acq_pc %>%
           group_by(Profit_Center) %>%
           mutate(Count = 1) %>%
           summarise(Total = sum(Count)) %>%
           filter(Total > 1)
       
       # Kill switch if duplicate profit centers are detected; Check 1 ----
-        if(length(duplicate_pc_check_1$Profit_Center) != 0) {
+        if(length(acq_pc_check$Profit_Center) != 0) {
         
           stop() 
         
         }
 
+
 ```
+
+
 
 
 ---
@@ -911,7 +1477,7 @@ Process
 
 # Split Data Frame into Elements within a list ----
   q_list_container <- 
-    split(c_acquisitions_include, f = c_acquisitions_include$Group)
+    split(acq_list_final, f = acq_list_final$Group)
 
   # Select Unique Profit Center Numbers ----
     profit_center_selection <- function(x){
@@ -938,6 +1504,7 @@ Process
 # Remove NA from quarter list (this is a safety on the initial )
   quarter_list <- 
     lapply(quarter_list, function(x){x[!is.na(x)]})
+  
   
 ```
 
@@ -1007,10 +1574,10 @@ Process
 ```{r Aggregate Income Statement Process}
 
 # Income statement compilation ----
-  aggregate_income_statement <- map(quarter_list, Aggregate.IS)
+  aggregate_income_statement <- map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
 
   # Creation of group identifier table ----
-    grp_number <- c(1:14)
+    grp_number <- c(1:15)
     grp_name <- c("FY15 Q4", 
                   "FY16 Q1", 
                   "FY16 Q2",
@@ -1024,7 +1591,8 @@ Process
                   "FY18 Q2", 
                   "FY18 Q3", 
                   "FY18 Q4",
-                  "FY19 Q1")
+                  "FY19 Q1",
+                  "FY19 Q2")
     
     grp_table <- 
       data.frame(grp_number,grp_name)
@@ -1050,9 +1618,10 @@ Process
         income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
 
     # Export Data
-      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Report Data\\Report42018.xlsx",
-                    sheetName = "Report42018")
+      xlsx::write.xlsx(income_statement_aggregate, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Income_Statement.xlsx",
+                   sheetName = "Income_Statement")
     
+      
 ```
 
 
@@ -1097,7 +1666,21 @@ Process
     
   # Modify names of outer list ----
   group_names <-
-    c('FY15 Q4', 'FY16 Q1', 'FY16 Q2', 'FY16 Q3', 'FY16 Q4', 'FY17 Q1', 'FY17 Q2', 'FY17 Q3', 'FY17 Q4', 'FY18 Q1', 'FY18 Q2', 'FY18 Q3', 'FY18 Q4', 'FY19 Q1')
+    c('FY15 Q4', 
+      'FY16 Q1', 
+      'FY16 Q2', 
+      'FY16 Q3', 
+      'FY16 Q4', 
+      'FY17 Q1', 
+      'FY17 Q2', 
+      'FY17 Q3', 
+      'FY17 Q4', 
+      'FY18 Q1', 
+      'FY18 Q2', 
+      'FY18 Q3', 
+      'FY18 Q4', 
+      'FY19 Q1',
+      'F19 Q2')
 
     names(q_acquisitions_list) <- group_names
   
@@ -1171,8 +1754,8 @@ occ_compilation <- function(x){
   
 # Occ Data 
   occ_df =
-    occupancy_data %>%
-      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-06-01') %>% 
+    wss_data %>%
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-09-01') %>% 
       group_by(MEntity,
                Date, 
                unm_product) %>%
@@ -1211,11 +1794,20 @@ occ_compilation <- function(x){
   q_acquisitions_list <-
       modify_depth(q_acquisitions_list, 2, occ_compilation)
 
+
+# Append Income Statement To q_acquisitions_list ----
+ # q_acquisitions_list <-
+   # modify_depth(q_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number)
+
+
+  #q_acquisitions_list_19 <-
+    #modify_depth(q_acquisitions_list["F19 Q2"], 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number)
+
 ```
 
 
 
-### **NA Occupancy MEtrics**
+### ** NA Occupancy MEtrics: Info on NA Occupancy MEntity numbers **
 
 ```{r}
 
@@ -1257,7 +1849,8 @@ occ_compilation <- function(x){
 ```
 
 
-### **Collapse Occupancy Lists Into Single Data Frames** ###
+
+### ** Collapse Occupancy Lists Into Single Data Frames ** 
 ```{r}
 # Initial Collapse of Occupancy Lists ----
 occ_only_list <- 
@@ -1279,15 +1872,11 @@ occ_only_list <-
     colnames(occ_df)[3] <- "Product"
 
     # Group Name and Number Addition ----
-    c_acquisitions_include$Profit_Center <- 
-      as.character(c_acquisitions_include$Profit_Center)
-    
-      grp_dictionary <-
-        left_join(c_acquisitions_include, unique(SAP.Hierarchy[ , c(12, 44)]), by = "Profit_Center")
-      
+    acq_list_final
+   
         # Join Group column to occupancy metrics ----
         occ_df <-
-          left_join(occ_df, grp_dictionary[ , c(24, 1)], by = "MEntity")
+          left_join(occ_df, acq_list_final[ , c(1, 8,6)], by = "MEntity")
       
           # Rename group number column ----
           colnames(occ_df)[10] <- 'Grp_Num'
@@ -1297,194 +1886,268 @@ occ_only_list <-
             
             # Re-arrange data frame columns to match excel dashboard positions ----
               occ_df <-
-                occ_df[ , c(1:9, 11, 10)]
+                occ_df[ , c(1:9, 12, 11)]
+          
+          
           
 ```
 
 
-### **Export Occupancy Metrics**
 
-```{r eval=FALSE, include=FALSE}
+### ** Export Occupancy Metrics **
 
- xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\UnitMix.xlsx', 
+```{r include=FALSE}
+
+xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx', 
                   append = FALSE,
                   sheetName = "UnitMix",
                   col.names = TRUE)
 
 ```
 
----
-##**Occupancy Predictions**
----
 
 
-In this section of the markdown, we will ready forecasted Occupancy data for integration with the dashboard
+---
+## ** Occupancy Predictions **
+---
+
+```{r Forecasted Occ DB connection}
+
+# Forecasted tables use the Finanalysis Database ----
+forecasted_occ_db <-dplyr::tbl(con.FinAnalysis, "Storage_Forecast")
+
+
+```
+
+
+## *Forecasted Occ Function*
 
 ```{r}
 
-
-# Extract MEntity number from Aggregate Unit Mix ----
-distinct.mentity <-   
-UnitMix.Aggregate %>%
-  distinct(MEntity)
-
-#write.csv(distinct.mentity, 'Z:\\\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\occ_mentity.csv')
+forecasted_occ_function <- function(x){
   
+  require("dplyr")
+  require("lazyeval")
+  require("purrr")
 
-# Import Forecasted Occupany Data ----
-  forecasted.occ.df <- read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Occupancy Forecast\\Occ_Forecast_Data_8162018.csv")
 
+# Filter DB ----    
+db <-
+  forecasted_occ_db %>%
+  filter(MEntity %in% x[["MEntity"]]) %>%
+  group_by(MEntity,
+           FC_Date) %>%
+  arrange(FC_Date)
+  
+  
+# Collect Local Version ----
+db_local <-
+  collect(db)
 
-# Filter for unecessary columns ----
-  forecasted.occ.df <- forecasted.occ.df[ , c(2, 35:130)]
-
-  # Reformat Data ----
-    forecasted.melt <-
-      melt(forecasted.occ.df, id.vars = "MEntity")
-
-    forecasted.melt$variable <- as.character(forecasted.melt$variable)
-    forecasted.melt$MEntity <- as.character(forecasted.melt$MEntity)
-      
-    # Replace string patterns ----
-      forecasted.melt$variable <-
-        gsub(pattern = 'X', replacement = " ", x = forecasted.melt$variable)
+  # Rename Data Column to "MONTH"
+      colnames(db_local)[5] <- "MONTH"
     
-      forecasted.melt$variable <-
-        gsub(pattern = '\\.', replacement = "/", x = forecasted.melt$variable)
-      
-      # Convert Room "value" column to numeric ----
-        forecasted.melt$value <-
-          as.numeric(forecasted.melt$value)
-      
-      # Convert variable column into Date ----
-        forecasted.melt$variable <- 
-          as.Date(forecasted.melt$variable, format = "%m/%d/%Y")
+      # Convert Month Column to Date 
+        db_local$MONTH <- as.Date(db_local$MONTH)
         
-        # Rename Columns for Join ----
-          colnames(forecasted.melt)[2] <- "MONTH"
-          colnames(forecasted.melt)[3] <- "F.Rooms"
-          
-          # Extract NA Forecasts
-            na.forecast <- 
-              forecasted.melt[is.na(forecasted.melt$F.Rooms), ]
-              
-            # Exctract Unique NA Values
-              #unique(na.forecast$MEntity)
-          
-          # Convert NA to 0 ----
-            forecasted.melt$F.Rooms[is.na(forecasted.melt$F.Rooms)] <- 0 # dim = 26,880
+        # Create Fiscal Year Columns for Data 
+          db_local <- 
+            fiscal_year_columns(db_local)
+
+# Append List 
+    y =
+      append(x, list(db_local))
+  
+  names(y)[[4]] = "FC_Occ"
+  
+  return(y)
+
+  
+}
+
+
+# Append Forecasted Occupancy to existing function ----
+q_acquisitions_list <-
+      modify_depth(q_acquisitions_list, 2, forecasted_occ_function)
+
+
+# Collapse Forecasted Occupancy into single data frame -----
+forecast_only_list <- 
+  modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "FC_Occ") 
+
+  # Flatten the filtered Occupancy list ----
+  flat_forecast_list <-
+    purrr::flatten(forecast_only_list)
+
+  # Omit NA Values ----
+  flat_fc_occ_exl_na <- 
+    na.omit.list(flat_forecast_list)
+
+  # Combine Occupancy Data frame ----
+  fc_occ_df <-   
+    map_df(flat_fc_occ_exl_na, `[`)
+
+
+        # Join Group column to occupancy metrics ----
+        fc_occ_df <-
+          left_join(fc_occ_df, acq_list_final[ , c(1, 8,6)], by = "MEntity")
+
+          # Rename group number column ----
+          colnames(fc_occ_df)[13] <- 'Grp_Num'
+
+          # Left Join -----
+          fc_occ_df <- 
+            left_join(fc_occ_df, grp_table, by = 'Grp_Num')
             
+            # Re-arrange data frame columns to match excel dashboard positions ----
+              fc_occ_df <-
+                fc_occ_df[ , c(3, 5, 6, 15, 9, 10, 11, 12)]
+
+
+            # Process to merge total rooms into forecasted data frame ----
+
+               # Join Occ DF for Total Rooms Column -----  7,260 rows 
+               occ_df_2 <- 
+                 occ_df %>%
+                 group_by(MEntity, MONTH) %>%
+                 summarize(Total_Rooms = sum(Total_Rooms))
+               
+               # Return Max Date for Unique MEntity Combination -----
+               occ_df_2 <-
+                 occ_df_2 %>% 
+                   group_by(MEntity) %>%
+                   slice(which.max(MONTH))
+
+               # Join ----
+               fc_occ_df_2 <-
+                 left_join(fc_occ_df, occ_df_2[ , c(1,3)], by = c("MEntity"))
+               
+                
+               # Rename Forecasted Occupancy Column ----
+               colnames(fc_occ_df_2)[3] <- "Forecasted_Rooms"
             
-# Check for missing Mentity within the Forecast Database
-  #f.mentity <- 
-   ## forecasted.melt %>% filter(MEntity %in% distinct.mentity$MEntity)
-  
-# 92 MEntity Located within the forecast spreadsheet.  There are 6 that remain missing. 
-  #f.mentity <- unique(f.mentity$MEntity) # 92 so far.
-  
-  #write.csv(f.mentity, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\mentity_within_forecast.csv')
-          
-  
-  
+
 ```
 
 
-####*Combination of predictions and Occupany Metrics (Aggregate by MEntity Number)*
+## **Quarterly Acquisitions  
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 
+# Representation of Forecast ----
 
-  # Aggregate Data Frames ----
-    final.unitmix <- 
-      UnitMix.Aggregate %>%
-      group_by(MEntity, MONTH) %>%
-      summarise(Total_Rooms = sum(Total_Rooms),
-                Occupied_Rooms = sum(Occupied_Rooms))
-
-  # Forecasted Units ----
-    final.unitmix <- 
-      left_join(final.unitmix, forecasted.melt, by = c("MEntity", "MONTH"))
-
-    
-  # Addition of FY Columns and Info ----
-    final.unitmix <- 
-    FiscalYear.Columns(final.unitmix) # 1,402 Rows 
+in_fc <- 
+  fc_occ_df_2 %>%
+    filter(MEntity %in% fc_occ_df_2$MEntity)
 
 
-  # Creation of MEntity and Group Key ----
-    mentity_n_group_key <- 
-      UnitMix.Aggregate %>% 
-      select(MEntity, Group) %>%
-      group_by(MEntity, Group)
-    
-    mentity_n_group_key <- 
-    unique(mentity_n_group_key[ ,c('MEntity','Group')])  # 99 Rows
-    
-  # Join Projections ----
-   final.unitmix <-
-     left_join(final.unitmix, mentity_n_group_key, by = 'MEntity') #1,402 rows. This is aggregating correctly. 
-   
-  # Replace NA with 0 ----
-    final.unitmix$F.Rooms[is.na(final.unitmix$F.Rooms)] <- 0 
-   
-  # Export Projection Data ----
-   write.csv(final.unitmix, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\Forecasted_Units.csv", append = TRUE)
-   
+# Group by Quarterly Acquisitions group ----
+in_fc_summary <- 
+  in_fc %>%
+    group_by(MEntity, Group) %>%
+    distinct(MEntity)
 
-   
-# Forecasted Amounts ----
-  mentity_n_group_key # Data Frame to use in Combination of Forecasted Amounts (From CSV)
+  # Export Summary to csv ----
   
-  # Join on Data Frame ----
-    forecasted.df <- 
-      left_join(forecasted.melt, mentity_n_group_key, by = 'MEntity') # 269,184 
-    
-    # Filter For 5 year forecast ----
-      Date <- today() + 1825
-        
-      forecasted.df <- 
-        forecasted.df %>%
-        filter(MONTH >= '2018-7-1' & MONTH <= Date)
-        
-      # Remove NA ---- 
-        forecasted.df <- forecasted.df[complete.cases(forecasted.df), ]
-      
-      # Add Fiscal Year / Quarter
-        forecasted.df <- FiscalYear.Columns(forecasted.df)
-        
-        
-        # Join Current Total Rooms ----
-        Total_Rooms <- 
-          UnitMix.Aggregate %>%
-            group_by(MEntity) %>% 
-            filter(MONTH == '2018-7-1') %>%
-            summarise(Total_Rooms = sum(Total_Rooms))
-        
-        
-        # Left Join Total Rooms ----
-          forecasted.df <-
-          left_join(forecasted.df, Total_Rooms, by = 'MEntity')
-        
-        # Update column name
-          colnames(forecasted.df)[3] <- 'Forecasted_Rooms'
-          
-          # Filter Month ----
-            forecasted.df <-
-            forecasted.df %>%
-            filter(FY < 2024)
-      
-        
-        # Export Forecasts 
-          xlsx::write.xlsx(forecasted.df,
+
+
+```
+
+
+
+
+
+## *Export forecasted occupancy metrics to excel format* ##
+```{r}
+
+xlsx::write.xlsx(fc_occ_df_2,
                            "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\occ_rooms_forecast.xls",
                            sheetName = 'Forecasted_Rooms', col.names = TRUE)
+
+
+
+```
+
+
+
+# *Extract Observations Missing Forecasts* #
+```{r}
+
+
+# --------------------------------------------------------------------------------------------------------------------------------------------
+
+# Filter for MEntity numbers that contain Occ data but no forecasted Occ data ----
+
+# NA Forecasted Occ Filter ----
+  na_fc_occ <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    x %>%
+      list.filter(nrow(FC_Occ) == 0)
+  }
+
+
+# Not NA Occupansy Filter ----
+not_NA_occ <- function(x){
+    
+      require("dplyr")
+      require("lazyeval")
+      require("purrr")
+    
+    x %>%
+      list.filter(nrow(Occupancy) > 0 )
+  }
+
+
+
+# Extract Observations with NA Occupancy Metrics ----
+  na_fc_occ_list <-
+    modify_depth(q_acquisitions_list, 1, na_fc_occ)
+
+  # Filter for MEntity Numbers that have Occupancy Data but Not Forecasted Occupancy -----
+  na_fc_n_occ_list <- 
+    modify_depth(na_fc_occ_list, 1, not_NA_occ)
+
+
+    # Filter MEntity Numbers for NA Occupancy metrics ----
+    mentity_missing_fc_occ <-
+      unlist(modify_depth(na_fc_n_occ_list, 2, nested_list_filter, z = "MEntity"))
+
+
+    profitcenter_missing_fc_occ <- 
+      unlist(modify_depth(na_fc_n_occ_list, 2, nested_list_filter, z = "Profit_Center"))
+
+
+    # Print Vector of profit_centers with NA occupancy ----
+      mentity_missing_fc_occ <-
+        as.character(mentity_missing_fc_occ)
+
+      profitcenter_missing_fc <- 
+        as.character(profitcenter_missing_fc_occ)
+    
+        
+        # Information regarding centers missing forecasted data ----
+        profitcenter_missing_fc_info <- 
+        SAP.Hierarchy %>%
+          filter(Profit_Center %in% profitcenter_missing_fc)
+      
+        # Export to Excel for research ----
+        #write.csv(profitcenter_missing_fc_info,"Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\profitcenter_missing_forecast.csv")
+      
+      
+        #write.csv(mentity_missing_fc_occ, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\mentity_missing_forecast.csv")
+      
       
 ```
+
 
 
 #####*Extract NA Values *
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
  # Missing Projections
   missingdata.f <- 
@@ -1495,7 +2158,7 @@ UnitMix.Aggregate %>%
  # distinct.missingdata.f <- 
     unique(missingdata.f)
   
-  
+
   # Export Missing Forecasts ----
     write.csv(distinct.missingdata.f, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Occupancy Forecast\\Missing_Forecast.csv")
 
