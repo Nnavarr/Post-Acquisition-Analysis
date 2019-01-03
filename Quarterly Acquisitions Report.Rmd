@@ -2048,7 +2048,7 @@ in_fc_summary <-
     distinct(MEntity)
 
   # Export Summary to csv ----
-  
+  write.csv(in_fc_summary,"Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\forecasted_occ_inclusion.csv")
 
 
 ```
