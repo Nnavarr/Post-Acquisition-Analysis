@@ -69,6 +69,8 @@ c_acquisitions <-
         
         
         
+acq_list_final        
+        
 # Extraction of profit center numbers ----      ## IMPORTED FROM ENTITY LIST RMD!!!! ##
   acq_pc <-
     acq_list_final %>% 
@@ -92,6 +94,38 @@ c_acquisitions <-
         }        
   
 ```
+
+```{r Function Updates}
+
+max_is_month
+current_month
+
+```
+
+```{r Quarterly Group Updates}
+
+# The following variables will need to be updated every quarter ----
+Grp_Num <- c(1:15)
+Group <- c("FY15 Q4", 
+              "FY16 Q1", 
+              "FY16 Q2",
+              "FY16 Q3",
+              "FY16 Q4",
+              "FY17 Q1",
+              "FY17 Q2",
+              "FY17 Q3",
+              "FY17 Q4",
+              "FY18 Q1",
+              "FY18 Q2", 
+              "FY18 Q3", 
+              "FY18 Q4",
+              "FY19 Q1",
+              "FY19 Q2")
+
+```
+
+
+
 
 
 ## **SQL Connections**
@@ -194,6 +228,7 @@ mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
 line_item_function <- function(x, df){
      
     # x = list of line items 
+    # current_month = Max IS Month in full date format 
   
      require(dplyr)
      require(purrr)
@@ -278,7 +313,6 @@ line_item_function <- function(x, df){
       
     }
   
-     
      return(line_item_is)
      
 }
@@ -431,6 +465,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       aggregate_df$Amount[i] <- aggregate_df$Amount[i] * -1 
     
     }
+      
     }
     
 
@@ -954,16 +989,31 @@ for (i in 1:length(db$`PROFIT CENTER`)){
   # Rename Columns ----
   colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
   
+  # Center Identifier (add MEntity) ----
+  db$MEntity <- x[["MEntity"]]
+  
+  # Income Statement Data Check ----
+  if (nrow(db) > 1){
+    
+    IS <- db
+    
+    
+  } else {
+    
+    IS <- NA
+    
+  }
+  
+  
   # Append List ----
     y <-
-      append(x, list(db))
+      append(x, list(IS))
   
-  names(y)[[2]] = "Income_Statement"
+  names(y)[[4]] = "Income_Statement"
   
   return(y)
 
 }
-
 
 ```
 
@@ -1092,13 +1142,37 @@ data_check_center <-
   require("purrr")
     
   list.vector = list()
+    i <- 1
+    list.vector[[i]] <- x
+    
+  # Rename List ----  
+  x_append <- list.vector
+  names(x_append)[[1]] <- "Profit_Center"
   
-    i = 1
+  # Filter MEntity Number from Acquisitions List ----
+  mentity <- 
+    acq_list_final %>% 
+      filter(Profit_Center %in% x_append[["Profit_Center"]]) %>%
+      select(MEntity)
+  
+    mentity <- as.character(mentity$MEntity)
+    x_append <- append(x_append, list(mentity))
     
-    list.vector[[i]] = x
+  # Acquisition Type ----
+  acq_type <-
+      acq_list_final %>%
+      filter(Profit_Center %in% x_append[["Profit_Center"]]) %>%
+      select(`Construction_Type`)
     
-  return(list.vector)
-    
+    acq_type <- as.character(acq_type$`Construction_Type`)
+    x_append <- append(x_append, list(acq_type))
+  
+  # Rename List Observations ----
+  names(x_append)[[2]] <- "MEntity"
+  names(x_append)[[3]] <- "Acquisition_Type"
+  
+  return(x_append)
+  
 }
 
 ```
@@ -1600,39 +1674,6 @@ not_NA_occ <- function(x){
 ```
 
 
-
-#**Entity List Import**
----
-
-```{r Duplicate Profit Center Check}
-
-# Extraction of profit center numbers ----
-  acq_pc <-
-    acq_list_final %>% 
-    select(Profit_Center)
-
-  # Removal of NA values ----
-    acq_pc <-  
-      acq_pc[!is.na(acq_pc), ] 
-   
-    # Check for duplicate profit centers within completed acquisitions data frame ----
-      acq_pc_check <- 
-        acq_pc %>%
-          group_by(Profit_Center) %>%
-          mutate(Count = 1) %>%
-          summarise(Total = sum(Count)) %>%
-          filter(Total > 1)
-      
-      # Kill switch if duplicate profit centers are detected; Check 1 ----
-        if(length(acq_pc_check$Profit_Center) != 0) {
-        
-          stop() 
-        
-        }
-
-```
-
-
 ##**Quarterly Group Compilation**
 ---
 
@@ -1649,132 +1690,81 @@ Process
   q_list_container <- 
     split(acq_list_final, f = acq_list_final$Group)
 
+
 # Quarter group profit centers by list ----
   quarter_list <- 
     map(q_list_container, profit_center_selection)
 
-# Remove NA from quarter list (this is a safety on the initial )
+
+# Remove NA from quarter list ----
   quarter_list <- 
     lapply(quarter_list, function(x){x[!is.na(x)]})
   
-```
-
-```{r Check for Income Statement Representation}
 
 # Nested profit center list ----
-  n_pc_list <- 
+  q_acquisitions_list <- 
     lapply(quarter_list, as.list)
 
-    n_pc_list_2 <-
-      modify_depth(n_pc_list, 2, nested_list_creation)
-  
-    # Missing income statement data ----
-      missing_income_statement <- 
-       modify_depth(n_pc_list, 2, data_check_center)
+    q_acquisitions_list <-
+      modify_depth(q_acquisitions_list, 2, nested_list_creation)
     
-        missing_is_profit_centers <- 
-          unlist(missing_income_statement) # Be careful, the grp number is correct, the index is not
-        
-          missing_is_profit_centers <- 
-            as.data.frame(missing_is_profit_centers)
-          
-            colnames(missing_is_profit_centers) <- 
-              "Profit_Center"
-        
-        # Missing center information ----
-          missing_is_profit_centers <- 
-              left_join(missing_is_profit_centers, SAP.Hierarchy[ , c(4, 12, 44)], by = "Profit_Center") 
-            
-                # The missing centers do not appear to have any MEntity info. 
-                  data.table(missing_is_profit_centers)
-                  
-                    # 7000011179 ; grp 5
-                    # 7000011246 ; grp 6 
-                    # 7000011204 ; grp 6 
-            
-    # Complete income statement data ----
-      complete_income_statement <- 
-        modify_depth(n_pc_list, 2, data_check_na)
-                  
-        complete_is_profit_centers <- 
-          unlist(complete_income_statement)
-        
-          complete_is_profit_centers <- 
-            as.data.frame(complete_is_profit_centers)
-          
-            complete_is_profit_centers <- 
-              as.data.frame(complete_is_profit_centers[!is.na(complete_is_profit_centers)])
-            
-              colnames(complete_is_profit_centers) <- 
-                "Profit_Center" # The data frame will be used to check against a list of occupancy profit centers
-          
-              # List of Quarterly Acquisitions included in the income statement aggregation ----
-                quarterly_acquisitions_list <- 
-                  na.omit.list(n_pc_list_2)
-            
+ 
+# Group name addition ----
+grp_table <- 
+  data.frame(Grp_Num, Group)
+    
+# Enter grp name identifier ----
+for (i in seq_along(q_acquisitions_list)) { 
+  names(q_acquisitions_list)[[i]] <- as.character(grp_table$Group[i])
+}
+    
 ```
 
 
 ---
-##**Aggregate Income Statement Compilation**
+##**Income Statement Compilation**
 ---
 
 ```{r Aggregate Income Statement Process}
 
 # Income statement compilation ----
-  aggregate_income_statement <- map(quarter_list, income_statment_compilation, accounts = sap_accounts$SAP_number)
+q_acquisitions_list <-
+  modify_depth(q_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
 
-# Append Income Statement To q_acquisitions_list ----
-  q_acquisitions_list_append <-
-   modify_depth(quarterly_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number)
+# Filter Income Statement ----
+income_statement_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Income_Statement")
 
-  # Creation of group identifier table ----
-    grp_number <- c(1:15)
-    grp_name <- c("FY15 Q4", 
-                  "FY16 Q1", 
-                  "FY16 Q2",
-                  "FY16 Q3",
-                  "FY16 Q4",
-                  "FY17 Q1",
-                  "FY17 Q2",
-                  "FY17 Q3",
-                  "FY17 Q4",
-                  "FY18 Q1",
-                  "FY18 Q2", 
-                  "FY18 Q3", 
-                  "FY18 Q4",
-                  "FY19 Q1",
-                  "FY19 Q2")
-    
-    grp_table <- 
-      data.frame(grp_number,grp_name)
-    
-    # Enter grp name identifier ----
-      for (i in seq_along(aggregate_income_statement)) { 
-        aggregate_income_statement[[i]]$Group = as.character(grp_table$grp_name[i])
-      }
-    
-# Unlist income statement data into a data frame for excel export ----
-  income_statement_aggregate <-   
-    map_df(aggregate_income_statement, `[`)
-    
-  # Import group number for Dashboard ----
-    colnames(grp_table)[1] <- "Grp_Num"
-    colnames(grp_table)[2] <- "Group"
-      income_statement_aggregate <-
-        left_join(income_statement_aggregate, grp_table, by = 'Group')
+  # Remove level of list hierarchy
+  is_collapsed <- 
+    unlist(income_statement_list, recursive = FALSE) # Remove level of list hierarchy
+  
+  # Collapse into a single data frame ----
+  is_collapsed <- 
+    ldply(is_collapsed, as.data.frame)
+  
+    # Format Data Frame for Dashboard Output ----
+    is_collapsed <- is_collapsed[ ,c(9,2,3,4,5,6,7,8,1)]
+      colnames(is_collapsed)[9] <- "Group"
       
+      # Keep th first 7 characters in a string
+      is_collapsed$Group <- substr(is_collapsed$Group, 0, 7)
+  
+        is_collapsed <- 
+          left_join(is_collapsed, grp_table, by = "Group")  # Append Group Number to Collapsed Income Statement List ----
+        
       # Data type adjustments for export ----
-        income_statement_aggregate$FY <- as.numeric(income_statement_aggregate$FY)
-        income_statement_aggregate$FM <- as.numeric(income_statement_aggregate$FM)
-        income_statement_aggregate$Quarter <- as.numeric(income_statement_aggregate$Quarter)
+        is_collapsed$FY <- as.numeric(is_collapsed$FY)
+        is_collapsed$FM <- as.numeric(is_collapsed$FM)
+        is_collapsed$Quarter <- as.numeric(is_collapsed$Quarter)
+        
         
 ```
+
+
 
 ---
 ##**Occupancy Metric Compilation**##
 ---
-
 
 ### **Import MEntity Numbers**
   
