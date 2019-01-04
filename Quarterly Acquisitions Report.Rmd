@@ -99,6 +99,7 @@ acq_list_final
 
 max_is_month
 current_month
+occ_compilation # Update "Date" for Unit Mix Filter 
 
 ```
 
@@ -123,9 +124,6 @@ Group <- c("FY15 Q4",
               "FY19 Q2")
 
 ```
-
-
-
 
 
 ## **SQL Connections**
@@ -1553,8 +1551,8 @@ occ_compilation <- function(x){
       group_by(MEntity,
                Date, 
                unm_product) %>%
-      summarize(Total_Rooms = sum(unm_numunits),
-                Occupied_Rooms = sum(unm_occunits)) %>%
+      summarize(Total_Rooms = sum(unm_numunits, na.rm = TRUE),
+                Occupied_Rooms = sum(unm_occunits, na.rm = TRUE)) %>%
       arrange(Date)
   
   # Collect Data
@@ -1575,7 +1573,7 @@ occ_compilation <- function(x){
     y =
       append(x, list(occ_df_local))
   
-  names(y)[[3]] = "Occupancy"
+  names(y)[[5]] = "Unit_Mix"
   
   return(y)
   
@@ -1594,7 +1592,7 @@ occ_compilation <- function(x){
       require("purrr")
     
     x %>%
-      list.filter(is.na(Occupancy))
+      list.filter(is.na(Unit_Mix))
     
   }
 
@@ -1725,13 +1723,16 @@ for (i in seq_along(q_acquisitions_list)) {
 ##**Income Statement Compilation**
 ---
 
-```{r Aggregate Income Statement Process}
+```{r Aggregate Income Statement Process Complete 1 4 2019}
 
 # Income statement compilation ----
 q_acquisitions_list <-
   modify_depth(q_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
 
-# Filter Income Statement ----
+
+
+
+# Collapse Income Statement Process ----
 income_statement_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Income_Statement")
 
   # Remove level of list hierarchy
@@ -1757,69 +1758,36 @@ income_statement_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter
         is_collapsed$FM <- as.numeric(is_collapsed$FM)
         is_collapsed$Quarter <- as.numeric(is_collapsed$Quarter)
         
-        
 ```
-
 
 
 ---
 ##**Occupancy Metric Compilation**##
 ---
 
-### **Import MEntity Numbers**
-  
-```{r Import MEntity Numbers}
-
-# Import MEntity on profit center list ----
-q_acquisitions_list <-
-  modify_depth(quarterly_acquisitions_list, 2, sap2mentity)
-    
-  # Modify names of outer list ----
-  group_names <-
-    c('FY15 Q4', 
-      'FY16 Q1', 
-      'FY16 Q2', 
-      'FY16 Q3', 
-      'FY16 Q4', 
-      'FY17 Q1', 
-      'FY17 Q2', 
-      'FY17 Q3', 
-      'FY17 Q4', 
-      'FY18 Q1', 
-      'FY18 Q2', 
-      'FY18 Q3', 
-      'FY18 Q4', 
-      'FY19 Q1',
-      'F19 Q2')
-
-    names(q_acquisitions_list) <- group_names
-  
-    
-```
-
-```{r Remove Profit Centers without MEntity Numbers}
-
-  # Extract List Elements where MEntity == NA ---- 
-  na_mentity_list <- 
-    modify_depth(q_acquisitions_list, 1, na_MEntity_filter)
-  
-    # Isolate Profit Center Numbers ----
-    na_mentity_profit_centers <- 
-      unlist(modify_depth(na_mentity_list, 2, nested_list_filter, z = "Profit_Center"))
-
-      # Profit Centers without MEntity numbers. After verification, it turns out these profit centers do not have any income statement data as well. 
-        # Further research is needed into these set of centers
-          print(data.table(na_mentity_profit_centers))
-          
-
-```
-
-```{r Occupancy Data Process}
+```{r Occupancy Data Process Process Complete 1 4 2019}
 
 # Append Occ Data to list ----
   q_acquisitions_list <-
       modify_depth(q_acquisitions_list, 2, occ_compilation)
 
+
+# Collapse Unit Mix Process ----
+unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Unit_Mix") 
+
+  unit_mix_collapsed <- 
+    unlist(unit_mix_list, recursive = FALSE)
+  
+  unit_mix_collapsed <- 
+      ldply(unit_mix_collapsed, as.data.frame)
+  
+    unit_mix_collapsed <- unit_mix_collapsed[ , -11] 
+      unit_mix_collapsed <- unit_mix_collapsed[ , c(2, 3, 4, 5, 6, 7, 8, 9, 10 , 1)]
+        colnames(unit_mix_collapsed)[10] <- "Group"
+          unit_mix_collapsed$Group <- substr(unit_mix_collapsed$Group, 0, 7)
+            unit_mix_collapsed <- left_join(unit_mix_collapsed,  )
+    
+  
 ```
 
 ```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity}
@@ -1844,6 +1812,15 @@ q_acquisitions_list <-
 ```
 
 ```{r Collapse List Into Single Data Frames}
+
+
+
+
+
+
+
+
+
 
 # Initial Collapse of Occupancy Lists ----
 occ_only_list <- 
