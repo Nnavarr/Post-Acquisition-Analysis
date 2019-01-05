@@ -50,13 +50,6 @@ library(xlsx)
 ```
 
 
-
-#*Introduction*
-
-This markdown will process the new acquisitions list to be used in our Quarterly Acquisitions Report Process. It will also export a list / details of the centers used within the Quarterly Acquisitions Compilation. 
-
-
-
 ###**SQL Databases**
 ```{r}
 

@@ -1680,7 +1680,6 @@ Process
 2. Isolate unique Profit centers within each quarterly acquisition group
 3. Run aggregate Profit Center on aggregate vector set of Unique Profit Centers 
 
-
 ```{r Quarter Acquisition List Creation}
 
 # Split Data Frame into Elements within a list ----
@@ -1716,7 +1715,6 @@ for (i in seq_along(q_acquisitions_list)) {
 }
     
 ```
-
 
 ---
 ##**Income Statement Compilation**
