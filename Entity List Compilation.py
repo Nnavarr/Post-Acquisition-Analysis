@@ -4,7 +4,6 @@ import numpy as np
 
 # SQL Database Engines ----
 mentity_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=MEntity;UID=1217543;PWD=Noe543N')
-finanalysis_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=FINANALYSIS;UID=1217543;PWD=Noe543N')
 finaccounting_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=FinAccounting;UID=1217543;PWD=Noe543N')
 
 # STEP 1: Import Previous ----
@@ -17,6 +16,7 @@ existing_mentity.nunique()
 # STEP 2: Filter DLR01 With Existing MEntity numbers ----
 dlr01_query_initial = "SELECT * FROM ENTITY_DLR01 WHERE MEntity in {} AND [STATUS] = 'O' ORDER BY [ID] ASC, [MEntity]".format(tuple(existing_mentity))
 dlr01_initial = pd.read_sql_query(dlr01_query_initial, mentity_engine)
+
 dlr01_unique_mentity = dlr01_initial.MEntity.unique()
 
 # STEP 3: Determine if the center is still open ----
@@ -31,14 +31,6 @@ if mentity_check < 1:
 else:
   print("All Existing Acquisitions are accounted for, proceed to new quarter group")
 
-# Maintain Master Acquisitions File ----
-writer = pd.ExcelWriter(
-    'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acquisition List Summary.xlsx',
-    engine='xlsxwriter')
-
-existing_list.to_excel(writer, sheet_name='Included Acquisitions')
-writer.save()
-
 
 
 # Step 2: Import Newly Closed Acquisitions for the Quarter ----
@@ -48,7 +40,7 @@ closed_acquisitions_f19 = pd.read_excel('//adfs01.uhi.amerco/departments/mia/gro
 # Process imported data frame to match "existing_list" format ----
 # Determine centers from the new quarter that are not present within the current acquisitions list.
 closed_acquisitions_f19 = closed_acquisitions_f19.sort_values(by=['Close of Escrow'])
-new_additions = closed_acquisitions_f19[(closed_acquisitions_f19['Close of Escrow'] >= '2018-10-1')]
+new_additions = closed_acquisitions_f19[(closed_acquisitions_f19['Close of Escrow'] >= '2018-10-1')]  # Create Max Date
 
 # Check for Unique Values ----
 new_additions.Entity.nunique()  # 28 Unique Entity values
@@ -61,6 +53,7 @@ new_additions.insert(2, "Quarter", 3)
 # Query to import Entity data for new additions ----
 dlr01_query_new = "SELECT * FROM ENTITY_DLR01 WHERE ENTITY_6NO in {} AND [STATUS] = 'O' ORDER BY [ENTITY_6NO] ASC".format(tuple(new_additions.Entity))
 dlr01_new_acquisitions = pd.read_sql_query(dlr01_query_new, mentity_engine)
+mentity_engine.close()
 dlr01_new_acquisitions.rename(columns={'ENTITY_6NO': 'Entity'}, inplace=True)
 
 # Comparison of lists: EDA ----
@@ -83,11 +76,11 @@ print(cols_new)  # New column structure
 dlr01_new_acquisitions.info(verbose=True)
 
 # Column Search Code ----
-column_search = dlr01_new_acquisitions.loc[:, dlr01_new_acquisitions.columns.str.contains("OWNER")]
+column_search = dlr01_new_acquisitions.loc[:, dlr01_new_acquisitions.columns.str.contains(".Area")]
 column_search.info(verbose=True)
 
 # Left Join required DLR01 columns on New Acquisitions list ----
-new_additions_unique.Entity = new_additions_unique.Entity.astype(str)
+new_additions_unique.Entity = new_additions_unique.loc[:, "Entity"].astype(str)
 new_additions_unique = new_additions_unique.merge(dlr01_new_acquisitions.loc[:, ["Entity", "ENTITY_NAME", "MEntity", "ENTITY_TYPE", "DATE_OPENED", "DATE_CLOSED", "STATUS"]], how='left', on='Entity')
 
 # Re-format new additions column to match existing list ----
@@ -96,18 +89,46 @@ new_additions_unique.MEntity.nunique()
 
 
 # Step 3: Import Profit Center, Owner, and Construction_Type ----
-sap_hierarchy_query = "SELECT * FROM SAP_Cost_Center_Hierarchy WHERE MEntity in {} ORDER BY [ID] ASC, [MEntity]".format(tuple(new_additions_unique.MEntity))
+sap_hierarchy_query = "SELECT * FROM SAP_Cost_Center_Hierarchy WHERE MEntity in {} ORDER BY [MEntity]".format(tuple(new_additions_unique.MEntity))
 sap_hierarchy = pd.read_sql_query(sap_hierarchy_query, finaccounting_engine)
+finaccounting_engine.close()  # Close SQL Engine
+
 sap_hierarchy.MEntity.nunique()  # 25 unique MEntity numbers / 28 total new additions
-missing_MEntity = -new_additions_unique.MEntity.astype(str).isin(sap_hierarchy.MEntity)  # Filter missing MEntity
-missing_MEntity_df = new_additions_unique[missing_MEntity]  # DF of missing MEntity observations
 
 sap_hierarchy.MEntity.value_counts()  # Search for any duplicate values within the MEntity column
 # M0000121074 ; 3 observations
 # M0000021212 ; 2 observations
 
-new_additions_unique.info(verbose=True)  # MEntity = Object
-sap_hierarchy.info(verbose=True)  # MEntity = Object
+# Remove duplicate MEntity numbers ----
+sap_hierarchy_unique = sap_hierarchy.drop_duplicates(subset='MEntity', keep='last')
+
+# Left Join Profit Center on New Additions ----
+new_additions_unique = new_additions_unique.merge(sap_hierarchy_unique.loc[:, ["MEntity", "Cost Center", "Hierarchy Area"]], how='left', on='MEntity')
+
+
+# Import REA Val DB for Construction Type ----
+rea_val_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=RealEstateValuation;UID=1217543;PWD=Noe543N')
+
+rea_val_query = "SELECT * FROM REV_REAL_ADDITIONS WHERE MEntity in {} ORDER BY [MEntity]".format(tuple(new_additions_unique["MEntity"]))
+rea_val_db = pd.read_sql_query(rea_val_query, rea_val_engine)
+rea_val_engine.close()  # Close the SQL Connection
+
+# Extract "Construction_Type" from DB ----
+new_additions_unique = new_additions_unique.merge(rea_val_db.loc[:, ["MEntity", "Parent_MEntity", "Property_Type", "Construction_Type"]], how='left', on='MEntity')
+
+# Re-arrange oolumns to match "Existing" list ----
+new_additions_unique = new_additions_unique.iloc[:, [0, 1, 2, 3, 4, 5, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 17, 20, 19]]
+new_additions_unique.rename(columns={'ENTITY_NAME': 'Entity_Name', 'Cost Center': 'Profit_Center',
+                                     'DATE_OPENED': 'Date_Opened', 'DATE_CLOSED': 'Date_Closed',
+                                     'STATUS': 'Status', 'Purchase Price': 'Purchase',
+                                     'Hierarchy Area': 'Owner'}, inplace=True)
+
+# Remove Missing Profit Center Centers ----
+missing_profit_center_df = new_additions_unique[pd.isnull(new_additions_unique.Profit_Center)]
+new_additions_unique = new_additions_unique[-pd.isnull(new_additions_unique.Profit_Center)]
+
+
+# Determine Property Owner ----
 
 
 
@@ -116,18 +137,12 @@ sap_hierarchy.info(verbose=True)  # MEntity = Object
 
 
 
+# Maintain Master Acquisitions File ----
+writer = pd.ExcelWriter(
+    'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acquisition List Summary.xlsx',
+    engine='xlsxwriter')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+existing_list.to_excel(writer, sheet_name='Included Acquisitions')
+missing_profit_center_df.to_excel(writer, sheet_name='Missing_PC')
+writer.save()
 
