@@ -1,6 +1,7 @@
 import pandas as pd
 import pyodbc
 import numpy as np
+import datetime
 
 # SQL Database Engines ----
 mentity_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=MEntity;UID=1217543;PWD=Noe543N')
@@ -54,13 +55,9 @@ new_additions.insert(2, "Quarter", 3)
 # Query to import Entity data for new additions ----
 dlr01_query_new = "SELECT * FROM ENTITY_DLR01 WHERE ENTITY_6NO in {} AND [STATUS] = 'O' ORDER BY [ENTITY_6NO] ASC".format(tuple(new_additions.Entity))
 dlr01_new_acquisitions = pd.read_sql_query(dlr01_query_new, mentity_engine)
-mentity_engine.close()
 dlr01_new_acquisitions.rename(columns={'ENTITY_6NO': 'Entity'}, inplace=True)
 
 # Comparison of lists: EDA ----
-print(new_additions.Entity.value_counts(dropna=False))
-print(new_additions.info(verbose=True))
-
 dlr01_new_acquisitions.Entity.isin(new_additions.Entity.astype(str))
 
 # Duplicate Entity numbers: Removal of Duplicates ----
@@ -95,7 +92,6 @@ new_additions_unique.MEntity.nunique()
 
 sap_hierarchy_query = "SELECT * FROM SAP_Cost_Center_Hierarchy WHERE MEntity in {} ORDER BY [MEntity]".format(tuple(new_additions_unique.MEntity))
 sap_hierarchy = pd.read_sql_query(sap_hierarchy_query, finaccounting_engine)
-finaccounting_engine.close()  # Close SQL Engine
 
 sap_hierarchy.MEntity.nunique()  # 25 unique MEntity numbers / 28 total new additions
 
@@ -163,10 +159,25 @@ abutting_properties_test = new_additions_unique[new_additions_unique['Property D
 # All of the properties above have been identified as abutting and will be removed from the analysis.
 removed_abutting = new_additions_unique[new_additions_unique.MEntity.isin(['M0000000400', 'M0000003759', 'M0000001042', 'M0000000906', 'M0000021212', 'M0000121074'])]
 
-# Finalize New Quarter List ----
+#  ------------------------------
+#  Finalize New Quarter List ----
+#  ------------------------------
 # Remove all remotes / abutting from the df above
 new_additions_unique = new_additions_unique[-new_additions_unique.MEntity.isin(removed_remotes.MEntity)]
 new_additions_unique = new_additions_unique[-new_additions_unique.MEntity.isin(removed_abutting.MEntity)]
+
+# Drop extra columns from new_additions_unique ----
+new_additions_unique = new_additions_unique.drop(columns=["Property_Type", 'Property Description'])
+pre_existing_MEntity = new_additions_unique[new_additions_unique.MEntity.isin(existing_list.MEntity)]  # 2 duplicates
+
+# Append New Quarter Additions to Existing List ----
+final_list = existing_list.append(new_additions_unique, ignore_index=True)
+final_list["Close of Escrow"] = pd.to_datetime(final_list["Close of Escrow"])  # Convert Close of Escrow to Datetime
+final_list["Date_Opened"] = pd.to_datetime(final_list["Date_Opened"])
+
+# Drop duplicates (centers already accounted for in previous quarters ----
+final_list = final_list.drop_duplicates(subset='MEntity', keep='first')  # Removes any duplicates present in the data set
+
 
 #  --------------------------------------
 #  Maintain Master Acquisitions File ----
@@ -175,10 +186,12 @@ writer = pd.ExcelWriter(
     'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acquisition List Summary.xlsx',
     engine='xlsxwriter')
 
-existing_list.to_excel(writer, sheet_name='Included Acquisitions')
-missing_profit_center_df.to_excel(writer, sheet_name='Missing_PC')
-removed_remotes.to_excel(writer, sheet_name='Removed_Remotes')
-removed_abutting.to_excel(writer, sheet_name='Removed_Abutting')
-not_UHI.to_excel(writer, sheet_name='Not_UHI')
+existing_list.to_excel(writer, sheet_name='Included Acquisitions', index=False)
+missing_profit_center_df.to_excel(writer, sheet_name='Missing_PC', index=False)
+removed_remotes.to_excel(writer, sheet_name='Removed_Remotes', index=False)
+removed_abutting.to_excel(writer, sheet_name='Removed_Abutting', index=False)
+not_UHI.to_excel(writer, sheet_name='Not_UHI', index=False)
+new_additions_unique.to_excel(writer, sheet_name='Included Acquisitions', startrow=312, index=False, header=False)
+pre_existing_MEntity.to_excel(writer, sheet_name='Pre-existing Centers', index=False, header=False)
 writer.save()
 
