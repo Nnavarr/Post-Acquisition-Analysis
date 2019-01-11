@@ -68,8 +68,10 @@ c_acquisitions <-
           filter(Include. == 'No')
         
         
-        
-acq_list_final        
+acq_list_og <- acq_list_final
+
+# ---------------------------------------------------- 
+ acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Acquisition List Summary.xlsx", sheet = 'Included Acquisitions')
         
 # Extraction of profit center numbers ----      ## IMPORTED FROM ENTITY LIST RMD!!!! ##
   acq_pc <-
@@ -90,6 +92,7 @@ acq_list_final
       
       # Kill switch if duplicate profit centers are detected; Check 1 ----
         if(length(acq_pc_check$Profit_Center) != 0) {
+          print("Duplicate Profit Centers Detected! Process will now stop")
           stop()
         }        
   
@@ -106,7 +109,7 @@ occ_compilation # Update "Date" for Unit Mix Filter
 ```{r Quarterly Group Updates}
 
 # The following variables will need to be updated every quarter ----
-Grp_Num <- c(1:15)
+Grp_Num <- c(1:16)
 Group <- c("FY15 Q4", 
               "FY16 Q1", 
               "FY16 Q2",
@@ -121,7 +124,8 @@ Group <- c("FY15 Q4",
               "FY18 Q3", 
               "FY18 Q4",
               "FY19 Q1",
-              "FY19 Q2")
+              "FY19 Q2",
+              "FY19 Q3")
 
 ```
 
@@ -201,7 +205,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
 
 # SAP Accounts ----
 accounts <-
-  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\income_statement_accounts.csv")
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\income_statement_accounts.csv")
 
 
 colnames(accounts)[1] <- "SAP_number"
@@ -233,7 +237,7 @@ line_item_function <- function(x, df){
      
      # Date Range for missing line items ----
      min_is_month <- min(df$MONTH)
-     max_is_month <- as.Date('2018-09-01')
+     max_is_month <- as.Date('2018-12-01')
      
      # Line Item IS compilation ----
      line_item_is <- 
@@ -267,7 +271,7 @@ line_item_function <- function(x, df){
      # Filter for max date
      line_item_is <-
         line_item_is %>%
-        filter(MONTH < '2018-10-01')
+        filter(MONTH < '2018-12-01')
      
      
     } else if(date_diff > 0){
@@ -298,7 +302,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH < '2018-10-01')
+        filter(MONTH < '2018-12-01')
      
     } else if(date_diff == 0){
     
@@ -307,7 +311,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH < '2018-10-01')
+        filter(MONTH < '2018-12-01')
       
     }
   
@@ -624,8 +628,17 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       db$FY[i] = 2019
       db$Quarter[i] = 2
 
+    } else if (db$MONTH[i] >= '2018/10/1' & db$MONTH[i] <= '2018/12/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 3
+    
+    } else if (db$MONTH[i] >= '2019/1/1' & db$MONTH[i] <= '2019/3/1'){
+
+      db$FY[i] = 2019
+      db$Quarter[i] = 4
     }
-  }
+  } 
   
   
    # Addition of Month Column ----
@@ -962,6 +975,11 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       db$FY[i] = 2019
       db$Quarter[i] = 2
 
+    } else if (db$MONTH[i] >= '2018/10/1' & db$MONTH[i] <= '2018/12/1'){
+      
+      db$FY[i] = 2019
+      db$Quarter[i] = 3
+      
     }
   }
   

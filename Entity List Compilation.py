@@ -176,7 +176,7 @@ final_list["Close of Escrow"] = pd.to_datetime(final_list["Close of Escrow"])  #
 final_list["Date_Opened"] = pd.to_datetime(final_list["Date_Opened"])
 
 # Drop duplicates (centers already accounted for in previous quarters ----
-final_list = final_list.drop_duplicates(subset='MEntity', keep='first')  # Removes any duplicates present in the data set
+final_list_unique = final_list.drop_duplicates(subset='MEntity', keep='first')  # Removes any duplicates present in the data set
 
 
 #  --------------------------------------
@@ -186,12 +186,11 @@ writer = pd.ExcelWriter(
     'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acquisition List Summary.xlsx',
     engine='xlsxwriter')
 
-existing_list.to_excel(writer, sheet_name='Included Acquisitions', index=False)
+final_list_unique.to_excel(writer, sheet_name='Included Acquisitions', index=False)
 missing_profit_center_df.to_excel(writer, sheet_name='Missing_PC', index=False)
 removed_remotes.to_excel(writer, sheet_name='Removed_Remotes', index=False)
 removed_abutting.to_excel(writer, sheet_name='Removed_Abutting', index=False)
 not_UHI.to_excel(writer, sheet_name='Not_UHI', index=False)
-new_additions_unique.to_excel(writer, sheet_name='Included Acquisitions', startrow=312, index=False, header=False)
 pre_existing_MEntity.to_excel(writer, sheet_name='Pre-existing Centers', index=False, header=False)
 writer.save()
 
