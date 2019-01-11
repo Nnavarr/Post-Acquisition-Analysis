@@ -1565,7 +1565,7 @@ occ_compilation <- function(x){
 # Occ Data 
   occ_df =
     wss_data %>%
-      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-09-01') %>% 
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-12-01') %>% 
       group_by(MEntity,
                Date, 
                unm_product) %>%
@@ -1805,6 +1805,7 @@ unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "U
         unit_mix_collapsed$FM <- as.numeric(unit_mix_collapsed$FM)
         unit_mix_collapsed$Quarter <- as.numeric(unit_mix_collapsed$Quarter)    
     
+      
 ```
 
 ```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity}
@@ -1894,15 +1895,6 @@ forecast_only_list <-
 ---
 #*Exports*
 ---
-
-```{r Acq List Export}
-
-acq_list_final
-
-# Export List <----
-#write.csv(acq_list_final, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Acq_list_final.csv")
-
-```
 
 ```{r Income Statement Export}
 
