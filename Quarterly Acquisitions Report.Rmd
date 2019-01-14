@@ -43,6 +43,7 @@ library(data.table)
 library(rlist)
 
 library(testthat)
+library(xlsx)
 
 ```
 
@@ -697,6 +698,7 @@ income_statment_compilation_append <- function(x, accounts){
     db$`PROFIT CENTER` <- as.character(db$`PROFIT CENTER`)
     db$ACCOUNT <- as.character(db$ACCOUNT)
   
+    
 # Reformat database ----
 colnames(db)[11] <- 4
 colnames(db)[12] <- 5
@@ -900,7 +902,22 @@ for (i in 1:length(db$`PROFIT CENTER`)){
   
   for (i in 1:length(db$FY)){
 
-    if(db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
+    if(db$MONTH[i] >= '2014/4/1' & db$MONTH[i] <= '2014/6/1'){
+      
+      db$FY[i] = 2015
+      db$Quarter[i] = 1
+
+    } else if(db$MONTH[i] >= '2014/7/1' & db$MONTH[i] <= '2014/9/1'){
+      
+      db$FY[i] = 2015
+      db$Quarter[i] = 2
+      
+    } else if (db$MONTH[i] >= '2014/10/1' & db$MONTH[i] <= '2014/12/1'){
+      
+      db$FY[i] = 2015
+      db$Quarter[i] = 3
+      
+    } else if (db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
 
       db$FY[i] = 2015
       db$Quarter[i] = 4
@@ -1195,6 +1212,7 @@ data_check_center <-
 
 ```{r FY n FM Column Creation}
 
+# This function is used to add FY/FM identifiers to the occupancy data ----
   fiscal_year_columns <- function(x){
       
       require("dplyr")
@@ -1804,11 +1822,14 @@ unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "U
         unit_mix_collapsed$FY <- as.numeric(unit_mix_collapsed$FY)
         unit_mix_collapsed$FM <- as.numeric(unit_mix_collapsed$FM)
         unit_mix_collapsed$Quarter <- as.numeric(unit_mix_collapsed$Quarter)    
+        
+        # Remove NA Occupancy Rows ----
+        unit_mix_final <- unit_mix_collapsed[!is.na(unit_mix_collapsed$MEntity), ]
     
       
 ```
 
-```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity}
+```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity, eval=FALSE, include=FALSE}
 
 # Extract Observations with NA Occupancy Metrics ----
   na_occupancy_list <-
@@ -1850,11 +1871,9 @@ q_acquisitions_list <-
       modify_depth(q_acquisitions_list, 2, forecasted_occ_function)
 
 
-
 # Collapse Forecasted Occupancy into single data frame -----
 forecast_only_list <- 
   modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Forecasted_Occupancy") 
-
 
  forecast_collapsed <- 
     unlist(forecast_only_list, recursive = FALSE)
@@ -1866,7 +1885,11 @@ forecast_only_list <-
       forecast_collapsed <- forecast_collapsed[ , c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1)]
         colnames(forecast_collapsed)[13] <- "Group"
         forecast_collapsed$Group <- substr(forecast_collapsed$Group, 0, 7)
+        
+  # Remove NA MEntity Numbers ----
+  forecast_occ_final <- forecast_collapsed[!is.na(forecast_collapsed$MEntity), ]
 
+        
 ```
 
 
@@ -1896,37 +1919,41 @@ forecast_only_list <-
 #*Exports*
 ---
 
-```{r Income Statement Export}
+```{r Income Statement Export, include=FALSE}
 
-xlsx::write.xlsx(income_statement_aggregate, 
-                 "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Income_Statement.xlsx",
-                 sheetName = "Income_Statement")
+write.csv(is_collapsed, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Income_Statement.csv", 
+          row.names = FALSE)
+
 ```
 
-```{r Occupancy Metrics Export}
+```{r Occupancy Metrics Export, include=FALSE}
 
-xlsx::write.xlsx(occ_df, 'Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx', 
+xlsx::write.xlsx(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx', 
                   append = FALSE,
                   sheetName = "UnitMix",
-                  col.names = TRUE)
+                  col.names = TRUE,
+                  row.names = FALSE
+                  )
 
 ```
 
-```{r Forecasted Occupancy Inclusion Export}
+```{r Forecasted Occupancy Inclusion Export, eval=FALSE, include=FALSE}
 
 write.csv(in_fc_summary,"Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\forecasted_occ_inclusion.csv")
 
 ```
 
-```{r Forecasted Occ Metrics Export}
+```{r Forecasted Occ Metrics Export, include=FALSE}
 
-xlsx::write.xlsx(fc_occ_df_2,
-                           "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Report Data\\occ_rooms_forecast.xls",
-  sheetName = 'Forecasted_Rooms', col.names = TRUE)
+xlsx::write.xlsx(forecast_occ_final,
+                           "Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\occ_rooms_forecast.xlsx",
+  sheetName = 'Forecasted_Rooms', 
+  col.names = TRUE, 
+  row.names = FALSE)
 
 ```
   
-```{r Explore Missing Forecasts Export}
+```{r Explore Missing Forecasts Export, eval=FALSE, include=FALSE}
 
 write.csv(profitcenter_missing_fc_info,"Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\profitcenter_missing_forecast.csv")
       
