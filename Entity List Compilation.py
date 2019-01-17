@@ -207,5 +207,5 @@ writer.save()
 #  -----------------------------------
 #  Export final list with long and lat
 #  -----------------------------------
-final_w_location.to_csv('Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acq_list.csv', index=False)
+final_w_location.to_csv('Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Dashboard Connections/Acq_list.csv', index=False)
 
