@@ -6,6 +6,7 @@ import datetime
 # SQL Database Engines ----
 mentity_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=MEntity;UID=1217543;PWD=Noe543N')
 finaccounting_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=FinAccounting;UID=1217543;PWD=Noe543N')
+finanalysis_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=FINANALYSIS;UID=1217543;PWD=Noe543N')
 
 # STEP 1: Import Previous ----
 # Import Existing Quarterly Acquisitions List ----
@@ -178,6 +179,15 @@ final_list["Date_Opened"] = pd.to_datetime(final_list["Date_Opened"])
 # Drop duplicates (centers already accounted for in previous quarters ----
 final_list_unique = final_list.drop_duplicates(subset='MEntity', keep='first')  # Removes any duplicates present in the data set
 
+#  -----------------------------
+#  Append Long / Lat Coordinates
+#  -----------------------------
+graph_query = "SELECT * FROM GRAPH_ENTITY_INFO WHERE MEntity in {} ORDER BY [MEntity]".format(tuple(existing_mentity))
+graph_loc = pd.read_sql_query(graph_query, finanalysis_engine)
+
+#  Left merge long/lat ----
+final_w_location = pd.merge(final_list_unique,graph_loc.loc[:, ["MEntity", "Latitude", "Longitude"]], how='left', on='MEntity')
+
 
 #  --------------------------------------
 #  Maintain Master Acquisitions File ----
@@ -194,4 +204,8 @@ not_UHI.to_excel(writer, sheet_name='Not_UHI', index=False)
 pre_existing_MEntity.to_excel(writer, sheet_name='Pre-existing Centers', index=False, header=False)
 writer.save()
 
+#  -----------------------------------
+#  Export final list with long and lat
+#  -----------------------------------
+final_w_location.to_csv('Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acq_list.csv', index=False)
 

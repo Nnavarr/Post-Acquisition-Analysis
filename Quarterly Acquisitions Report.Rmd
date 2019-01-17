@@ -670,6 +670,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```
 
+
 ```{r Individual Income Statement}
 
 income_statment_compilation_append <- function(x, accounts){
@@ -1219,12 +1220,6 @@ data_check_center <-
       require("lazyeval")
       require("purrr")
     
-  if(nrow(x) == 0) {
-    
-    x = NA
-  
-  } else {
-    
       x$FY = " "
       x$FM = " "
       x$Quarter = " "
@@ -1232,7 +1227,22 @@ data_check_center <-
         # Fiscal Year Loop # 
             for (i in 1:length(x$FY)){
           
-              if(x$MONTH[i] >= '2015/1/1' & x$MONTH[i] <= '2015/3/31'){
+              if(x$MONTH[i] >= '2014/4/1' & x$MONTH[i] <= '2014/6/1'){
+      
+                x$FY[i] = 2015
+                x$Quarter[i] = 1
+
+              } else if(x$MONTH[i] >= '2014/7/1' & x$MONTH[i] <= '2014/9/1'){
+      
+                x$FY[i] = 2015
+                x$Quarter[i] = 2
+      
+              } else if (x$MONTH[i] >= '2014/10/1' & x$MONTH[i] <= '2014/12/1'){
+      
+                x$FY[i] = 2015
+                x$Quarter[i] = 3
+                
+              } else if(x$MONTH[i] >= '2015/1/1' & x$MONTH[i] <= '2015/3/31'){
                 
                 x$FY[i] = 2015
                 x$Quarter[i] = 4
@@ -1790,6 +1800,16 @@ income_statement_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter
         is_collapsed$FM <- as.numeric(is_collapsed$FM)
         is_collapsed$Quarter <- as.numeric(is_collapsed$Quarter)
         
+      # Aggregate IS ----
+        aggregate_IS_db <- 
+          is_collapsed %>%
+            group_by(Date, Group, `Line Item`) %>%
+            select(Date, Group, `Line Item`, Value)
+        
+        colnames(aggregate_IS_db)[1] <- "MONTH" 
+        aggregate_IS_db <- fiscal_year_columns(aggregate_IS_db)
+        
+            
 ```
 
 ---
@@ -1922,6 +1942,10 @@ forecast_only_list <-
 ```{r Income Statement Export, include=FALSE}
 
 write.csv(is_collapsed, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Income_Statement.csv", 
+          row.names = FALSE)
+
+# Aggregate IS Export (For Traditional Income Statement / Waterfall view) ----
+write.csv(aggregate_IS_db, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Aggregate_Income_Statement.csv", 
           row.names = FALSE)
 
 ```
