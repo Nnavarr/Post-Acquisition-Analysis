@@ -188,6 +188,14 @@ graph_loc = pd.read_sql_query(graph_query, finanalysis_engine)
 #  Left merge long/lat ----
 final_w_location = pd.merge(final_list_unique,graph_loc.loc[:, ["MEntity", "Latitude", "Longitude"]], how='left', on='MEntity')
 
+#  ----------------------------
+#  Group Label Import
+#  ----------------------------
+
+group_labels = pd.read_excel("//adfs01.uhi.amerco/departments/mia/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Dashboard Connections/Group_Key_Database.xlsx")
+group_labels.rename(columns={'Group': 'Grp_Label', 'Grp_Num':'Group'}, inplace=True)
+
+final_w_location = pd.merge(final_w_location, group_labels, how='left', on='Group')
 
 #  --------------------------------------
 #  Maintain Master Acquisitions File ----
@@ -207,5 +215,9 @@ writer.save()
 #  -----------------------------------
 #  Export final list with long and lat
 #  -----------------------------------
-final_w_location.to_csv('Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Dashboard Connections/Acq_list.csv', index=False)
+writer2 = pd.ExcelWriter(
+    'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Dashboard Connections/Acquisition_List.xlsx', engine='xlsxwriter')
+
+final_w_location.to_excel(writer2, sheet_name='Acquisition_List', index=False)
+writer2.save()
 
