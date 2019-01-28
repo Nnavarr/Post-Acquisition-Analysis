@@ -54,28 +54,15 @@ library(rbenchmark)
 
 ```{r Entity List}
 
-# Completed acquisitions spreadsheet import ----
-c_acquisitions <- 
-  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Completed_Acquisitions20180725.csv", header = TRUE)
-
-  # completed completed acquisitions tbl conversion ----
-    c_acquisitions <- 
-      as.tbl(c_acquisitions)
-
-      c_acquisitions_include <- 
-        c_acquisitions %>% 
-        filter(Include. == 'Yes')
-      
-        c_acquisitions_exclude <- 
-          c_acquisitions %>% 
-          filter(Include. == 'No')
+# Import Excel File ----
+acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Acq List\\Master_Acquisitions_List.xlsx", sheet = 'Master_List')
         
-        
-acq_list_og <- acq_list_final
+# Filter for Included properties (excludes remotes/abuttings) ----
+acq_list_final <- 
+  acq_list_final %>%
+  filter(`Include?` == 'Yes')
 
-# ---------------------------------------------------- 
- acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Acquisition List Summary.xlsx", sheet = 'Included Acquisitions')
-        
+
 # Extraction of profit center numbers ----      ## IMPORTED FROM ENTITY LIST RMD!!!! ##
   acq_pc <-
     acq_list_final %>% 
@@ -274,7 +261,7 @@ line_item_function <- function(x, df){
      # Filter for max date
      line_item_is <-
         line_item_is %>%
-        filter(MONTH < '2018-12-01')
+        filter(MONTH <= '2018-12-01')
      
      
     } else if(date_diff > 0){
@@ -305,7 +292,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH < '2018-12-01')
+        filter(MONTH <= '2018-12-01')
      
     } else if(date_diff == 0){
     
@@ -314,7 +301,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH < '2018-12-01')
+        filter(MONTH <= '2018-12-01')
       
     }
   
@@ -497,7 +484,6 @@ for (i in 1:length(db$`PROFIT CENTER`)){
                 `MISCELLANEOUS INCOME` +   
                 `U-BOX` +
                 `U-MOVE NET COMMISSION` +
-                `INTERCOMPANY LEASE` +
                 `THIRD PARTY LEASE `, 
              
              TOTAL_OP_EXPENSE = 
@@ -520,7 +506,6 @@ for (i in 1:length(db$`PROFIT CENTER`)){
                `MISCELLANEOUS INCOME` +
                `U-BOX` +
                `U-MOVE NET COMMISSION` +
-               `INTERCOMPANY LEASE` +
                `THIRD PARTY LEASE ` -
                `PERSONNEL` -
                `REPAIRS AND MAINTENANCE/GENERAL` -
@@ -845,7 +830,6 @@ for (i in 1:length(db$`PROFIT CENTER`)){
                 `MISCELLANEOUS INCOME` +   
                 `U-BOX` +
                 `U-MOVE NET COMMISSION` +
-                `INTERCOMPANY LEASE` +
                 `THIRD PARTY LEASE `, 
              
              TOTAL_OP_EXPENSE = 
@@ -868,7 +852,6 @@ for (i in 1:length(db$`PROFIT CENTER`)){
                `MISCELLANEOUS INCOME` +
                `U-BOX` +
                `U-MOVE NET COMMISSION` +
-               `INTERCOMPANY LEASE` +
                `THIRD PARTY LEASE ` -
                `PERSONNEL` -
                `REPAIRS AND MAINTENANCE/GENERAL` -
@@ -1198,14 +1181,14 @@ data_check_center <-
   acq_type <-
       acq_list_final %>%
       filter(Profit_Center %in% x_append[["Profit_Center"]]) %>%
-      select(`Construction_Type`)
+      select(`Type`)
     
-    acq_type <- as.character(acq_type$`Construction_Type`)
+    acq_type <- as.character(acq_type$`Type`)
     x_append <- append(x_append, list(acq_type))
   
   # Rename List Observations ----
   names(x_append)[[2]] <- "MEntity"
-  names(x_append)[[3]] <- "Acquisition_Type"
+  names(x_append)[[3]] <- "Type"
   
   return(x_append)
   
@@ -1719,6 +1702,137 @@ not_NA_occ <- function(x){
 
 ```
 
+```{r Line Item Compilation}
+
+storage_income <- 
+  accounts %>%
+  filter(Line.Item == 'STORAGE INCOME')
+
+  sales <-
+    accounts %>%
+    filter(Line.Item == 'SALES')
+
+    cogs <- 
+      accounts %>%
+      filter(Line.Item == 'COST OF SALES')
+
+      misc_income <- 
+        accounts %>%
+        filter(Line.Item == 'MISCELLANEOUS INCOME')
+
+        ubox_income <- 
+          accounts %>%
+          filter(grepl("U-BOX", accounts$Line.Item))
+        
+          ubox_income$Line.Item = 'U-BOX'
+          
+          
+          umove_net_commission <-
+            accounts %>%
+            filter(Line.Item == 'U-MOVE NET COMMISSION')
+          
+            third_party_lease <-
+              accounts %>%
+              filter(Line.Item == 'THIRD PARTY LEASE ')
+            
+              intercompany_lease <-
+                accounts %>%
+                filter(Line.Item == 'INTERCOMPANY LEASE')
+            
+
+            # Expenses ----
+              personnel_exp <-
+                accounts %>%
+                filter(Line.Item == 'PERSONNEL')
+              
+                repairs_and_maintenance <- 
+                  accounts %>%
+                  filter(Line.Item == 'REPAIRS AND MAINTENANCE/GENERAL')
+                
+                  utility_exp <- 
+                    accounts %>%
+                    filter(Line.Item == 'UTILITIES')
+                  
+                    telephone_exp <- 
+                      accounts %>% 
+                      filter(Line.Item == 'TELEPHONE')
+                    
+                      advertising_exp <-
+                        accounts %>%
+                        filter(Line.Item == 'ADVERTISING')
+                      
+                        supplies <-
+                          accounts %>%
+                          filter(Line.Item == 'SUPPLIES')
+                        
+                        rent_eqp_land_bldg <- 
+                          accounts %>%
+                          filter(Line.Item == 'RENT-EQUIPMENT/LAND AND BLDGS')
+
+                      liability_insurance <-
+                        accounts %>%
+                        filter(Line.Item == 'LIABILITY INSURANCE')
+                      
+                  property_tax_exp <-
+                    accounts %>%
+                    filter(Line.Item == 'PROPERTY TAX')
+                  
+              bad_debt_expense <- 
+                accounts %>%
+                filter(Line.Item == 'BAD DEBT EXPENSE')
+              
+          other_op_exp <- 
+            accounts %>%
+            filter(Line.Item == "OTHER OPERATING EXPENSE")
+                        
+
+# Accounts Data Frame ----
+chart_of_accounts <-
+  bind_rows(storage_income, 
+            sales, 
+            cogs,
+            misc_income,
+            ubox_income,
+            umove_net_commission,
+            third_party_lease,
+            intercompany_lease,
+            personnel_exp,
+            repairs_and_maintenance, 
+            utility_exp,
+            telephone_exp,
+            advertising_exp,
+            supplies,
+            rent_eqp_land_bldg,
+            liability_insurance,
+            property_tax_exp,
+            bad_debt_expense,
+            other_op_exp)
+          
+          
+  # Character conversion ----
+  chart_of_accounts$SAP_number <-
+    as.character(chart_of_accounts$SAP_number)
+          
+  # Isolate SAP Account Numbers ----
+  sap_accounts <-
+    chart_of_accounts %>%
+    select(SAP_number)
+          
+  
+          
+  # List of Line Item Descriptions ----
+  line_items <-         
+    chart_of_accounts %>%
+      distinct(Line.Item)
+          
+    line_items <- line_items$Line.Item
+    
+    # List Creation ----      
+    line_item_list <- lapply(line_items, as.list)
+
+
+```
+
 
 ##**Quarterly Group Compilation**
 ---
@@ -1765,6 +1879,18 @@ for (i in seq_along(q_acquisitions_list)) {
     
 ```
 
+```{r Income Statement Data Check}
+
+new_pc <- modify_depth(q_acquisitions_list[16], 2, nested_list_filter, z = 'Profit_Center')
+new_pc <- unlist(new_pc, recursive = FALSE)
+
+
+modify_depth(new_pc, 1, data_check_na)
+
+```
+
+
+
 ---
 ##**Income Statement Compilation**
 ---
@@ -1773,7 +1899,7 @@ for (i in seq_along(q_acquisitions_list)) {
 
 # Income statement compilation ----
 q_acquisitions_list <-
-  modify_depth(q_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
+  modify_depth(q_acquisitions_list[15], 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
 
 
 
