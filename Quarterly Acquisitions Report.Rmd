@@ -1598,12 +1598,21 @@ occ_compilation <- function(x){
         occ_df_local$MONTH <- as.Date(occ_df_local$MONTH)
         
         # Create Fiscal Year Columns for Data 
-          occ_df_local <- 
-            fiscal_year_columns(occ_df_local)
+        if(nrow(occ_df_local) > 0){
         
-  # Append List 
-    y =
-      append(x, list(occ_df_local))
+            occ_df_local <- 
+              fiscal_year_columns(occ_df_local)
+        
+          # Append List 
+          y = append(x, list(occ_df_local))
+        
+        } else {
+          
+          occ_df_local = NA
+          y = append(x, list(occ_df_local))
+          
+        }
+    
   
   names(y)[[5]] = "Unit_Mix"
   
@@ -1879,17 +1888,6 @@ for (i in seq_along(q_acquisitions_list)) {
     
 ```
 
-```{r Income Statement Data Check}
-
-new_pc <- modify_depth(q_acquisitions_list[16], 2, nested_list_filter, z = 'Profit_Center')
-new_pc <- unlist(new_pc, recursive = FALSE)
-
-
-modify_depth(new_pc, 1, data_check_na)
-
-```
-
-
 
 ---
 ##**Income Statement Compilation**
@@ -1899,7 +1897,7 @@ modify_depth(new_pc, 1, data_check_na)
 
 # Income statement compilation ----
 q_acquisitions_list <-
-  modify_depth(q_acquisitions_list[15], 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
+  modify_depth(q_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
 
 
 
@@ -1984,6 +1982,7 @@ unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "U
         
 
 ```
+
 
 ```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity, eval=FALSE, include=FALSE}
 
@@ -2080,10 +2079,10 @@ forecast_only_list <-
 write.csv(is_collapsed, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Income_Statement.csv", 
           row.names = FALSE)
 
+
 # Aggregate IS Export (For Traditional Income Statement / Waterfall view) ----
 write.csv(aggregate_IS_db, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Aggregate_Income_Statement.csv", 
           row.names = FALSE)
-
 
 ```
 
