@@ -50,13 +50,6 @@ library(xlsx)
 ```
 
 
-
-#*Introduction*
-
-This markdown will process the new acquisitions list to be used in our Quarterly Acquisitions Report Process. It will also export a list / details of the centers used within the Quarterly Acquisitions Compilation. 
-
-
-
 ###**SQL Databases**
 ```{r}
 
@@ -123,7 +116,6 @@ new_properties <-
     colnames(new_properties)[3] <- "Close of Escrow"
     colnames(new_properties)[4] <- "Purchase"
 
-    
 ```
 
 
@@ -170,6 +162,7 @@ dim(new_properties_2) # 105 after merge 10-23-2018
 ```
 
 
+
 ```{r}
 
 # write.csv(new_properties_2, "Z:\\group\\MIA\\Yusel\\MEntity_Join.csv")
@@ -181,8 +174,8 @@ new_properties_2 %>%
 # 101 distinct MEntity Numbers ----
 
 
-
 ```
+
 
 
 ##** Unique MEntity Numbers**
@@ -197,6 +190,7 @@ Output: List of new Acquistions with Center Descriptions to be fed into Quarterl
 ---
 Columns of Interest 
 ---
+
 
 3 - Close of Escrow
 
@@ -240,6 +234,7 @@ center_list <-
 
 
 ```
+
 
 ##** Duplicate MEntity Numbers **
 
@@ -303,6 +298,7 @@ unique_mentity$Include <- " "
 
 unique_mentity$Include[grepl("751075", unique_mentity$Entity)] <- 'No' 
 
+
 ```
 
 
@@ -323,7 +319,6 @@ unique_mentity %>%
   not_included <- 
     unique_mentity %>%
     filter(Include == 'No')
-
 
  # Export not included MEntity ----
    # write.xlsx(not_included, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\excluded_MEntity.xlsx")
@@ -504,6 +499,7 @@ unique_mentity_include[ , -c(16, 17, 18)]
   c_acquisitions_include$Date_Opened = ""
   c_acquisitions_include$Date_Closed = ""
   c_acquisitions_include$Status = ""
+  
   
 ```
 
@@ -700,6 +696,11 @@ acq_list_final <-
            MEntity != "M0000000385")
   
   
+  
+# Export CSV of Group 15 List ----
+write.csv(acq_list_final, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\Master List.csv")
+  
+  
 ```
 
 
@@ -710,7 +711,6 @@ print(acq_list_final %>%
   summarize(Total = n_distinct(Profit_Center)))
 
 ```
-
 
 
 
@@ -730,25 +730,6 @@ old_coa$SAP_number <- as.character(old_coa$SAP_number)
 # Update Chart of accounts to integer for separation ----
 chart_of_accounts$SAP_number <- as.character(chart_of_accounts$SAP_number)
 
-
-
-
-
-# Anti join old coa & new coa ----
-difference_in_coa <- 
-  anti_join(old_coa$SAP_number, chart_of_accounts$SAP_number)
-
-
-
-
-
-
-# Return the accounts not present within the new chart of accounts from the lender reporting ----
-difference_in_coa <- old_coa[which( !(old_coa$SAP_number %in% chart_of_accounts$SAP_number))]
-
-
-old_coa
-?inner_join
 
 ```
 
