@@ -7,45 +7,35 @@ output: html_document
 
 ```{r Library}
 
-library(rstudioapi)
-
-library(ggplot2)
-library(ggvis)
-library(ggthemes)
-
-library(purrr)
-library(lazyeval)
-library(RODBC) # Creates a connection to SQL Database
-library(odbc)
-library(sqldf) # Allows for the use of SQL language
-library(reshape2) #Data Transformation
-library(DT)
-library(dygraphs)
-library(xts)
-library(lubridate)
-library(reshape2)
-
-library(plyr)
-library(dplyr)
-library(dbplyr)
-
-library(R2HTML)
-library(CenterIS)
-
-library(supclust)
-
-library(jsonlite)
-library(RCurl)
-
-library(tidyr)
-library(data.table)
-
-library(rlist)
-
-library(testthat)
-library(xlsx)
-
-library(rbenchmark)
+library("rstudioapi")
+library("ggplot2")
+library("ggvis")
+library("ggthemes")
+library("purrr")
+library("lazyeval")
+library("RODBC") # Creates a connection to SQL Database
+library("odbc")
+library("sqldf") # Allows for the use of SQL language
+library("reshape2") #Data Transformation
+library("DT")
+library("dygraphs")
+library("xts")
+library("lubridate")
+library("reshape2")
+library("plyr")
+library("dplyr")
+library("dbplyr")
+library("R2HTML")
+library("CenterIS")
+library("supclust")
+library("jsonlite")
+library("RCurl")
+library("tidyr")
+library("data.table")
+library("rlist")
+library("testthat")
+library("xlsx")
+library("rbenchmark")
 
 ```
 
@@ -62,29 +52,28 @@ acq_list_final <-
   acq_list_final %>%
   filter(`Include?` == 'Yes')
 
+# Extraction of profit center numbers ----
+acq_pc <-
+  acq_list_final %>% 
+  select(Profit_Center)
 
-# Extraction of profit center numbers ----      ## IMPORTED FROM ENTITY LIST RMD!!!! ##
-  acq_pc <-
-    acq_list_final %>% 
-    select(Profit_Center)
-
-  # Removal of NA values ----
-    acq_pc <-  
-      acq_pc[!is.na(acq_pc), ] 
+# Removal of NA values ----
+acq_pc <-  
+  acq_pc[!is.na(acq_pc), ] 
    
-    # Check for duplicate profit centers within completed acquisitions data frame ----
-      acq_pc_check <- 
-        acq_pc %>%
-          group_by(Profit_Center) %>%
-          mutate(Count = 1) %>%
-          summarise(Total = sum(Count)) %>%
-          filter(Total > 1)
+# Check for duplicate profit centers within completed acquisitions data frame ----
+acq_pc_check <- 
+  acq_pc %>%
+  group_by(Profit_Center) %>%
+  mutate(Count = 1) %>%
+  summarise(Total = sum(Count)) %>%
+  filter(Total > 1)
       
-      # Kill switch if duplicate profit centers are detected; Check 1 ----
-        if(length(acq_pc_check$Profit_Center) != 0) {
-          print("Duplicate Profit Centers Detected! Process will now stop")
-          stop()
-        }        
+# Kill switch if duplicate profit centers are detected; Check 1 ----
+if(length(acq_pc_check$Profit_Center) != 0) {
+  print("Duplicate Profit Centers Detected! Process will now stop")
+  stop()
+  }        
   
 ```
 
@@ -125,71 +114,25 @@ Group <- c("FY15 Q4",
 
 ```{r SQL Connections}
 
-# Finaccounting connection ----
-con.FinAccounting = DBI::dbConnect(odbc::odbc(), 
-      Driver = "SQL Server",
-      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
-      Database = "FinAccounting",
-      UID = rstudioapi::askForPassword("Database user"),
-      PWD = rstudioapi::askForPassword("Database password"),
-      Port = 1433)
+con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = 'SQL Server',
+                      Server = 'OPSREPORT02.UHAUL.AMERCO.ORG',
+                      UID = Sys.getenv('sql_user'),
+                      PWD = Sys.getenv('sql_pwd'),
+                      Port = 1433)
+                      
 
-# Finanalysis connection ----
-con.FinAnalysis = DBI::dbConnect(odbc::odbc(), 
-      Driver = "SQL Server",
-      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
-      Database = "FINANALYSIS",
-      UID = rstudioapi::askForPassword("Database user"),
-      PWD = rstudioapi::askForPassword("Database password"),
-      Port = 1433)
+# Individual Table Reference ---- 
+IS.Trend.Cash <- dplyr::tbl(src_dbi(con), in_schema("FinAccounting.dbo", "IS_TREND_CASH"))
+sap_uhi_group <- dplyr::tbl(src_dbi(con), in_schema("FinAccounting.dbo", "SAP_IS_UHAL_GROUP"))
+wss_data <- dplyr::tbl(src_dbi(con), in_schema("Storage.dbo", "WSS_UnitMixUHI_Monthly_Archive"))
 
-# Storage connection ----
-  con.Storage = DBI::dbConnect(odbc::odbc(), 
-      Driver = "SQL Server",
-      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
-      Database = "Storage",
-      UID = rstudioapi::askForPassword("Database user"),
-      PWD = rstudioapi::askForPassword("Database password"),
-      Port = 1433)
-
-# MEntity connection ----      
-  con.mentity = DBI::dbConnect(odbc::odbc(), 
-      Driver = "SQL Server",
-      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
-      Database = "MEntity",
-      UID = rstudioapi::askForPassword("Database user"),
-      PWD = rstudioapi::askForPassword("Database password"),
-      Port = 1433)
-
-# Graph MEntity and SAP number combination
-  Graph.Entity.Info.Sql <- dplyr::tbl(con.FinAnalysis, "GRAPH_ENTITY_INFO")
-    Graph.Entity.Info.Local <- collect(Graph.Entity.Info.Sql)
-      colnames(Graph.Entity.Info.Local)[21] <- 'Profit_Center'
-        
-```
-
-```{r SQL Table Imports}
-
-# Finaccounting Tables ----
-  IS.Trend.Cash = dplyr::tbl(con.FinAccounting, "IS_TREND_CASH")
-  SAP.Hierarchy = dplyr::tbl(con.FinAccounting, "SAP_Cost_Center_Hierarchy") 
-  sap_uhi_group <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP")
-
-# MEntity Tables ----
-  SAP_Info = dplyr::tbl(con.mentity, "MENTITY_SAP")
-    SAP.DB = collect(SAP_Info)
-      SAP.DB %>% summarise(n_distinct(MEntity))
-
-# Occupancy Table ----  
-  wss_data <- dplyr::tbl(con.Storage, "WSS_UnitMixUHI_Monthly_Archive")  
-  
-      
-    
-# Collect SAP Hierarchy ----
+SAP.Hierarchy <- dplyr::tbl(src_dbi(con), in_schema("FinAccounting.dbo", "SAP_Cost_Center_Hierarchy"))
   SAP.Hierarchy <- collect(SAP.Hierarchy)
   colnames(SAP.Hierarchy)[12] <- "Profit_Center"
-  
+
 ```
+
 
 ```{r Chart of Accounts Import}
 
@@ -197,9 +140,7 @@ con.FinAnalysis = DBI::dbConnect(odbc::odbc(),
 accounts <-
   read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\income_statement_accounts.csv")
 
-
 colnames(accounts)[1] <- "SAP_number"
-
 
 ```
 
@@ -656,7 +597,6 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 
 ```
-
 
 ```{r Individual Income Statement}
 
@@ -1855,28 +1795,24 @@ Process
 ```{r Quarter Acquisition List Creation}
 
 # Split Data Frame into Elements within a list ----
-  q_list_container <- 
-    split(acq_list_final, f = acq_list_final$Group)
-
+q_list_container <- 
+  split(acq_list_final, f = acq_list_final$Group)
 
 # Quarter group profit centers by list ----
-  quarter_list <- 
-    map(q_list_container, profit_center_selection)
-
+quarter_list <- 
+  map(q_list_container, profit_center_selection)
 
 # Remove NA from quarter list ----
-  quarter_list <- 
-    lapply(quarter_list, function(x){x[!is.na(x)]})
+quarter_list <- 
+  lapply(quarter_list, function(x){x[!is.na(x)]})
   
-
 # Nested profit center list ----
-  q_acquisitions_list <- 
-    lapply(quarter_list, as.list)
+q_acquisitions_list <- 
+  lapply(quarter_list, as.list)
 
-    q_acquisitions_list <-
-      modify_depth(q_acquisitions_list, 2, nested_list_creation)
+q_acquisitions_list <-
+  modify_depth(q_acquisitions_list, 2, nested_list_creation)
     
- 
 # Group name addition ----
 grp_table <- 
   data.frame(Grp_Num, Group)
@@ -1888,7 +1824,6 @@ for (i in seq_along(q_acquisitions_list)) {
     
 ```
 
-
 ---
 ##**Income Statement Compilation**
 ---
@@ -1899,44 +1834,41 @@ for (i in seq_along(q_acquisitions_list)) {
 q_acquisitions_list <-
   modify_depth(q_acquisitions_list, 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
 
-
-
 # Collapse Income Statement Process ----
 income_statement_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Income_Statement")
 
-  # Remove level of list hierarchy
-  is_collapsed <- 
-    unlist(income_statement_list, recursive = FALSE) # Remove level of list hierarchy
+# Remove level of list hierarchy ----
+is_collapsed <- 
+  unlist(income_statement_list, recursive = FALSE) # Remove level of list hierarchy
   
-  # Collapse into a single data frame ----
-  is_collapsed <- 
-    ldply(is_collapsed, as.data.frame)
+# Collapse into a single data frame ----
+is_collapsed <- 
+  ldply(is_collapsed, as.data.frame)
   
-    # Format Data Frame for Dashboard Output ----
-    is_collapsed <- is_collapsed[ ,c(9,2,3,4,5,6,7,8,1)]
-      colnames(is_collapsed)[9] <- "Group"
+# Format Data Frame for Dashboard Output ----
+is_collapsed <- is_collapsed[ ,c(9,2,3,4,5,6,7,8,1)]
+  colnames(is_collapsed)[9] <- "Group"
       
-      # Keep th first 7 characters in a string
-      is_collapsed$Group <- substr(is_collapsed$Group, 0, 7)
+# Keep th first 7 characters in a string
+is_collapsed$Group <- substr(is_collapsed$Group, 0, 7)
   
-        is_collapsed <- 
-          left_join(is_collapsed, grp_table, by = "Group")  # Append Group Number to Collapsed Income Statement List ----
+is_collapsed <- 
+  left_join(is_collapsed, grp_table, by = "Group")  
         
-      # Data type adjustments for export ----
-        is_collapsed$FY <- as.numeric(is_collapsed$FY)
-        is_collapsed$FM <- as.numeric(is_collapsed$FM)
-        is_collapsed$Quarter <- as.numeric(is_collapsed$Quarter)
+# Data type adjustments for export ----
+is_collapsed$FY <- as.numeric(is_collapsed$FY)
+is_collapsed$FM <- as.numeric(is_collapsed$FM)
+is_collapsed$Quarter <- as.numeric(is_collapsed$Quarter)
         
-      # Aggregate IS ----
-        aggregate_IS_db <- 
-          is_collapsed %>%
-            group_by(`Date`, Group, `Line Item`, `FY`, `FM`, `Quarter`, `Month`, Grp_Num) %>%
-            summarise(Value = sum(`Value`))
+# Aggregate IS ----
+aggregate_IS_db <- 
+  is_collapsed %>%
+  group_by(`Date`, Group, `Line Item`, `FY`, `FM`, `Quarter`, `Month`, Grp_Num) %>%
+  summarise(Value = sum(`Value`))
         
-        # Re-arrange columns ----
-        aggregate_IS_db <- aggregate_IS_db[, c(1,3,9, 4,5,6,7,2,8)]
+# Re-arrange columns ----
+aggregate_IS_db <- aggregate_IS_db[, c(1,3,9, 4,5,6,7,2,8)]
             
-
 ```
 
 ---
@@ -1946,62 +1878,60 @@ income_statement_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter
 ```{r Occupancy Data Process Process Complete 1 4 2019}
 
 # Append Occ Data to list ----
-  q_acquisitions_list <-
-      modify_depth(q_acquisitions_list, 2, occ_compilation)
-
+q_acquisitions_list <-
+  modify_depth(q_acquisitions_list, 2, occ_compilation)
 
 # Collapse Unit Mix Process ----
 unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Unit_Mix") 
 
-  unit_mix_collapsed <- 
-    unlist(unit_mix_list, recursive = FALSE)
-  
-  unit_mix_collapsed <- 
-      ldply(unit_mix_collapsed, as.data.frame)
-  
-    unit_mix_collapsed <- unit_mix_collapsed[ , -11] 
-      unit_mix_collapsed <- unit_mix_collapsed[ , c(2, 3, 4, 5, 6, 7, 8, 9, 10 , 1)]
-        colnames(unit_mix_collapsed)[10] <- "Group"
-          unit_mix_collapsed$Group <- substr(unit_mix_collapsed$Group, 0, 7)
-            unit_mix_collapsed <- left_join(unit_mix_collapsed, grp_table, by = "Group")
-            
-        # Data type adjustments for export ----
-        unit_mix_collapsed$FY <- as.numeric(unit_mix_collapsed$FY)
-        unit_mix_collapsed$FM <- as.numeric(unit_mix_collapsed$FM)
-        unit_mix_collapsed$Quarter <- as.numeric(unit_mix_collapsed$Quarter)    
-        
-        # Remove NA Occupancy Rows ----
-        unit_mix_final <- unit_mix_collapsed[!is.na(unit_mix_collapsed$MEntity), ]
-    
-        # Aggregate Income Statement ----
-        aggregate_occ <- 
-          unit_mix_final %>%
-            group_by(`MONTH`, Group, `FY`, `FM`, `Quarter`, `Month`, Grp_Num) %>%
-            summarise(Total_Rooms = sum(`Total_Rooms`),
-                      Occupied_Rooms = sum(`Occupied_Rooms`))
-        
+unit_mix_collapsed <- 
+  unlist(unit_mix_list, recursive = FALSE)
 
+unit_mix_collapsed <- 
+  ldply(unit_mix_collapsed, as.data.frame)
+  
+unit_mix_collapsed <- unit_mix_collapsed[ , -11] 
+  unit_mix_collapsed <- unit_mix_collapsed[ , c(2, 3, 4, 5, 6, 7, 8, 9, 10 , 1)]
+  colnames(unit_mix_collapsed)[10] <- "Group"
+  unit_mix_collapsed$Group <- substr(unit_mix_collapsed$Group, 0, 7)
+  unit_mix_collapsed <- left_join(unit_mix_collapsed, grp_table, by = "Group")
+            
+# Data type adjustments for export ----
+unit_mix_collapsed$FY <- as.numeric(unit_mix_collapsed$FY)
+  unit_mix_collapsed$FM <- as.numeric(unit_mix_collapsed$FM)
+  unit_mix_collapsed$Quarter <- as.numeric(unit_mix_collapsed$Quarter)    
+        
+# Remove NA Occupancy Rows ----
+unit_mix_final <- unit_mix_collapsed[!is.na(unit_mix_collapsed$MEntity), ]
+    
+# Aggregate Income Statement ----
+aggregate_occ <- 
+  unit_mix_final %>%
+  group_by(`MONTH`, Group, `FY`, `FM`, `Quarter`, `Month`, Grp_Num) %>%
+            summarise(Total_Rooms = sum(`Total_Rooms`),
+            Occupied_Rooms = sum(`Occupied_Rooms`))
+        
 ```
 
 
 ```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity, eval=FALSE, include=FALSE}
 
 # Extract Observations with NA Occupancy Metrics ----
-  na_occupancy_list <-
-    modify_depth(q_acquisitions_list, 1, na_Occupancy_filter)
+na_occupancy_list <-
+  modify_depth(q_acquisitions_list, 1, na_Occupancy_filter)
 
-  # Filter MEntity Numbers for NA Occupancy metrics ----
-    profit_centers_na_occ <-
-      unlist(modify_depth(na_occupancy_list, 2, nested_list_filter, z = "Profit_Center"))
+# Filter MEntity Numbers for NA Occupancy metrics ----
+profit_centers_na_occ <-
+  unlist(modify_depth(na_occupancy_list, 2, nested_list_filter, z = "Profit_Center"))
     
-    # Print Vector of profit_centers with NA occupancy ----
-      profit_centers_na_occ <-
-        as.character(profit_centers_na_occ)
+# Print Vector of profit_centers with NA occupancy ----
+profit_centers_na_occ <-
+  as.character(profit_centers_na_occ)
 
-      # Retrieve information regarding profit centers with NA occupancy metrics ----
-        na_occupancy_profit_center_info <- 
-        SAP.Hierarchy %>%
-          filter(Profit_Center %in% profit_centers_na_occ)
+# Retrieve information regarding profit centers with NA occupancy metrics ----
+na_occupancy_profit_center_info <- 
+  SAP.Hierarchy %>%
+  filter(Profit_Center %in% profit_centers_na_occ)
 
 ```
 
@@ -2025,47 +1955,45 @@ forecasted_occ_db <-dplyr::tbl(con.FinAnalysis, "Storage_Forecast")
 q_acquisitions_list <-
       modify_depth(q_acquisitions_list, 2, forecasted_occ_function)
 
-
 # Collapse Forecasted Occupancy into single data frame -----
 forecast_only_list <- 
   modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Forecasted_Occupancy") 
 
- forecast_collapsed <- 
-    unlist(forecast_only_list, recursive = FALSE)
+forecast_collapsed <- 
+  unlist(forecast_only_list, recursive = FALSE)
   
-  forecast_collapsed <- 
-      ldply(forecast_collapsed, as.data.frame)
+forecast_collapsed <- 
+  ldply(forecast_collapsed, as.data.frame)
   
-    forecast_collapsed <- forecast_collapsed[ , -14] 
-      forecast_collapsed <- forecast_collapsed[ , c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1)]
-        colnames(forecast_collapsed)[13] <- "Group"
-        forecast_collapsed$Group <- substr(forecast_collapsed$Group, 0, 7)
+forecast_collapsed <- forecast_collapsed[ , -14] 
+  forecast_collapsed <- forecast_collapsed[ , c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 1)]
+  colnames(forecast_collapsed)[13] <- "Group"
+  forecast_collapsed$Group <- substr(forecast_collapsed$Group, 0, 7)
         
-  # Remove NA MEntity Numbers ----
-  forecast_occ_final <- forecast_collapsed[!is.na(forecast_collapsed$MEntity), ]
+# Remove NA MEntity Numbers ----
+forecast_occ_final <- forecast_collapsed[!is.na(forecast_collapsed$MEntity), ]
 
-        
 ```
 
 
 ```{r NA Forecasted OCC centers}
 
 # Extract Observations with NA Occupancy Metrics ----
-  na_fc_occupancy_list <-
-    modify_depth(q_acquisitions_list, 1, na_fc_filter)
+na_fc_occupancy_list <-
+  modify_depth(q_acquisitions_list, 1, na_fc_filter)
 
-  # Filter MEntity Numbers for NA Occupancy metrics ----
-    profit_centers_na_fc_occ <-
-      unlist(modify_depth(na_fc_occupancy_list, 2, nested_list_filter, z = "Profit_Center"))
+# Filter MEntity Numbers for NA Occupancy metrics ----
+profit_centers_na_fc_occ <-
+  unlist(modify_depth(na_fc_occupancy_list, 2, nested_list_filter, z = "Profit_Center"))
     
-    # Print Vector of profit_centers with NA occupancy ----
-      profit_centers_na_fc_occ <-
-        as.character(profit_centers_na_fc_occ)
+# Print Vector of profit_centers with NA occupancy ----
+profit_centers_na_fc_occ <-
+  as.character(profit_centers_na_fc_occ)
 
-      # Retrieve information regarding profit centers with NA occupancy metrics ----
-        na_fc_occupancy_profit_center_info <- 
-        SAP.Hierarchy %>%
-          filter(Profit_Center %in% profit_centers_na_fc_occ)
+# Retrieve information regarding profit centers with NA occupancy metrics ----
+na_fc_occupancy_profit_center_info <- 
+  SAP.Hierarchy %>%
+  filter(Profit_Center %in% profit_centers_na_fc_occ)
 
 ```
 
@@ -2079,11 +2007,9 @@ forecast_only_list <-
 write.csv(is_collapsed, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Income_Statement.csv", 
           row.names = FALSE)
 
-
 # Aggregate IS Export (For Traditional Income Statement / Waterfall view) ----
 write.csv(aggregate_IS_db, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Aggregate_Income_Statement.csv", 
           row.names = FALSE)
-
 
 ```
 
@@ -2115,16 +2041,6 @@ xlsx::write.xlsx(forecast_occ_final,
   sheetName = 'Forecasted_Rooms', 
   col.names = TRUE, 
   row.names = FALSE)
-
-```
-  
-```{r Explore Missing Forecasts Export, eval=FALSE, include=FALSE}
-
-write.csv(profitcenter_missing_fc_info,"Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\profitcenter_missing_forecast.csv")
-      
-write.csv(mentity_missing_fc_occ, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q2\\Missing Forecasted Occ\\mentity_missing_forecast.csv")
-
-write.csv(distinct.missingdata.f, "Z:\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\F19 Q1\\Occupancy Forecast\\Missing_Forecast.csv")
 
 ```
   
