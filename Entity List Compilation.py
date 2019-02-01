@@ -3,10 +3,27 @@ import pyodbc
 import numpy as np
 import datetime
 
-# SQL Database Engines ----
-mentity_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=MEntity;UID=1217543;PWD=Noe543N')
-finaccounting_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=FinAccounting;UID=1217543;PWD=Noe543N')
-finanalysis_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=FINANALYSIS;UID=1217543;PWD=Noe543N')
+# SQL Connection Function ----
+def create_connection(database):
+    #load password from env, entry if not available
+    pwd = os.environ.get('sql_pwd')
+    if pwd is None:
+        pwd = getpass()
+
+    #load user and create connection string
+    cnxn_str = ((r'Driver={{SQL Server}};'
+    r'Server=OPSReport02.uhaul.amerco.org;'
+    r'Database='+database+';'
+    r'UID={};PWD={};').format(getuser(), pwd))
+
+    #return connection object
+    return(pyodbc.connect(cnxn_str))
+
+
+mentity_engine = create_connection(database='MEntity')
+finaccounting_engine = create_connection(database='FinAccounting')
+finanalysis_engine = create_connection(database='FINANALYSIS')
+rea_val_engine = create_connection(database='RealEstateValuation')
 
 # STEP 1: Import Previous ----
 # Import Existing Quarterly Acquisitions List ----
@@ -107,7 +124,7 @@ sap_hierarchy_unique = sap_hierarchy.drop_duplicates(subset='MEntity', keep='las
 new_additions_unique = new_additions_unique.merge(sap_hierarchy_unique.loc[:, ["MEntity", "Cost Center", "Hierarchy Area"]], how='left', on='MEntity')
 
 # Import REA Val DB for Construction Type ----
-rea_val_engine = pyodbc.connect('DRIVER={SQL SERVER}; SERVER=OPSREPORT02.UHAUL.AMERCO.ORG;DATABASE=RealEstateValuation;UID=1217543;PWD=Noe543N')
+rea_val_engine =
 
 rea_val_query = "SELECT * FROM REV_REAL_ADDITIONS WHERE MEntity in {} ORDER BY [MEntity]".format(tuple(new_additions_unique["MEntity"]))
 rea_val_db = pd.read_sql_query(rea_val_query, rea_val_engine)
@@ -200,24 +217,24 @@ final_w_location = pd.merge(final_w_location, group_labels, how='left', on='Grou
 #  --------------------------------------
 #  Maintain Master Acquisitions File ----
 #  --------------------------------------
-writer = pd.ExcelWriter(
-    'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acquisition List Summary.xlsx',
-    engine='xlsxwriter')
+#writer = pd.ExcelWriter(
+   # 'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acquisition List Summary.xlsx',
+   # engine='xlsxwriter')
 
-final_list_unique.to_excel(writer, sheet_name='Included Acquisitions', index=False)
-missing_profit_center_df.to_excel(writer, sheet_name='Missing_PC', index=False)
-removed_remotes.to_excel(writer, sheet_name='Removed_Remotes', index=False)
-removed_abutting.to_excel(writer, sheet_name='Removed_Abutting', index=False)
-not_UHI.to_excel(writer, sheet_name='Not_UHI', index=False)
-pre_existing_MEntity.to_excel(writer, sheet_name='Pre-existing Centers', index=False, header=False)
-writer.save()
+#final_list_unique.to_excel(writer, sheet_name='Included Acquisitions', index=False)
+#missing_profit_center_df.to_excel(writer, sheet_name='Missing_PC', index=False)
+#removed_remotes.to_excel(writer, sheet_name='Removed_Remotes', index=False)
+#removed_abutting.to_excel(writer, sheet_name='Removed_Abutting', index=False)
+#not_UHI.to_excel(writer, sheet_name='Not_UHI', index=False)
+#pre_existing_MEntity.to_excel(writer, sheet_name='Pre-existing Centers', index=False, header=False)
+#writer.save()
 
 #  -----------------------------------
 #  Export final list with long and lat
 #  -----------------------------------
-writer2 = pd.ExcelWriter(
-    'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Dashboard Connections/Acquisition_List.xlsx', engine='xlsxwriter')
+#writer2 = pd.ExcelWriter(
+   # 'Z:/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Dashboard Connections/Acquisition_List.xlsx', engine='xlsxwriter')
 
-final_w_location.to_excel(writer2, sheet_name='Acquisition_List', index=False)
-writer2.save()
+#final_w_location.to_excel(writer2, sheet_name='Acquisition_List', index=False)
+#writer2.save()
 

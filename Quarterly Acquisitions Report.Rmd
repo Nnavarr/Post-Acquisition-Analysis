@@ -90,9 +90,9 @@ acq_list_final <-
 
 ```{r Function Updates}
 
-max_is_month
-current_month
-occ_compilation # Update "Date" for Unit Mix Filter 
+#max_is_month
+#current_month
+#occ_compilation # Update "Date" for Unit Mix Filter 
 
 ```
 
@@ -2083,6 +2083,7 @@ write.csv(is_collapsed, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\No
 # Aggregate IS Export (For Traditional Income Statement / Waterfall view) ----
 write.csv(aggregate_IS_db, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Aggregate_Income_Statement.csv", 
           row.names = FALSE)
+
 
 ```
 
