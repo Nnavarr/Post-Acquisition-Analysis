@@ -18,7 +18,8 @@ library(RCurl)
    # Aggregate Income Statement Data
      aggregate.is.text <- getURL("https://raw.githubusercontent.com/Nnavarr/Post-Acquisition-Analysis/master/Aggregate_IS_Data.csv?token=AiT95dmpplT7JdVs-4Dw12L3ismeVL7Jks5ceEaAwA%3D%3D")
       aggregate.is.df <- read.csv(text = aggregate.is.text)
-        aggregate.is.df$Date = as.Date(aggregate.is.df$Date)
+      aggregate.is.df$Date = as.character(aggregate.is.df$Date)
+        aggregate.is.df$Date = as.Date(aggregate.is.df$Date, format = '%m/%d/%Y')
            
         
         
