@@ -243,3 +243,5 @@ final_list = existing_list.append(new_additions4, ignore_index=True, sort=False)
 # ------------------------------------
 # Final Step: Export List to Directory
 # ------------------------------------
+final_list.to_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\F19 Q4\New Acquisitions List\Master_Acquisitions_List.xlsx',
+                    index=False)
