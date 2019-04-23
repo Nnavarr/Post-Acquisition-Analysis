@@ -28,7 +28,7 @@ real_add_con = create_connection(database='RealEstateValuation')
 finanalysis_con = create_connection(database='FINANALYSIS')
 
 # Import Master Acquisitions List & Append Center Info ----
-master_acquisitions_list = pd.read_excel("//adfs01.uhi.amerco/departments/mia/group/MIA/Noe/Projects/Post Acquisition/Report/Quarterly Acquisitions/Acq List/Acquisitions Master List.xlsx")
+master_acquisitions_list = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\Acq List\Master_Acquisitions_List.xlsx')
 
 # Query for DLR01 ----
 dlr01_query_initial = "SELECT * FROM ENTITY_DLR01 WHERE ENTITY_6NO in {} AND [STATUS] = 'O' ORDER BY [ID] ASC, [MEntity]".format(tuple(master_acquisitions_list.Entity))
