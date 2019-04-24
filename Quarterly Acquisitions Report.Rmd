@@ -45,7 +45,7 @@ library("rbenchmark")
 ```{r Entity List}
 
 # Import Excel File ----
-acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Acq List\\Master_Acquisitions_List.xlsx", sheet = 'Master_List')
+acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\F19 Q4\\New Acquisitions List\\Master_Acquisitions_List.xlsx")
         
 # Filter for Included properties (excludes remotes/abuttings) ----
 acq_list_final <- 
@@ -88,7 +88,7 @@ if(length(acq_pc_check$Profit_Center) != 0) {
 ```{r Quarterly Group Updates}
 
 # The following variables will need to be updated every quarter ----
-Grp_Num <- c(1:16)
+Grp_Num <- c(1:17)
 Group <- c("FY15 Q4", 
               "FY16 Q1", 
               "FY16 Q2",
@@ -104,7 +104,8 @@ Group <- c("FY15 Q4",
               "FY18 Q4",
               "FY19 Q1",
               "FY19 Q2",
-              "FY19 Q3")
+              "FY19 Q3",
+              "FY19 Q4")
 
 ```
 
@@ -174,7 +175,7 @@ line_item_function <- function(x, df){
      
      # Date Range for missing line items ----
      min_is_month <- min(df$MONTH)
-     max_is_month <- as.Date('2018-12-01')
+     max_is_month <- as.Date('2019-03-01')
      
      # Line Item IS compilation ----
      line_item_is <- 
@@ -208,7 +209,7 @@ line_item_function <- function(x, df){
      # Filter for max date
      line_item_is <-
         line_item_is %>%
-        filter(MONTH <= '2018-12-01')
+        filter(MONTH <= '2019-03-01')
      
      
     } else if(date_diff > 0){
@@ -239,7 +240,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH <= '2018-12-01')
+        filter(MONTH <= '2019-03-01')
      
     } else if(date_diff == 0){
     
@@ -248,7 +249,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH <= '2018-12-01')
+        filter(MONTH <= '2019-03-01')
       
     }
   
@@ -626,8 +627,14 @@ income_statment_compilation_append <- function(x, accounts){
     filter(`PROFIT CENTER` %in% x[["Profit_Center"]] & 
              ACCOUNT %in% accounts &
              `Fiscal Year` >= 2015)
-  
+    
     db <- collect(db)
+    
+    if(nrow(db) == 0){
+      
+      db <- "No Data"
+      
+    } else {
     
     db$`PROFIT CENTER` <- as.character(db$`PROFIT CENTER`)
     db$ACCOUNT <- as.character(db$ACCOUNT)
@@ -929,7 +936,13 @@ for (i in 1:length(db$`PROFIT CENTER`)){
       db$FY[i] = 2019
       db$Quarter[i] = 3
       
+    } else if (db$MONTH[i] >= '2019/1/1' & db$MONTH[i] <= '2019/3/1'){
+      
+      db$FY[i] = 2019
+      db$Quarter[i] = 4
+      
     }
+    
   }
   
   
@@ -969,12 +982,15 @@ for (i in 1:length(db$`PROFIT CENTER`)){
     
   }
   
+    }
   
   # Append List ----
     y <-
       append(x, list(IS))
   
   names(y)[[4]] = "Income_Statement"
+  
+    
   
   return(y)
 
@@ -1091,6 +1107,7 @@ data_check_center <-
     list.complete[[i]] = x
   }
   return(list.complete)
+  
 }
 
 
@@ -1786,10 +1803,7 @@ chart_of_accounts <-
     # List Creation ----      
     line_item_list <- lapply(line_items, as.list)
 
-
 ```
-
-
 
 
 
@@ -1838,7 +1852,31 @@ for (i in seq_along(q_acquisitions_list)) {
 ##**Income Statement Compilation**
 ---
 
+```{r}
+
+# test <- 
+# collect(sap_uhi_group %>% 
+#     filter(`PROFIT CENTER` == '7000012434' &
+#              `Fiscal Year` >= 2015))
+# 
+# test2 <- 
+#   collect(sap_uhi_group %>% 
+#     filter(`PROFIT CENTER` == '7000012380' &
+#              `Fiscal Year` >= 2015))
+# 
+# nrow(test)
+# nrow(test2)
+
+```
+
+
+
 ```{r Aggregate Income Statement Process Complete 1 4 2019}
+
+# Test Function ----
+# test_function <-
+#   modify_depth(q_acquisitions_list[17], 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
+
 
 # Income statement compilation ----
 q_acquisitions_list <-
