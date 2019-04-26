@@ -1542,7 +1542,7 @@ occ_compilation <- function(x){
 # Occ Data 
   occ_df =
     wss_data %>%
-      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2018-12-01') %>% 
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2019-03-01') %>% 
       group_by(MEntity,
                Date, 
                unm_product) %>%
@@ -1852,31 +1852,7 @@ for (i in seq_along(q_acquisitions_list)) {
 ##**Income Statement Compilation**
 ---
 
-```{r}
-
-# test <- 
-# collect(sap_uhi_group %>% 
-#     filter(`PROFIT CENTER` == '7000012434' &
-#              `Fiscal Year` >= 2015))
-# 
-# test2 <- 
-#   collect(sap_uhi_group %>% 
-#     filter(`PROFIT CENTER` == '7000012380' &
-#              `Fiscal Year` >= 2015))
-# 
-# nrow(test)
-# nrow(test2)
-
-```
-
-
-
 ```{r Aggregate Income Statement Process Complete 1 4 2019}
-
-# Test Function ----
-# test_function <-
-#   modify_depth(q_acquisitions_list[17], 2, income_statment_compilation_append, accounts = sap_accounts$SAP_number) 
-
 
 # Income statement compilation ----
 q_acquisitions_list <-
@@ -1930,7 +1906,7 @@ q_acquisitions_list <-
   modify_depth(q_acquisitions_list, 2, occ_compilation)
 
 # Collapse Unit Mix Process ----
-unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Unit_Mix") 
+unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = 7) 
 
 unit_mix_collapsed <- 
   unlist(unit_mix_list, recursive = FALSE)
@@ -2057,10 +2033,6 @@ na_fc_occupancy_profit_center_info <-
   SAP.Hierarchy %>%
   filter(Profit_Center %in% profit_centers_na_fc_occ)
 
-
-
-
-
 ```
 
 
@@ -2088,12 +2060,10 @@ xlsx::write.xlsx(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisitio
                   row.names = FALSE
                   )
 
-
 write.csv(aggregate_occ, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\Dashboard Connections\\Aggregate_Occupancy.csv", 
           row.names = FALSE)
 
 ```
-
 
 ```{r Forecasted Occ Metrics Export, eval=FALSE, include=FALSE}
 
@@ -2102,6 +2072,7 @@ xlsx::write.xlsx(fc_occ_df_2,
   sheetName = 'Forecasted_Rooms', 
   col.names = TRUE, 
   row.names = FALSE)
+
 
 ```
   
