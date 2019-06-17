@@ -5,7 +5,7 @@ date: "July 25, 2018"
 output: html_document
 ---
 
-```{r Library}
+```{r Library, include=FALSE}
 
 library("rstudioapi")
 library("ggplot2")
@@ -122,7 +122,6 @@ con <- DBI::dbConnect(odbc::odbc(),
                       PWD = Sys.getenv('sql_pwd'),
                       Port = 1433)
                       
-
 # Individual Table Reference ---- 
 IS.Trend.Cash <- dplyr::tbl(src_dbi(con), in_schema("FinAccounting.dbo", "IS_TREND_CASH"))
 sap_uhi_group <- dplyr::tbl(src_dbi(con), in_schema("FinAccounting.dbo", "SAP_IS_UHAL_GROUP"))
@@ -1906,7 +1905,7 @@ q_acquisitions_list <-
   modify_depth(q_acquisitions_list, 2, occ_compilation)
 
 # Collapse Unit Mix Process ----
-unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = 7) 
+ unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = 5) 
 
 unit_mix_collapsed <- 
   unlist(unit_mix_list, recursive = FALSE)
@@ -1937,6 +1936,7 @@ aggregate_occ <-
         
 ```
 
+
 ```{r NA Occupancy MEtrics - Infor on NA Occupancy MEntity, eval=FALSE, include=FALSE}
 
 # Extract Observations with NA Occupancy Metrics ----
@@ -1965,15 +1965,15 @@ na_occupancy_profit_center_info <-
 
 ```{r Forecasted Occupancy Metrics Process Complete 1 4 2019}
 
-#duplicate_list <- q_acquisitions_list
+duplicate_list <- q_acquisitions_list
 
 # Append Forecasted Occupancy to existing function ----
-q_acquisitions_list <-
+duplicate_list <-
       modify_depth(q_acquisitions_list, 2, forecasted_occ_function)
 
 # Collapse Forecasted Occupancy into single data frame -----
 forecast_only_list <- 
-  modify_depth(q_acquisitions_list, 2, nested_list_filter, z = "Forecasted_Occupancy") 
+  modify_depth(duplicate_list, 2, nested_list_filter, z = "Forecasted_Occupancy") 
 
 forecast_collapsed <- 
   unlist(forecast_only_list, recursive = FALSE)
