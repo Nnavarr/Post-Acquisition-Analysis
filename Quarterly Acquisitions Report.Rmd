@@ -37,8 +37,6 @@ library("testthat")
 library("xlsx")
 library("rbenchmark")
 
-test
-
 ```
 
 
