@@ -5,6 +5,12 @@ import os
 from getpass import getuser, getpass
 import re
 
+
+# ----------------
+# Data Connections
+# ----------------
+user = '1217543'
+
 # SQL Connection Function ----
 def create_connection(database):
     #load password from env, entry if not available
@@ -16,10 +22,27 @@ def create_connection(database):
     cnxn_str = ((r'Driver={{SQL Server}};'
     r'Server=OPSReport02.uhaul.amerco.org;'
     r'Database='+database+';'
-    r'UID={};PWD={};').format(getuser(), pwd))
+    r'UID={};PWD={};').format(user, pwd))
 
     #return connection object
     return(pyodbc.connect(cnxn_str))
+
+# SAP Data Connection ----
+sap_engine = create_connection(database='SAP_Data')
+
+# SAP Account Numbers ----
+sap_accounts = pd.read_csv(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\sap_accounts.csv')
+
+# Entity List ----
+entity_list = pd.read_excel(r'\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\F19 Q4\\New Acquisitions List\\Master_Acquisitions_List.xlsx')
+
+
+
+
+
+
+
+
 
 # SAP Account Numbers ----
 sap_accounts = pd.read_csv(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\income_statement_accounts.csv')
@@ -65,39 +88,4 @@ def income_statement(x):
 income_statement(entity_list)
 
 entity_list['Profit_Center']
-
-
-
-
-
-
-
-
-
-# # Test Nested List Creation ----
-# entity_list_test = entity_list.copy()
-# group_numbers = tuple(entity_list['Group'])
-# profit_centers = tuple(entity_list['Profit_Center'])
-# mentity_numbers = tuple(entity_list['MEntity'])
-# index_cols = list(zip(group_numbers, profit_centers, mentity_numbers))
-#
-# # Multi Index DF creation ----
-# multi_index = pd.MultiIndex.from_tuples(index_cols, names=['Group', 'Profit_Center', 'MEntity'])
-# entity_list_test = entity_list_test.set_index(multi_index)
-#
-# # Iterate through Index for IS Compilation ----
-# for group, df_select in entity_list_test.groupby(level=0):
-#     nested_list = []
-#
-#     for pc in df_select:
-#
-#         # Income Statement Compilation ----
-#         print(df_select['PROFIT_CENTER'])
-#         # sap_db_filter = sap_db[sap_db['PROFIT_CENTER'].isin(pc)]
-
-
-
-
-
-
 
