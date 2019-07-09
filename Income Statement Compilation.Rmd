@@ -25,15 +25,10 @@ library(xts)
 library(lubridate)
 library(reshape2)
 
-library(plyr)
 library(dplyr)
 library(dbplyr)
-
 library(R2HTML)
-library(CenterIS)
-
 library(supclust)
-
 library(jsonlite)
 library(RCurl)
 
@@ -42,28 +37,36 @@ library(data.table)
 library(rlist)
 library(testthat)
 
-
 ```
 
 
-```{r}
+# SQL Data Connection ----
+
+```{r SQL Connection}
 
 # SQL Database ----
-con.FinAccounting = DBI::dbConnect(odbc::odbc(), 
-      Driver = "SQL Server",
-      Server = "OPSREPORT02.UHAUL.AMERCO.ORG",
-      Database = "FinAccounting",
-      UID = rstudioapi::askForPassword("Database user"),
-      PWD = rstudioapi::askForPassword("Database password"),
-      Port = 1433)
-
+con <- DBI::dbConnect(odbc::odbc(),
+                      Driver = 'SQL Server',
+                      Server = 'OPSREPORT02.UHAUL.AMERCO.ORG',
+                      UID = Sys.getenv('sql_user'),
+                      PWD = Sys.getenv('sql_pwd'),
+                      Port = 1433)
 
 # collect database ----
-  sap_uhi_group <- dplyr::tbl(con.FinAccounting, "SAP_IS_UHAL_GROUP")
-test_db <- collect(sap_uhi_group)
+sap_db <- dplyr::tbl(src_dbi(con), in_schema())
+dplyr::tbl(src_dbi(con), in_schema("FinAccounting.dbo", "IS_TREND_CASH"))
 
 ```
 
+```{r SAP Tables}
+
+# SAP: Cost Center Info ----
+sap_centers <- dplyr::tbl(src_dbi(con), in_schema("SAP_Data.dbo", "CES_PC_LOOKUP"))
+
+# SAP: Account Data ----
+sap_db <- dplyr::tbl(src_dbi(con), in_schema("SAP_Data.dbo", "FAGLFLEXT")) 
+
+```
 
 
 #** Lender Reporting Accounts (Rob)**
@@ -72,107 +75,165 @@ test_db <- collect(sap_uhi_group)
 
 # Import csv ----
 accounts <-
-  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Same Store & Cap Ex\\Report\\Quarterly Acquisitions\\income_statement_accounts.csv")
+  read.csv("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\sap_accounts.csv")
 
-
+# Update Column Names ----
 colnames(accounts)[1] <- "SAP_number"
+colnames(accounts)[4] <- "sap_description"
+colnames(accounts)[5] <- "line_item"
+
+# Update Column Types ----
+accounts$SAP_number <- as.character(accounts$SAP_number)
+accounts$line_item <- as.character(accounts$line_item)
+accounts$sap_description <- as.character(accounts$sap_description)
+accounts$SAP_number <- as.numeric(accounts$SAP_number)
 
 ```
 
+```{r SAP Account Compilation}
 
-#** SQL Table Import**
+# Line Item names ----
+line_item_names <- c("STORAGE INCOME",
+                     "SALES",
+                     "COST OF SALES",
+                     "MISCELLANEOUS INCOME",
+                     "U-MOVE NET COMMISSION",
+                     "THIRD PARTY LEASE ",
+                     "INTERCOMPANY LEASE",
+                     "PERSONNEL",
+                     "REPAIRS AND MAINTENANCE/GENERAL",
+                     "UTILITIES",
+                     "TELEPHONE",
+                     "ADVERTISING",
+                     "SUPPLIES",
+                     "RENT-EQUIPMENT/LAND AND BLDGS",
+                     "LIABILITY INSURANCE",
+                     "PROPERTY TAX",
+                     "BAD DEBT EXPENSE",
+                     "OTHER OPERATING EXPENSE")
 
-In the following code chunk, we will manually compile the income statement format using the SQL DB. 
+# Create Individual containers for line item accounts ----
+df_container <- data.frame()
 
-```{r}
+# Loop and create account list dataframe ----
+for (i in seq_along(line_item_names)){
+
+  df <-
+    accounts %>%
+    filter(line_item == line_item_names[i])
+
+  df_container <- rbind(df_container, df)
+  
+  i = i + 1
+  
+}
+
+# Append U-Box (Multiple U-Box line items, need grepl)----
+ubox <-
+  accounts %>%
+  filter(grepl("U-BOX", accounts$line_item))
+
+df_container <- rbind(df_container, ubox)
+
+#TODO: Compare the account numbers for df_container and chart_of_accounts (original compilation)
+test_1 = df_container$SAP_number 
+test_2 = chart_of_accounts$SAP_number
+
+
+# Vector comparison ----
+`%notin%` <- Negate(`%in%`)
+
+print(test_1[test_1 %notin% test_2][1])
+
+length(test_2) #270 
+length(test_1) #270
 
 # Income Statement Compilation ----
 storage_income <- 
   accounts %>%
-  filter(Line.Item == 'STORAGE INCOME')
+  filter(line_item == 'STORAGE INCOME')
 
-  sales <-
-    accounts %>%
-    filter(Line.Item == 'SALES')
+sales <-
+  accounts %>%
+  filter(line_item == 'SALES')
 
-    cogs <- 
-      accounts %>%
-      filter(Line.Item == 'COST OF SALES')
+cogs <-
+  accounts %>%
+  filter(line_item == 'COST OF SALES')
 
-      misc_income <- 
-        accounts %>%
-        filter(Line.Item == 'MISCELLANEOUS INCOME')
+misc_income <-
+  accounts %>%
+  filter(line_item == 'MISCELLANEOUS INCOME')
 
-        ubox_income <- 
-          accounts %>%
-          filter(grepl("U-BOX", accounts$Line.Item))
-        
-          ubox_income$Line.Item = 'U-BOX'
-          
-          
-          umove_net_commission <-
-            accounts %>%
-            filter(Line.Item == 'U-MOVE NET COMMISSION')
-          
-            third_party_lease <-
-              accounts %>%
-              filter(Line.Item == 'THIRD PARTY LEASE ')
-            
-              intercompany_lease <-
-                accounts %>%
-                filter(Line.Item == 'INTERCOMPANY LEASE')
-            
+ubox_income <-
+  accounts %>%
+  filter(grepl("U-BOX", accounts$line_item))
 
-            # Expenses ----
-              personnel_exp <-
-                accounts %>%
-                filter(Line.Item == 'PERSONNEL')
-              
-                repairs_and_maintenance <- 
-                  accounts %>%
-                  filter(Line.Item == 'REPAIRS AND MAINTENANCE/GENERAL')
-                
-                  utility_exp <- 
-                    accounts %>%
-                    filter(Line.Item == 'UTILITIES')
-                  
-                    telephone_exp <- 
-                      accounts %>% 
-                      filter(Line.Item == 'TELEPHONE')
-                    
-                      advertising_exp <-
-                        accounts %>%
-                        filter(Line.Item == 'ADVERTISING')
-                      
-                        supplies <-
-                          accounts %>%
-                          filter(Line.Item == 'SUPPLIES')
-                        
-                        rent_eqp_land_bldg <- 
-                          accounts %>%
-                          filter(Line.Item == 'RENT-EQUIPMENT/LAND AND BLDGS')
+ubox_income$line_item = 'U-BOX'
 
-                      liability_insurance <-
-                        accounts %>%
-                        filter(Line.Item == 'LIABILITY INSURANCE')
-                      
-                  property_tax_exp <-
-                    accounts %>%
-                    filter(Line.Item == 'PROPERTY TAX')
-                  
-              bad_debt_expense <- 
-                accounts %>%
-                filter(Line.Item == 'BAD DEBT EXPENSE')
-              
-          other_op_exp <- 
-            accounts %>%
-            filter(Line.Item == "OTHER OPERATING EXPENSE")
-                        
+
+umove_net_commission <-
+  accounts %>%
+  filter(line_item == 'U-MOVE NET COMMISSION')
+
+third_party_lease <-
+  accounts %>%
+  filter(line_item == 'THIRD PARTY LEASE ')
+
+intercompany_lease <-
+  accounts %>%
+  filter(line_item == 'INTERCOMPANY LEASE')
+
+
+# Expenses ----
+personnel_exp <-
+  accounts %>%
+  filter(line_item == 'PERSONNEL')
+
+repairs_and_maintenance <-
+  accounts %>%
+  filter(line_item == 'REPAIRS AND MAINTENANCE/GENERAL')
+
+utility_exp <-
+  accounts %>%
+  filter(line_item == 'UTILITIES')
+
+telephone_exp <-
+  accounts %>%
+  filter(line_item == 'TELEPHONE')
+
+advertising_exp <-
+  accounts %>%
+  filter(line_item == 'ADVERTISING')
+
+supplies <-
+  accounts %>%
+  filter(line_item == 'SUPPLIES')
+
+rent_eqp_land_bldg <-
+  accounts %>%
+  filter(line_item == 'RENT-EQUIPMENT/LAND AND BLDGS')
+
+liability_insurance <-
+  accounts %>%
+  filter(line_item == 'LIABILITY INSURANCE')
+
+property_tax_exp <-
+  accounts %>%
+  filter(line_item == 'PROPERTY TAX')
+
+bad_debt_expense <-
+  accounts %>%
+  filter(line_item == 'BAD DEBT EXPENSE')
+
+other_op_exp <-
+  accounts %>%
+  filter(line_item == "OTHER OPERATING EXPENSE")
 
 # Accounts Data Frame ----
 chart_of_accounts <-
-  bind_rows(storage_income, 
-            sales, 
+  bind_rows(storage_income,
+            sales,
             cogs,
             misc_income,
             ubox_income,
@@ -180,7 +241,7 @@ chart_of_accounts <-
             third_party_lease,
             intercompany_lease,
             personnel_exp,
-            repairs_and_maintenance, 
+            repairs_and_maintenance,
             utility_exp,
             telephone_exp,
             advertising_exp,
@@ -190,40 +251,34 @@ chart_of_accounts <-
             property_tax_exp,
             bad_debt_expense,
             other_op_exp)
-          
-          
-  # Character conversion ----
-  chart_of_accounts$SAP_number <-
-    as.character(chart_of_accounts$SAP_number)
-          
-  # Isolate SAP Account Numbers ----
-  sap_accounts <-
-    chart_of_accounts %>%
-    select(SAP_number)
-          
-  
-          
-  # List of Line Item Descriptions ----
-  line_items <-         
-    chart_of_accounts %>%
-      distinct(Line.Item)
-          
-    line_items <- line_items$Line.Item
-    
-    # List Creation ----      
-    line_item_list <- lapply(line_items, as.list)
-      
+
+# Character conversion ----
+chart_of_accounts$SAP_number <-
+  as.character(chart_of_accounts$SAP_number)
+
+# Isolate SAP Account Numbers ----
+sap_accounts <-
+  chart_of_accounts %>%
+  select(SAP_number)
+
+# List of Line Item Descriptions ----
+line_items <-
+  chart_of_accounts %>%
+  distinct(line_item)
+
+line_items <- line_items$line_item
+
+# List Creation ----
+line_item_list <- lapply(line_items, as.list)
+
 ```
 
 
+# **Functions**
 
-# *Data Check Function Update*
+```{r Data Check Function}
 
-```{r}
-
-data_check_center <-
-  
-  function(x){
+data_check_center <- function(x){
     
   require("dplyr")
   require("lazyeval")
@@ -253,8 +308,7 @@ data_check_center <-
 
 ```
 
-
-```{r}
+```{r Month of Operation Start}
 
 # Original Function ----
 MonthofOperation.Start = function (x){
@@ -295,7 +349,6 @@ month_opertation_start <- function(x) {
 
 ```
 
-
 ```{r Date Difference Function }
 
 monnb <- function(d) { lt <- as.POSIXlt(as.Date(d, origin = "1900-01-01")); lt$year*12 + lt$mon } 
@@ -303,104 +356,112 @@ mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
 
 ```
 
-
 ```{r Individual Line Item Function }
 
   
-line_item_function <- function(x){
-     
-    # x = list of line items 
-     require(dplyr)
-     require(purrr)
-     
-     # Date Range for missing line items ----
-     min_is_month <- min(db$MONTH)
-     max_is_month <- as.Date('2018-09-01')
-     
-     # Line Item IS compilation ----
-     line_item_is <- 
-       db %>%
-       filter(`Line Item` == x[1]) %>%
-       group_by(MONTH, `Line Item`) %>%
-       summarize(Amount = sum(Amount))
-     
-     # Calculate date difference ----
-     date_diff <- 
-       mondf(min_is_month, min(line_item_is$MONTH))
-     
-     
-    # Check for date_diff NA ----
-    if(is.na(date_diff) == TRUE){  
-     
-    full_date <- 
-       seq.Date(from = min_is_month, to = max_is_month, by = "month")
-     
-     full_fill <- 
-       as.data.frame(full_date)
-     
-     # Rename to Month ----
-     colnames(full_fill) <- "MONTH"
-     
-     full_fill$`Line Item` <- as.character(paste(x[1]))
-     full_fill$Amount = 0
-     
-     line_item_is <- as.tbl(full_fill)
-     
-     # Filter for max date
-     line_item_is <-
-        line_item_is %>%
-        filter(MONTH < '2018-10-01')
-     
-     
-    } else if(date_diff > 0){
-     
-     
-  # Date Difference Logical Flow. 
-  # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ---- 
-
-     date_seq <-
-     seq.Date(from = min_is_month, to = min(line_item_is$MONTH) - 1, by = "month")
-   
-     fill_df <-
-     as.data.frame(date_seq)
-   
-    # Rename column ----
-     colnames(fill_df) <- "MONTH"
-     
-     fill_df$`Line Item` <- paste(x[1])
-     fill_df$Amount = 0
-   
-    # Bind Dataframes ----
-     line_item_is <-
-       bind_rows(fill_df, line_item_is)
-     
-     # tbl conversion ----
-     line_item_is <- as.tbl(line_item_is)
-     
-      # Filter for max date ----
-      line_item_is <-
-        line_item_is %>%
-        filter(MONTH < '2018-10-01')
-     
-    } else if(date_diff == 0){
+# Step by Step TEst of Line Item Function ----
+line_item_function <- function(x, df){
     
-      line_item_is <- as.tbl(line_item_is)
-      
-      # Filter for max date ----
-      line_item_is <-
-        line_item_is %>%
-        filter(MONTH < '2018-10-01')
-      
-    }
+  # ------------------------
+  # Variables #
+  # X = list of line items 
+  # current_month = Max IS Month in full date format
+      #TODO: Provide and example of a date input. Ensure the date is properly fed throughout the function 
+  # ------------------------
   
-     return(line_item_is)
+  # Required packages ----
+  require(dplyr)
+  require(purrr)
+  require(lazyeval)
+     
+  # Date Range for missing line items ----
+  min_is_month <- min(df$MONTH)
+  max_is_month <- as.Date('2019-03-01')
+  
+  # Line Item IS compilation ----
+  line_item_is <- 
+    df %>%
+    filter(`Line Item` == x[1]) %>%
+    group_by(MONTH, `Line Item`) %>%
+    summarize(Amount = sum(Amount))
+  
+  # Calculate date difference ----
+  date_diff <- 
+    mondf(min_is_month, min(line_item_is$MONTH))
+  
+  
+  # Check for date_diff NA ----
+  if(is.na(date_diff) == TRUE){  
+    
+    full_date <- 
+      seq.Date(from = min_is_month, to = max_is_month, by = "month")
+    
+    full_fill <- 
+      as.data.frame(full_date)
+    
+    # Rename to Month ----
+    colnames(full_fill) <- "MONTH"
+    
+    full_fill$`Line Item` <- as.character(paste(x[1]))
+    full_fill$Amount = 0
+    
+    line_item_is <- as.tbl(full_fill)
+    
+    # Filter for max date
+    line_item_is <-
+      line_item_is %>%
+      filter(MONTH <= '2019-03-01')
+    
+    
+  } else if(date_diff > 0){
+    
+    
+    # Date Difference Logical Flow. 
+    # if Date > 0; min Month is lower than Line Item Minimum. We will need to fill in the remaining dates ---- 
+    
+    date_seq <-
+      seq.Date(from = min_is_month, to = min(line_item_is$MONTH) - 1, by = "month")
+    
+    fill_df <-
+      as.data.frame(date_seq)
+    
+    # Rename column ----
+    colnames(fill_df) <- "MONTH"
+    
+    fill_df$`Line Item` <- paste(x[1])
+    fill_df$Amount = 0
+    
+    # Bind Dataframes ----
+    line_item_is <-
+      bind_rows(fill_df, line_item_is)
+    
+    # tbl conversion ----
+    line_item_is <- as.tbl(line_item_is)
+    
+    # Filter for max date ----
+    line_item_is <-
+      line_item_is %>%
+      filter(MONTH <= '2019-03-01')
+    
+  } else if(date_diff == 0){
+    
+    line_item_is <- as.tbl(line_item_is)
+    
+    # Filter for max date ----
+    line_item_is <-
+      line_item_is %>%
+      filter(MONTH <= '2019-03-01')
+    
+  }
+  
+  return(line_item_is)
+  
 }
-
 
 
 ```
 
-```{r}
+```{r Income Statement Compilation}
 
 income_statment_compilation <- function(x, accounts){
   
@@ -594,7 +655,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```
 
-```{r}
+```{r Test Environment for Income Statement Function}
     # Trim for NOI != 0 (eliminate blank rows from income statement) ----
     db <-
       db %>% 
@@ -720,8 +781,6 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```
 
-
-
 ```{r Line_Item Function Test}
 
 # Step by Step TEst of Line Item Function ----
@@ -831,287 +890,7 @@ test_function <-
 ```
 
 
-```{r Original Income Statement Function }
 
-income_statment_compilation <- function(x, accounts){
-  
-  # x = list of profit centers 
-  # accounts = sap accounts to be used 
-  
-  require(dplyr)
-  require(lazyeval)
-  require(purrr)
-  require(reshape2)
-  
-  # ------------------------------------------------
-  # Step 1: Filter for Profit Center & Account List 
-  # ------------------------------------------------
-  
-  # Filter SQL Database  & Collect ----
-  db <-
-  sap_uhi_group %>% 
-    filter(`PROFIT CENTER` %in% x & 
-             ACCOUNT %in% accounts &
-             `Fiscal Year` >= 2015)
-  
-    db <- collect(db)
-  
-# Reformat database ----
-colnames(db)[11] <- 4
-colnames(db)[12] <- 5
-colnames(db)[13] <- 6
-colnames(db)[14] <- 7
-colnames(db)[15] <- 8
-colnames(db)[16] <- 9
-colnames(db)[17] <- 10
-colnames(db)[18] <- 11
-colnames(db)[19] <- 12
-colnames(db)[20] <- 1
-colnames(db)[21] <- 2
-colnames(db)[22] <- 3
-  
-
-  # Eliminate Unecessary columns ----
-  db <-
-    db[ , -c(1,3,4,5,9,10,23,24,26,27)]
-
-    db <- 
-      melt(db, id = c('PROFIT CENTER', "MEntity", "ACCOUNT", "DESCRIPTION", "Fiscal Year"))
-    
-# Rename columns ----
-colnames(db)[3] <-  "SAP_number"   
-colnames(db)[7] <- "Amount"
-colnames(db)[6] <- "Cal_Month"
-
-  db$Cal_Month <- as.character(db$Cal_Month)
-  db$Cal_Month <- as.numeric(db$Cal_Month)
-  db$SAP_number <- as.character(db$SAP_number)
-
-# Creation of Calendar "MONTH" column ----
-db$Cal_Year = " "
-
-for (i in 1:length(db$`PROFIT CENTER`)){
-  
-  if(db$Cal_Month[i] >= 4 & db$Cal_Month[i] <= 12){
-    
-    db$Cal_Year[i] = db$`Fiscal Year`[i] - 1
-    
-  } else {
-    
-    db$Cal_Year[i] = db$`Fiscal Year`[i] 
-    
-  }
-  
-}
-
-  
- db$MONTH <- 
-   paste(db$Cal_Year, db$Cal_Month, 1, sep = "-")
-  
-   db$MONTH <- as.Date(db$MONTH, format = "%Y-%m-%d") 
-
-    
-  # Compilation of income statement ----
-  db <-
-    left_join(db, chart_of_accounts[ ,c(1,4)], by = "SAP_number")
-   
-    colnames(db)[10] <- "Line Item"
-    
-    
-  #------------------------------------------
-  # Step 2: Individual Line Item Compilation
-  # -----------------------------------------
-  
-  # This step will ensure all Line Items and Months are represented within the income statement for NOI calculation. If they are not, dedault value = 0
-    
-  # Summarize Income Statement ----
-  db <-
-    db %>%
-    group_by(MONTH, `Line Item`) %>%
-    summarize(Value = sum(Amount))
-    
-  # Flip Sings coming through as negative ----  
-  for (i in 1:length(db$Value)){
-    
-    if(db$`Line Item`[i] == 'MISCELLANEOUS INCOME') {
-      
-      db$Value[i] = -db$Value[i]
-      
-    } else if(db$`Line Item`[i] == 'SALES'){
-      
-      db$Value[i] = -db$Value[i]
-      
-    } else if(db$`Line Item`[i] == 'U-MOVE NET COMMISSION'){
-      
-      db$Value[i] = -db$Value[i]
-      
-    } else if(db$`Line Item`[i] == 'U-BOX OTHER INCOME'){
-      
-      db$Value[i] = -db$Value[i]
-      
-    } else if(db$`Line Item`[i] == 'U-BOX STORAGE INCOME'){
-      
-      db$Value[i] = -db$Value[i]
-      
-    } else if(db$`Line Item`[i] == 'U-BOX DELIVERY INCOME'){
-      
-      db$Value[i] = -db$Value[i]
-      
-    } else if(db$`Line Item`[i] == "STORAGE INCOME"){
-      
-      db$Value[i] = -db$Value[i]
-      
-    }
-      
-  }
-    
-# -------------------------
-# Step 3: Horizontal Format
-# -------------------------
-    
- # Convert to horizontal format ----
- db <- 
-     tidyr::spread(db, `Line Item`, Value)
- 
-   # Replace NA with 0 ----
-   db[is.na(db)] <- 0    
- 
- # Calculate NOI ----   
-
-# if(!grepl("U-BOX", colnames(db))){
-   
-# db <- 
-# db %>%
-#   mutate(NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
-   
- 
-# } else {        
-    
- db <- 
- db %>%
-   mutate(UBox = `U-BOX DELIVERY INCOME` + `U-BOX OTHER INCOME` + `U-BOX STORAGE INCOME`,
-          NOI = `STORAGE INCOME` + SALES + `MISCELLANEOUS INCOME` + UBox + `U-MOVE NET COMMISSION` - `COST OF SALES` - ADVERTISING - `LIABILITY INSURANCE` - PERSONNEL - `RENT-EQUIPMENT/LAND AND BLDGS` - `REPAIRS AND MAINTENANCE/GENERAL` - SUPPLIES - TELEPHONE - UTILITIES - `OTHER OPERATING EXPENSE`)
- 
-# }
- 
- # Melt back to vertical format ----
- db <-
-   melt(db, id = c("MONTH"))
-    
-    
-# Import Fiscal Year Columns ----
-  db$FY = " "
-  db$FM = " "
-  db$Quarter = " "
-   
-  
-  for (i in 1:length(db$FY)){
-
-    if(db$MONTH[i] >= '2015/1/1' & db$MONTH[i] <= '2015/3/1'){
-
-      db$FY[i] = 2015
-      db$Quarter[i] = 4
-
-    } else if (db$MONTH[i] >= '2015/4/1' & db$MONTH[i] <= '2015/6/1') {
-
-      db$FY[i] = 2016
-      db$Quarter[i] = 1
-
-    } else if (db$MONTH[i] >= '2015/7/1' & db$MONTH[i] <= '2015/9/1') {
-
-      db$FY[i] = 2016
-      db$Quarter[i] = 2
-
-    } else if (db$MONTH[i] >= '2015/10/1' & db$MONTH[i] <= '2015/12/1'){
-
-      db$FY[i] = 2016
-      db$Quarter[i] = 3
-
-    } else if (db$MONTH[i] >= '2016/1/1' & db$MONTH[i] <= '2016/3/1'){
-
-      db$FY[i] = 2016
-      db$Quarter[i] = 4
-
-    } else if (db$MONTH[i] >= '2016/4/1' & db$MONTH[i] <= '2016/6/1'){
-
-      db$FY[i] = 2017
-      db$Quarter[i] = 1
-
-    } else if (db$MONTH[i] >= '2016/7/1' & db$MONTH[i] <= '2016/9/1'){
-
-      db$FY[i] = 2017
-      db$Quarter[i] = 2
-
-    } else if (db$MONTH[i] >= '2016/10/1' & db$MONTH[i] <= '2016/12/1'){
-
-      db$FY[i] = 2017
-      db$Quarter[i] = 3
-
-    } else if (db$MONTH[i] >= '2017/1/1' & db$MONTH[i] <= '2017/3/1'){
-
-      db$FY[i] = 2017
-      db$Quarter[i] = 4
-
-    } else if (db$MONTH[i] >= '2017/4/1' & db$MONTH[i] <= '2017/6/1'){
-
-      db$FY[i] = 2018
-      db$Quarter[i] = 1
-
-    } else if (db$MONTH[i] >= '2017/7/1' & db$MONTH[i] <= '2017/9/1'){
-
-      db$FY[i] = 2018
-      db$Quarter[i] = 2
-
-    } else if (db$MONTH[i] >= '2017/10/1' & db$MONTH[i] <= '2017/12/1'){
-
-      db$FY[i] = 2018
-      db$Quarter[i] = 3
-
-    } else if (db$MONTH[i] >= '2018/1/1' & db$MONTH[i] <= '2018/3/1'){
-
-      db$FY[i] = 2018
-      db$Quarter[i] = 4
-
-    } else if (db$MONTH[i] >= '2018/4/1' & db$MONTH[i] <= '2018/6/1'){
-
-      db$FY[i] = 2019
-      db$Quarter[i] = 1
-
-    } else if (db$MONTH[i] >= '2018/7/1' & db$MONTH[i] <= '2018/9/1'){
-
-      db$FY[i] = 2019
-      db$Quarter[i] = 2
-
-    }
-  }
-  
-  
-   # Addition of Month Column ----
-   db$Month = " "
-
-  for (i in 1:length(db$Month)){
-    db$Month[i] = format(db$MONTH[i], "%b")
-  }
-  for (i in 1:length(db$FM)){
-    if(month(db$MONTH[i]) >= 4 & month(db$MONTH[i]) <= 12){
-      db$FM[i] = month(db$MONTH[i]) - 3
-    } else if (month(db$MONTH[i]) == 1) {
-      db$FM[i] = 10
-    } else if (month(db$MONTH[i]) == 2) {
-      db$FM[i] = 11
-    } else if (month(db$MONTH[i]) == 3){
-      db$FM[i] = 12
-    }
-  }
-  
-  # Rename Columns ----
-  colnames(db) = c('Date', "Line Item", "Value", "FY", "FM", "Quarter", "Month") 
-
-  return(db)
-  
-}
-
-```
 
 ------------------------------------------------------------------
 ---
