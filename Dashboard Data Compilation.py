@@ -31,61 +31,87 @@ def create_connection(database):
 sap_engine = create_connection(database='SAP_Data')
 
 # SAP Account Numbers ----
-sap_accounts = pd.read_csv(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\sap_accounts.csv')
+sap_accounts = pd.read_csv(
+    r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv')
 
 # Entity List ----
-entity_list = pd.read_excel(r'\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Report\\Quarterly Acquisitions\\F19 Q4\\New Acquisitions List\\Master_Acquisitions_List.xlsx')
+entity_list = pd.read_excel(
+    r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\Master_Acquisitions_List.xlsx')
 
 
+# -----------------------------
+# Data Processing: SAP_Accounts
+# -----------------------------
+sap_accounts.rename(columns={'SAP ACC. Number': 'Account'}, inplace=True)
+sap_accounts['Account'] = sap_accounts['Account'].astype('object')
+
+# Retain relevant accounts ----
+"""
+SAP accounts can be added or removed within this next section. Accounts have been known to be added without notice from the accounting department
+"""
+
+included_accounts_mask = sap_accounts['Lender Trend Line Item'] != 'NOT USED FOR LENDER REPORTING'
+sap_accounts = sap_accounts[included_accounts_mask]
 
 
-
-
-
-
-
-# SAP Account Numbers ----
-sap_accounts = pd.read_csv(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\income_statement_accounts.csv')
-
-# ----------------
-# Data Aggregation
-# ----------------
-entity_list = pd.read_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\F19 Q4\New Acquisitions List\Master_Acquisitions_List.xlsx')
+# ----------------------------
+# Data Processing: Entity List
+# ----------------------------
 entity_list['Profit_Center'] = entity_list['Profit_Center'].fillna(0).astype('int64')
 entity_list['Profit_Center'] = entity_list['Profit_Center'].astype('object')
+entity_in = entity_list[entity_list['Include?'] == 'Yes']
 
-# Check for duplicate Profit Center Numbers within "Included" Rows ----
-entity_list_include = entity_list[entity_list['Include?'] == 'Yes']
-assert sum(entity_list_include.duplicated(subset='Profit_Center')) == 0, 'Duplicate Profit Centers Present, DO NO PROCEED'
+# Duplicate Profit Center Check ----
+assert sum(entity_in.duplicated(subset='Profit_Center')) == 0, 'Duplicate Profit Centers Present, DO NO PROCEED'
 
-# Query SQL DB ----
-sap_engine = create_connection(database='SAP_Data')
-sap_db_query = 'SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {}'.format(tuple(entity_list_include['Profit_Center']))
+# -----------------------
+# Data Processing: SAP DB
+# -----------------------
+sap_db_query = 'SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {} AND [GL_ACCOUNT] in {}'.format(tuple(entity_in['Profit_Center']), tuple(sap_accounts['Account']))
 sap_db = pd.read_sql_query(sap_db_query, sap_engine)
 sap_engine.close()
 
-# Reformat SAP Data ----
-sap_db.rename(columns={'GC_PER_1': '1',
-                       'GC_PER_2': '2',
-                       'GC_PER_3': '3',
-                       'GC_PER_4': '4',
-                       'GC_PER_5': '5',
-                       'GC_PER_6': '6',
-                       'GC_PER_7': '7',
-                       'GC_PER_8': '8',
-                       'GC_PER_9': '9',
-                       'GC_PER_10': '10',
-                       'GC_PER_11': '11',
-                       'GC_PER_12': '12'}, inplace=True)
+sap_db = sap_db.select(lambda x: not re.search('LC\w', x), axis=1)
+sap_db.rename(columns={'GC_PER_1': '04',
+                       'GC_PER_2': '05',
+                       'GC_PER_3': '06',
+                       'GC_PER_4': '07',
+                       'GC_PER_5': '08',
+                       'GC_PER_6': '09',
+                       'GC_PER_7': '10',
+                       'GC_PER_8': '11',
+                       'GC_PER_9': '12',
+                       'GC_PER_10': '01',
+                       'GC_PER_11': '02',
+                       'GC_PER_12': '03',
+                       'PROFIT_CENTER': 'Profit_Center',
+                       'GL_ACCOUNT': 'Account',
+                       'FISCAL_YEAR': 'Fiscal_Year'}, inplace=True)
+
+# Date column creation ----
+sap_db = sap_db.melt(id_vars=['Fiscal_Year', 'Profit_Center', 'Account','CO_AREA', 'TRANS_CURR', 'COMPANY_CODE', 'SEGMENT', 'COST_CENTER'])
+sap_db.rename(columns={'variable': 'month'}, inplace=True)
+
+# Create a function to generate Date Column based on
+sap_db['month'] = sap_db['month'].astype('int64')
+sap_db['Fiscal_Year'] = sap_db['Fiscal_Year'].astype('int64')
+sap_db['year'] = np.where((sap_db['month'] >= 4) & (sap_db['month'] <= 12), sap_db['Fiscal_Year'] - 1, sap_db['Fiscal_Year'])
+sap_db['month'] = sap_db['month'].astype('object')
+sap_db['year'] = sap_db['year'].astype('object')
+sap_db['Date'] = sap_db['year'].map(str) + '-' + sap_db['month'].map(str) + '-01'
+sap_db['Date'] = pd.to_datetime(sap_db['Date'], format='%Y-%m-%d')
+
+# ---------------------------------------------------------
+# Checkpoint: SAP DF is ready for income statement function
+# ---------------------------------------------------------
 
 # -------------------------
 # Income Statement Function
 # -------------------------
+
 def income_statement(x):
-    test_filter = sap_db[sap_db['PROFIT_CENTER'].isin(x['Profit_Center'])]
-    return(test_filter)
 
-income_statement(entity_list)
 
-entity_list['Profit_Center']
+
+
 
