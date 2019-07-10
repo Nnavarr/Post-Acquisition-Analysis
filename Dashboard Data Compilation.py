@@ -42,7 +42,8 @@ entity_list = pd.read_excel(
 # -----------------------------
 # Data Processing: SAP_Accounts
 # -----------------------------
-sap_accounts.rename(columns={'SAP ACC. Number': 'Account'}, inplace=True)
+sap_accounts.rename(columns={'SAP ACC. Number': 'Account',
+                             'Lender Trend Line Item': 'line_item'}, inplace=True)
 sap_accounts['Account'] = sap_accounts['Account'].astype('object')
 
 # Retain relevant accounts ----
@@ -109,7 +110,32 @@ sap_db['Date'] = pd.to_datetime(sap_db['Date'], format='%Y-%m-%d')
 # Income Statement Function
 # -------------------------
 
+# Income Statement Line Item Creation ----
+line_items = sap_accounts['line_item'].unique()
+
+# Test DF Container ----
+separate_df_container = []
+
+# Create Individual Dataframes of line items ----
+for category in line_items:
+    account_mask = sap_accounts['line_item'] == category
+    separate_df = sap_accounts[account_mask]
+    separate_df_container.append(separate_df)
+
+#
+
+
+
 def income_statement(x):
+
+    separate_line_item = []
+
+    for lineitem in line_items:
+        account_mask = sap_accounts['line_item'] == lineitem
+        separate_df = sap_accounts[account_mask]
+        separate_line_item.append(separate_df)
+
+
 
 
 
