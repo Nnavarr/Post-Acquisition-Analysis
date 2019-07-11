@@ -152,34 +152,49 @@ pc_df_container = []
 pc_mask = sap_db['Profit_Center'] == '7000010541'
 temp_sap = sap_db[pc_mask]
 
-# Step 2: Separate by Individual Line Item ----
-line_item_df = []
+# Chart of accounts into list ----
+coa_acct_list = [n.Account.astype(str) for n in chart_of_accounts.values()]
 
-for keys, values in chart_of_accounts.items():
-    account_df = pd.DataFrame(values.Account.astype(str))
-    line_item_df.append(account_df)
+line_item_db = []
+for i, name in zip(coa_acct_list, line_items):
 
-# Use these individual accounts to create separate DFs of line items ----
-line_item_data = []
+    # Filter SAP Data for individual line item DF ----
+    temp_data = temp_sap[temp_sap['Account'].isin(i)]
 
-for i in line_item_df:
-    line_data = temp_sap['Account'].isin(i)
-    line_item_data.append(line_data)
+    # Aggregate by Date and Account ----
+    temp_data = temp_data.groupby(['Date'])['value'].agg('sum')
+    temp_data = pd.DataFrame(temp_data)
+
+    # Create a line item name column ----
+    temp_data['lineitem'] = name
+
+    # Append to Container ----
+    line_item_db.append(temp_data)
+
+# SAP Sign Flip ----
+
+
+
+
+
+
+# Individual Line Item Zip Dict Creation ----
+line_item_dict = dict(zip(line_items, line_item_db))
+
+# Compile Income Statement
+
+
+
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ----------------
 # Test Environment
 # ----------------
 
-# Test individual Line item ----
-test_li = line_item_df[0]['Account'][0]
-test_sap = sap_db['Account'][0]
+line_item1 = line_item_df[0]
 
-np.isin(test_li, test_sap)
 
-test_li[~np.isin(test_li, test_sap)]
-
-sum(line['Account'] == '410500')
 
 
 def income_statement(x):
