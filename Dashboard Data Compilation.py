@@ -51,7 +51,7 @@ sap_accounts['Account'] = sap_accounts['Account'].astype('object')
 SAP accounts can be added or removed within this next section. Accounts have been known to be added without notice from the accounting department
 """
 
-included_accounts_mask = sap_accounts['Lender Trend Line Item'] != 'NOT USED FOR LENDER REPORTING'
+included_accounts_mask = sap_accounts['line_item'] != 'NOT USED FOR LENDER REPORTING'
 sap_accounts = sap_accounts[included_accounts_mask]
 
 
@@ -106,9 +106,9 @@ sap_db['Date'] = pd.to_datetime(sap_db['Date'], format='%Y-%m-%d')
 # Checkpoint: SAP DF is ready for income statement function
 # ---------------------------------------------------------
 
-# -------------------------
-# Income Statement Function
-# -------------------------
+# -----------------
+# Chart of Accounts
+# -----------------
 
 # Income Statement Line Item Creation ----
 line_items = sap_accounts['line_item'].unique()
@@ -122,22 +122,66 @@ for category in line_items:
     separate_df = sap_accounts[account_mask]
     separate_df_container.append(separate_df)
 
-#
+# Create Dictionary of Income Statement Line Items ----
+chart_of_accounts = dict(zip(line_items, separate_df_container))
 
+
+# Profit Center Dictionary ----
+#TODO: incorporate the imported entity master list Profit Center List ----
+pc_numbers = ['7000010541', '7000010764']
+
+
+
+# -------------------------
+# Income Statement Function
+# -------------------------
+
+"""
+Relevant Data Sources: sap_db
+Chart of Accounts Dict: chart_of_accounts
+
+"""
+
+# # Test Two Profit Centers ----
+# pc_test = '7000010541', '7000010764'
+
+pc_df_container = []
+
+# Step 1: Create Individual Income Statement ----
+# TODO: Update this code to be an input once wrapped in a function; replace Profit Center
+pc_mask = sap_db['Profit_Center'] == '7000010541'
+temp_sap = sap_db[pc_mask]
+
+# Step 2: Separate by Individual Line Item ----
+line_item_df = []
+
+for keys, values in chart_of_accounts.items():
+    account_df = pd.DataFrame(values.Account.astype(str))
+    line_item_df.append(account_df)
+
+# Use these individual accounts to create separate DFs of line items ----
+line_item_data = []
+
+for i in line_item_df:
+    line_data = temp_sap['Account'].isin(i)
+    line_item_data.append(line_data)
+
+# ---------------------------------------------------------------------------------------------------------------------
+# ----------------
+# Test Environment
+# ----------------
+
+# Test individual Line item ----
+test_li = line_item_df[0]['Account'][0]
+test_sap = sap_db['Account'][0]
+
+np.isin(test_li, test_sap)
+
+test_li[~np.isin(test_li, test_sap)]
+
+sum(line['Account'] == '410500')
 
 
 def income_statement(x):
-
-    separate_line_item = []
-
-    for lineitem in line_items:
-        account_mask = sap_accounts['line_item'] == lineitem
-        separate_df = sap_accounts[account_mask]
-        separate_line_item.append(separate_df)
-
-
-
-
-
 
 
