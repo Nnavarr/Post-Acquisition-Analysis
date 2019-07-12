@@ -155,6 +155,7 @@ temp_sap = sap_db[pc_mask]
 # Chart of accounts into list ----
 coa_acct_list = [n.Account.astype(str) for n in chart_of_accounts.values()]
 
+# Individual Line Item DF Compilation ----
 line_item_db = []
 for i, name in zip(coa_acct_list, line_items):
 
@@ -164,6 +165,7 @@ for i, name in zip(coa_acct_list, line_items):
     # Aggregate by Date and Account ----
     temp_data = temp_data.groupby(['Date'])['value'].agg('sum')
     temp_data = pd.DataFrame(temp_data)
+    temp_data.reset_index(inplace=True)
 
     # Create a line item name column ----
     temp_data['lineitem'] = name
@@ -171,32 +173,80 @@ for i, name in zip(coa_acct_list, line_items):
     # Append to Container ----
     line_item_db.append(temp_data)
 
-# SAP Sign Flip ----
+    continue
+
+# Flatten list of individual line items ----
+line_item_df = pd.concat(line_item_db)
+line_item_df.reset_index(inplace=True, drop=True)
+
+# SAP Sign Flip due to presentation format ----
+line_item_df['value'] = np.where(line_item_df['lineitem'].isin(line_items[0:9]),
+                                 line_item_df['value'] * -1,
+                                 line_item_df['value'])
+
+# Calculate Net Operating Income ----
+test_melt = line_item_df
+
+test_pivot = test_melt.pivot(index='Date', columns='lineitem', values='value').fillna(0)
+
+# Calculate U-Box Income ----
+test_pivot['U-BOX INCOME'] = test_pivot['U-BOX STORAGE INCOME'] + \
+                             test_pivot['U-BOX OTHER INCOME'] + \
+                             test_pivot['U-BOX DELIVERY INCOME']
+
+test_pivot['NET SALES'] = test_pivot['SALES'] - test_pivot['COST OF SALES']
+
+#TODO: Remove space from 'THIRD PARTY LEASE '
+test_pivot['TOTAL INCOME'] = test_pivot['STORAGE INCOME'] + \
+                             test_pivot['NET SALES'] + \
+                             test_pivot['MISCELLANEOUS INCOME'] + \
+                             test_pivot['U-BOX INCOME'] + \
+                             test_pivot['U-MOVE NET COMMISSION'] + \
+                             test_pivot['INTERCOMPANY RENT'] + \
+                             test_pivot['THIRD PARTY LEASE ']
+
+test_pivot['TOTAL OPERATING EXPENSE'] = test_pivot['PERSONNEL'] + \
+                                        test_pivot['REPAIRS AND MAINTENANCE/GENERAL'] + \
+                                        test_pivot['UTILITIES'] + \
+                                        test_pivot['TELEPHONE'] + \
+                                        test_pivot['ADVERTISING'] + \
+                                        test_pivot['SUPPLIES'] + \
+                                        test_pivot['RENT-EQUIPMENT/LAND AND BLDGS'] + \
+                                        test_pivot['LIABILITY INSURANCE'] + \
+                                        test_pivot['PROPERTY TAX'] + \
+                                        test_pivot['BAD DEBT EXPENSE'] + \
+                                        test_pivot['OTHER OPERATING EXPENSE']
+
+test_pivot['NET OPERATING INCOME'] = test_pivot['TOTAL INCOME'] - test_pivot['TOTAL OPERATING EXPENSE']
+
+# TODO: Insert place holder for line items that might not be present within the SAP DB ----
 
 
 
+# Income Statement Order ----
+income_statement_order = ['STORAGE INCOME',
+                          'NET SALES',
+                          'MISCELLANEOUS INCOME',
+                          'U-BOX INCOME',
+                          'U-MOVE NET COMMISSION',
+                          'INTRACOMPANY RENT',
+                          'THIRD PARTY LEASE EXPENSE',
+                          'TOTAL REVENUE',
+                          'PERSONNEL',
+                          'REPAIRS AND MAINTENANCE',
+                          'UTILITIES',
+                          'TELEPHONE',
+                          'ADVERTISING',
+                          'SUPPLIES',
+                          'RENT-EQUIPMENT/LAND AND BLDGS',
+                          'LIABILITY INSURANCE',
+                          'PROPERTY TAX',
+                          'BAD DEBT EXPENSE',
+                          'OTHER OPERATING EXPENSE',
+                          'TOTAL OPERATING EXPENSE',
+                          'NET OPERATING INCOME']
 
-
-
-# Individual Line Item Zip Dict Creation ----
-line_item_dict = dict(zip(line_items, line_item_db))
-
-# Compile Income Statement
-
-
-
+test_pivot.loc[:, income_statement_order]
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# ----------------
-# Test Environment
-# ----------------
-
-line_item1 = line_item_df[0]
-
-
-
-
-def income_statement(x):
-
-
