@@ -391,22 +391,44 @@ def income_statement(profit_center, sap_data, line_item_dict):
     # Tidy version of income statement ----
     income_statement_df = income_statement_df.melt(id_vars=['Date'])
 
-    return(income_statement_df)
+    # Profit Center Classification ----
+    income_statement_df['Profit_Center'] = profit_center
+    income_statement_df[]
 
+    return(income_statement_df)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Test Environment for Income Statement ----
 
 # Function Parameters ----
 test_pc = '7000010541'
+test_pc2 = str(entity_list['Profit_Center'][0])
 
-test_function = income_statement(profit_center=test_pc,
+test_function = income_statement(profit_center=test_pc2,
                                  sap_data=sap_db,
                                  line_item_dict=chart_of_accounts)
 
 # Working Function (7/12/2019) ----
 
+# ----------------------------------------------------------------------------------------------------------------------
 
+# Center Profit Center Dictionary Creation ----
+pc_list = [str(n) for n in entity_list['Profit_Center'][0:9]]
 
+# Income Statement compilation ----
+pc_income_statements = map(lambda x: income_statement(profit_center=x,
+                                 sap_data=sap_db,
+                                 line_item_dict=chart_of_accounts), pc_list)
 
+test2 = [n for n in list(pc_income_statements)]
+income_dict = dict(zip(pc_list, test2))
+
+income_dict['7000010790']
+
+# Test PD Concat on Income Statements ----
+test_concat = pd.concat(income_dict.values())
+test_concat.reset_index(inplace=True, drop=True)
+
+income_dict.keys()
+income_dict.values()
 
