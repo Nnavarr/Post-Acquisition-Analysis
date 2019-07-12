@@ -132,10 +132,9 @@ pc_numbers = ['7000010541', '7000010764']
 
 
 
-# -------------------------
-# Income Statement Function
-# -------------------------
-
+# ----------------------------
+# Income Statement Compilation
+# ----------------------------
 """
 Relevant Data Sources: sap_db
 Chart of Accounts Dict: chart_of_accounts
@@ -189,6 +188,15 @@ test_melt = line_item_df
 
 test_pivot = test_melt.pivot(index='Date', columns='lineitem', values='value').fillna(0)
 
+# Missing Line Items ----
+missing_mask = np.isin(line_items, test_pivot.columns.values)
+missing_line = line_items[~missing_mask]
+
+# Create Place Holder Values for missing line items ----
+for i in missing_line:
+    test_pivot[i] = 0.00
+    continue
+
 # Calculate U-Box Income ----
 test_pivot['U-BOX INCOME'] = test_pivot['U-BOX STORAGE INCOME'] + \
                              test_pivot['U-BOX OTHER INCOME'] + \
@@ -197,7 +205,7 @@ test_pivot['U-BOX INCOME'] = test_pivot['U-BOX STORAGE INCOME'] + \
 test_pivot['NET SALES'] = test_pivot['SALES'] - test_pivot['COST OF SALES']
 
 #TODO: Remove space from 'THIRD PARTY LEASE '
-test_pivot['TOTAL INCOME'] = test_pivot['STORAGE INCOME'] + \
+test_pivot['TOTAL REVENUE'] = test_pivot['STORAGE INCOME'] + \
                              test_pivot['NET SALES'] + \
                              test_pivot['MISCELLANEOUS INCOME'] + \
                              test_pivot['U-BOX INCOME'] + \
@@ -217,11 +225,7 @@ test_pivot['TOTAL OPERATING EXPENSE'] = test_pivot['PERSONNEL'] + \
                                         test_pivot['BAD DEBT EXPENSE'] + \
                                         test_pivot['OTHER OPERATING EXPENSE']
 
-test_pivot['NET OPERATING INCOME'] = test_pivot['TOTAL INCOME'] - test_pivot['TOTAL OPERATING EXPENSE']
-
-# TODO: Insert place holder for line items that might not be present within the SAP DB ----
-
-
+test_pivot['NET OPERATING INCOME'] = test_pivot['TOTAL REVENUE'] - test_pivot['TOTAL OPERATING EXPENSE']
 
 # Income Statement Order ----
 income_statement_order = ['STORAGE INCOME',
@@ -229,11 +233,11 @@ income_statement_order = ['STORAGE INCOME',
                           'MISCELLANEOUS INCOME',
                           'U-BOX INCOME',
                           'U-MOVE NET COMMISSION',
-                          'INTRACOMPANY RENT',
-                          'THIRD PARTY LEASE EXPENSE',
+                          'INTERCOMPANY RENT',
+                          'THIRD PARTY LEASE ',
                           'TOTAL REVENUE',
                           'PERSONNEL',
-                          'REPAIRS AND MAINTENANCE',
+                          'REPAIRS AND MAINTENANCE/GENERAL',
                           'UTILITIES',
                           'TELEPHONE',
                           'ADVERTISING',
@@ -246,7 +250,13 @@ income_statement_order = ['STORAGE INCOME',
                           'TOTAL OPERATING EXPENSE',
                           'NET OPERATING INCOME']
 
-test_pivot.loc[:, income_statement_order]
+income_statement_df = test_pivot.loc[:, income_statement_order]
 
+# Remove NOI = 0 rows ----
+data_presence_mask = income_statement_df['NET OPERATING INCOME'] != 0
+income_statement_df = income_statement_df[data_presence_mask]
+income_statement_df.reset_index(inplace=True)
 
-# ---------------------------------------------------------------------------------------------------------------------
+# Tidy version of income statement ----
+income_statement_df = income_statement_df.melt(id_vars=['Date'])
+
