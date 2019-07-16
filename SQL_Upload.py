@@ -92,6 +92,6 @@ income_statement_dict = dict(zip(arec_pc_list, arec_income_statement_list))
 aggregate_df = pd.concat(income_statement_dict)
 
 # Upload To SQL ----
-aggregate_df.to_sql('Center_IS', connection, index=False, if_exists='replace')
+aggregate_df.to_sql('Center_IS', engine, index=False, if_exists='replace')
 #pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_sql.html
 
