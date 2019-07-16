@@ -289,7 +289,4 @@ def income_statement(profit_center, sap_data, line_item_dict):
 
 # Incorporate income statement compilation ----
 
-test_pc = income_statement(profit_center='7000010790',
-                           sap_data=sap_db,
-                           line_item_dict=chart_of_accounts)
 
