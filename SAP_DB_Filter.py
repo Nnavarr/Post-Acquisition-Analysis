@@ -75,7 +75,6 @@ def sap_db_query(profit_center_list):
 
     sap_db_query = 'SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {} AND [GL_ACCOUNT] in {}'.format(tuple(profit_center_list), tuple(sap_accounts['Account']))
     sap_db = pd.read_sql_query(sap_db_query, sap_engine)
-    sap_engine.close()
 
     sap_db = sap_db.select(lambda x: not re.search('LC\w', x), axis=1)
     sap_db.rename(columns={'GC_PER_1': '04',
@@ -111,42 +110,42 @@ def sap_db_query(profit_center_list):
 
 # Test SAP DB Function ----
 # Profit Center List ----
-entity_info_con = create_connection(database='FINANALYSIS')
-graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
-graph_entity_info_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_ENTITY_INFO]"
-
-# Import Graph Entity List ----
-index_match_db = pd.read_sql_query(graph_index_query, entity_info_con)
-entity_info_db = pd.read_sql_query(graph_entity_info_query, entity_info_con)
-entity_info_con.close()
-
-# Import Owner to Entity Info ----
-graph_entity_list = pd.merge(left=entity_info_db, right=index_match_db.loc[:, ['MEntity', 'Simple Owner', 'SAC or Galaxy or PMSR',
-                                                                               'Owned']],
-                             how='left', on='MEntity')
-
-graph_entity_list.rename(columns={'Cost Center': 'Profit_Center'}, inplace=True)
-"""
-Unique "Simple Owner" within the graph file includes:
-
-1) UHI: 1577
-2) SAC: 425
-3) Mercury: 78
-4) Galaxy: 16
-5) DLR: 1
-6) Closed: 34
-7) None
-
-For AREC, we are interested in UHI Centers
-"""
-
-# Extract UHI Centers ----
-arec_mask = graph_entity_list['Simple Owner'] == 'UHI'
-arec_entity = graph_entity_list[arec_mask]
-arec_pc = arec_entity['Profit_Center'].unique()
-arec_pc = arec_pc[arec_pc != None]
-arec_pc = arec_pc[arec_pc != '0']
-arec_pc_list = list(arec_pc)
-
-# Example Use of Profit Center list with SAP_DB_Query Function ----
-test_function = sap_db_query(arec_pc_list)
+# entity_info_con = create_connection(database='FINANALYSIS')
+# graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
+# graph_entity_info_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_ENTITY_INFO]"
+#
+# # Import Graph Entity List ----
+# index_match_db = pd.read_sql_query(graph_index_query, entity_info_con)
+# entity_info_db = pd.read_sql_query(graph_entity_info_query, entity_info_con)
+# entity_info_con.close()
+#
+# # Import Owner to Entity Info ----
+# graph_entity_list = pd.merge(left=entity_info_db, right=index_match_db.loc[:, ['MEntity', 'Simple Owner', 'SAC or Galaxy or PMSR',
+#                                                                                'Owned']],
+#                              how='left', on='MEntity')
+#
+# graph_entity_list.rename(columns={'Cost Center': 'Profit_Center'}, inplace=True)
+# """
+# Unique "Simple Owner" within the graph file includes:
+#
+# 1) UHI: 1577
+# 2) SAC: 425
+# 3) Mercury: 78
+# 4) Galaxy: 16
+# 5) DLR: 1
+# 6) Closed: 34
+# 7) None
+#
+# For AREC, we are interested in UHI Centers
+# """
+#
+# # Extract UHI Centers ----
+# arec_mask = graph_entity_list['Simple Owner'] == 'UHI'
+# arec_entity = graph_entity_list[arec_mask]
+# arec_pc = arec_entity['Profit_Center'].unique()
+# arec_pc = arec_pc[arec_pc != None]
+# arec_pc = arec_pc[arec_pc != '0']
+# arec_pc_list = list(arec_pc)
+#
+# # Example Use of Profit Center list with SAP_DB_Query Function ----
+# test_function = sap_db_query(arec_pc_list)
