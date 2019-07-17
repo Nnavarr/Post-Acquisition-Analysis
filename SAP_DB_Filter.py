@@ -144,7 +144,9 @@ For AREC, we are interested in UHI Centers
 arec_mask = graph_entity_list['Simple Owner'] == 'UHI'
 arec_entity = graph_entity_list[arec_mask]
 arec_pc = arec_entity['Profit_Center'].unique()
+arec_pc = arec_pc[arec_pc != None]
+arec_pc = arec_pc[arec_pc != '0']
 arec_pc_list = list(arec_pc)
 
 # Example Use of Profit Center list with SAP_DB_Query Function ----
-# test_function = sap_db_query(arec_pc_list)
+test_function = sap_db_query(arec_pc_list)

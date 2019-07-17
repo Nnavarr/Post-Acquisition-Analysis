@@ -7,9 +7,10 @@ import re
 
 # Packages necessary for pd.to_sql() functionality
 import sqlalchemy, urllib
-
 # Income Statement Function Import
-from Income_Statement_Compilation import income_statement, create_connection, chart_of_accounts
+from Income_Statement_Compilation import income_statement, create_connection
+# SAP DB Filter Import
+from SAP_DB_Filter import sap_db_query, chart_of_accounts
 
 user = '1217543'
 
@@ -68,7 +69,6 @@ For AREC, we are interested in UHI Centers
 arec_mask = graph_entity_list['Simple Owner'] == 'UHI'
 arec_entity = graph_entity_list[arec_mask]
 arec_pc = arec_entity['Profit_Center'].unique()
-
 arec_pc = arec_pc[arec_pc != None]
 arec_pc = arec_pc[arec_pc != '0']
 
@@ -76,9 +76,7 @@ arec_pc = arec_pc[arec_pc != '0']
 arec_pc_list = list(arec_pc)
 
 # Filter SAP DB for relevant profit centers ----
-
-
-
+sap_db = sap_db_query(arec_pc_list)
 
 is_container = map(lambda x: income_statement(profit_center=x,
                                   sap_data=sap_db,
