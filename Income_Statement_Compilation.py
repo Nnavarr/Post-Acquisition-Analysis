@@ -52,7 +52,6 @@ SAP accounts can be added or removed within this next section. Accounts have bee
 included_accounts_mask = sap_accounts['line_item'] != 'NOT USED FOR LENDER REPORTING'
 sap_accounts = sap_accounts[included_accounts_mask]
 
-
 # ----------------------------
 # Data Processing: Entity List
 # ----------------------------
@@ -62,6 +61,7 @@ entity_in = entity_list[entity_list['Include?'] == 'Yes']
 
 # Duplicate Profit Center Check ----
 assert sum(entity_in.duplicated(subset='Profit_Center')) == 0, 'Duplicate Profit Centers Present, DO NO PROCEED'
+
 
 # -----------------------
 # Data Processing: SAP DB
@@ -122,7 +122,6 @@ for category in line_items:
 
 # Create Dictionary of Income Statement Line Items ----
 chart_of_accounts = dict(zip(line_items, separate_df_container))
-
 
 # -------------------------
 # Income Statement Function
@@ -269,6 +268,7 @@ def income_statement(profit_center, sap_data, line_item_dict):
     return(income_statement_df)
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Income Statement Use Example ----
 
 # # Income Statement List ----
 # profit_center_list = [str(n) for n in entity_list['Profit_Center'][0:9]]
@@ -287,9 +287,4 @@ def income_statement(profit_center, sap_data, line_item_dict):
 # test_concat = pd.concat(income_dict.values())
 # test_concat.reset_index(inplace=True, drop=True)
 
-# Incorporate income statement compilation ----
-
-test_pc = income_statement(profit_center='7000010790',
-                           sap_data=sap_db,
-                           line_item_dict=chart_of_accounts)
-
+# ----------------------------------------------------------------------------------------------------------------------

@@ -52,7 +52,6 @@ SAP accounts can be added or removed within this next section. Accounts have bee
 included_accounts_mask = sap_accounts['line_item'] != 'NOT USED FOR LENDER REPORTING'
 sap_accounts = sap_accounts[included_accounts_mask]
 
-
 # ----------------------------
 # Data Processing: Entity List
 # ----------------------------
@@ -122,7 +121,6 @@ for category in line_items:
 
 # Create Dictionary of Income Statement Line Items ----
 chart_of_accounts = dict(zip(line_items, separate_df_container))
-
 
 # -------------------------
 # Income Statement Function
@@ -269,6 +267,7 @@ def income_statement(profit_center, sap_data, line_item_dict):
     return(income_statement_df)
 
 # ----------------------------------------------------------------------------------------------------------------------
+# Income Statement Use Example ----
 
 # # Income Statement List ----
 # profit_center_list = [str(n) for n in entity_list['Profit_Center'][0:9]]
@@ -287,6 +286,25 @@ def income_statement(profit_center, sap_data, line_item_dict):
 # test_concat = pd.concat(income_dict.values())
 # test_concat.reset_index(inplace=True, drop=True)
 
-# Incorporate income statement compilation ----
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ------------------
+# Occupancy Function
+# ------------------
+
+"""
+Occupancy function will be based off MEntity numbers. The extraction of these MEntity numbers will need to be completed
+prior to running the occupancy function. 
+"""
+
+# Open Connection to Occupancy Data ----
+sap_db_query = 'SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {} AND [GL_ACCOUNT] in {}'.format(tuple(entity_in['Profit_Center']), tuple(sap_accounts['Account']))
+sap_db = pd.read_sql_query(sap_db_query, sap_engine)
+sap_engine.close()
 
 
+
+
+single_mentity = 'M0000117667'
+
+# Create Occupancy Function ----

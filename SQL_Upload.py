@@ -9,7 +9,7 @@ import re
 import sqlalchemy, urllib
 
 # Income Statement Function Import
-from Dashboard_Data_Compilation import income_statement, create_connection, sap_db, chart_of_accounts
+from Income_Statement_Compilation import income_statement, create_connection, chart_of_accounts
 
 user = '1217543'
 
@@ -28,14 +28,12 @@ params = urllib.parse.quote_plus(base_con)
 
 #SQLAlchemy takes all this info to create the engine
 engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
-connection = engine.raw_connection()
 
 # ---------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------
 # All Center Income Statement Upload
 # ----------------------------------
-
 # Profit Center List ----
 entity_info_con = create_connection(database='FINANALYSIS')
 graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
@@ -51,7 +49,7 @@ graph_entity_list = pd.merge(left=entity_info_db, right=index_match_db.loc[:, ['
                                                                                'Owned']],
                              how='left', on='MEntity')
 
-graph_entity_list.rename(columns={'Cost Center': 'Profit Center'}, inplace=True)
+graph_entity_list.rename(columns={'Cost Center': 'Profit_Center'}, inplace=True)
 """
 Unique "Simple Owner" within the graph file includes:
 
@@ -65,19 +63,22 @@ Unique "Simple Owner" within the graph file includes:
 
 For AREC, we are interested in UHI Centers
 """
-# exploration = graph_entity_list.groupby(['Simple Owner']).agg(['count'])
-# exploration['Profit Center']
 
 # Extract UHI Centers ----
 arec_mask = graph_entity_list['Simple Owner'] == 'UHI'
 arec_entity = graph_entity_list[arec_mask]
-arec_pc = arec_entity['Profit Center'].unique()
+arec_pc = arec_entity['Profit_Center'].unique()
 
 arec_pc = arec_pc[arec_pc != None]
 arec_pc = arec_pc[arec_pc != '0']
 
 # Compile Individual Income Statement DF ----
 arec_pc_list = list(arec_pc)
+
+# Filter SAP DB for relevant profit centers ----
+
+
+
 
 is_container = map(lambda x: income_statement(profit_center=x,
                                   sap_data=sap_db,
@@ -92,6 +93,6 @@ income_statement_dict = dict(zip(arec_pc_list, arec_income_statement_list))
 aggregate_df = pd.concat(income_statement_dict)
 
 # Upload To SQL ----
-aggregate_df.to_sql('Center_IS', engine, index=False, if_exists='replace')
-#pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_sql.html
+# aggregate_df.to_sql('Center_IS', engine, index=False, if_exists='replace')
+
 
