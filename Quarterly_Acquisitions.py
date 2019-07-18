@@ -8,6 +8,33 @@ import re
 from Income_Statement_Compilation import income_statement
 from SAP_DB_Filter import chart_of_accounts, sap_db_query, create_connection
 
+# SQL Upload Packages ----
+import sqlalchemy, urllib
+
+# -----------------------------
+# Quarterly Acquisitions Format
+# -----------------------------
+
+# Group Names ----
+# TODO: Update the name every new quarter
+grp_names = ['F16_Q1', 'F16_Q2', 'F16_Q3', 'F16_Q4',
+             'F17_Q1', 'F17_Q2', 'F17_Q3', 'F17_Q4',
+             'F18_Q1', 'F18_Q2', 'F18_Q3', 'F18_Q4',
+             'F19_Q1', 'F19_Q2', 'F19_Q3', 'F19_Q4',
+             'F20_Q1', 'F20_Q2', 'F20_Q3', 'F20_Q4']
+
+# Group Numbers ----
+grp_num_range = range(1, len(grp_names) + 1)
+grp_num = []
+for i in grp_num_range:
+    grp_num.append(i)
+
+# Quarterly Acquisitions Classification DF ----
+quarter_grp_class_df = pd.DataFrame(zip(grp_names, grp_num))
+quarter_grp_class_df.rename(columns={0: 'grp_name', 1: 'grp_num'}, inplace=True)
+
+# ---------------------------------------------------------------------------------------------------------------------
+
 # Import Quarterly Acquisitions Center List
 # Entity List ----
 entity_list = pd.read_excel(
@@ -19,13 +46,15 @@ entity_list = pd.read_excel(
 # ----------------------------
 entity_list['Profit_Center'] = entity_list['Profit_Center'].fillna(0).astype('int64')
 entity_list['Profit_Center'] = entity_list['Profit_Center'].astype('object')
+entity_list.rename(columns={'Profit_Center': 'profit_center'}, inplace=True)
+entity_list['profit_center'] = entity_list['profit_center'].astype(str)
 entity_in = entity_list[entity_list['Include?'] == 'Yes']
 
 # Duplicate Profit Center Check ----
-assert sum(entity_in.duplicated(subset='Profit_Center')) == 0, 'Duplicate Profit Centers Present, DO NO PROCEED'
+assert sum(entity_in.duplicated(subset='profit_center')) == 0, 'Duplicate Profit Centers Present, DO NO PROCEED'
 
 # List of Profit Centers ----
-quarter_acq_pc_list = list(entity_in['Profit_Center'].unique().astype(str))
+quarter_acq_pc_list = list(entity_in['profit_center'].unique())
 
 # -----------------------------
 # Income Statement Compilation
@@ -45,4 +74,32 @@ income_statement_dict = dict(zip(quarter_acq_pc_list, q_acq_is_list))
 # Concatenate into a single data frame for SQL upload ----
 q_is_aggregate = pd.concat(income_statement_dict, ignore_index=True)
 
-# Checkpoint: Income Statement Compilation Complete
+# Import group name and number ----
+aggregate_income_statement = pd.merge(left=q_is_aggregate, right=entity_in.loc[:, ['profit_center', 'Group', 'MEntity']], on='profit_center', how='left')
+
+#---------------
+# Upload to SQL
+# --------------
+user = '1217543'
+
+#Traditional SQL Connection protocol - this is still necessary
+base_con = (
+    'Driver={{ODBC DRIVER 17 for SQL Server}};'
+    'Server=OPSReport02.uhaul.amerco.org;'
+    'Database=DEVTEST;'
+    'UID={};'
+    'PWD={};'
+).format(user, os.environ.get("sql_pwd"))
+con = pyodbc.connect(base_con)
+
+#URLLib finds the important information from our base connection
+params = urllib.parse.quote_plus(base_con)
+
+#SQLAlchemy takes all this info to create the engine
+engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
+
+# -----------
+# Upload Code
+# -----------
+aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+

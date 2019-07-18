@@ -4,6 +4,9 @@ import numpy as np
 import os
 from getpass import getuser, getpass
 import re
+import datetime
+
+from SAP_DB_Filter import create_connection
 
 user = '1217543'
 
@@ -22,11 +25,12 @@ prior to running the occupancy function.
 
 """
 
-# Open Connection to Occupancy Data ----
-sap_db_query = 'SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {} AND [GL_ACCOUNT] in {}'.format(tuple(entity_in['Profit_Center']), tuple(sap_accounts['Account']))
-sap_db = pd.read_sql_query(sap_db_query, sap_engine)
-sap_engine.close()
+# Single MEntity example ----
+mentity_sample = np.array(['M0000000503', 'M0000000505'])
 
-single_mentity = 'M0000117667'
+# SQL Connection ----
+wss_engine = create_connection(database='Storage')
+wss_query = 'SELECT * FROM [Storage].[dbo].[WSS_UnitMixUHI_Monthly_Archive] WHERE MEntity in {}'.format(tuple(mentity_sample))
+wss_db = pd.read_sql_query(wss_query, wss_engine)
+wss_engine.close()
 
-# Create Occupancy Function ----
