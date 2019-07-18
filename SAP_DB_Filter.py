@@ -64,7 +64,6 @@ chart_of_accounts = dict(zip(line_items, separate_df_container))
 # Checkpoint: Chart of Accounts Complete
 # ---------------------------------------
 
-
 # -------------
 # SAP DB Query
 # -------------

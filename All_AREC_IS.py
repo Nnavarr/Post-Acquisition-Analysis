@@ -8,9 +8,9 @@ import re
 # Packages necessary for pd.to_sql() functionality
 import sqlalchemy, urllib
 # Income Statement Function Import
-from Income_Statement_Compilation import income_statement, create_connection
+from Income_Statement_Compilation import income_statement
 # SAP DB Filter Import
-from SAP_DB_Filter import sap_db_query, chart_of_accounts
+from SAP_DB_Filter import sap_db_query, chart_of_accounts, create_connection
 
 user = '1217543'
 
@@ -92,11 +92,11 @@ aggregate_df = pd.concat(income_statement_dict)
 
 
 # Split into Separate (smaller DF)
-upload1 = aggregate_df.iloc[0:500000,:]
-upload2 = aggregate_df.iloc[500000:1000000, :]
-upload3 = aggregate_df.iloc[1000000:1500000, :]
-upload4 = aggregate_df.iloc[1500000:2000000,:]
-upload5 = aggregate_df.iloc[2000000:, :]
+# upload1 = aggregate_df.iloc[0:500000,:]
+# upload2 = aggregate_df.iloc[500000:1000000, :]
+# upload3 = aggregate_df.iloc[1000000:1500000, :]
+# upload4 = aggregate_df.iloc[1500000:2000000,:]
+# upload5 = aggregate_df.iloc[2000000:, :]
 
 # Export to csv ----
 # upload1.to_csv(r'Z:\group\MIA\Noe\SQL Upload\upload1.csv')
