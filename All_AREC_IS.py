@@ -90,7 +90,6 @@ income_statement_dict = dict(zip(arec_pc_list, arec_income_statement_list))
 # Concatenate into a single data frame for SQL upload ----
 aggregate_df = pd.concat(income_statement_dict)
 
-
 # Split into Separate (smaller DF)
 # upload1 = aggregate_df.iloc[0:500000,:]
 # upload2 = aggregate_df.iloc[500000:1000000, :]

@@ -4,6 +4,7 @@ import numpy as np
 import os
 from getpass import getuser, getpass
 import re
+import datetime
 
 from Income_Statement_Compilation import income_statement
 from SAP_DB_Filter import chart_of_accounts, sap_db_query, create_connection
@@ -17,7 +18,8 @@ import sqlalchemy, urllib
 
 # Group Names ----
 # TODO: Update the name every new quarter
-grp_names = ['F16_Q1', 'F16_Q2', 'F16_Q3', 'F16_Q4',
+grp_names = [                              'F15_Q4',
+             'F16_Q1', 'F16_Q2', 'F16_Q3', 'F16_Q4',
              'F17_Q1', 'F17_Q2', 'F17_Q3', 'F17_Q4',
              'F18_Q1', 'F18_Q2', 'F18_Q3', 'F18_Q4',
              'F19_Q1', 'F19_Q2', 'F19_Q3', 'F19_Q4',
@@ -31,7 +33,7 @@ for i in grp_num_range:
 
 # Quarterly Acquisitions Classification DF ----
 quarter_grp_class_df = pd.DataFrame(zip(grp_names, grp_num))
-quarter_grp_class_df.rename(columns={0: 'grp_name', 1: 'grp_num'}, inplace=True)
+quarter_grp_class_df.rename(columns={0: 'grp_name', 1: 'Group'}, inplace=True)
 
 # ---------------------------------------------------------------------------------------------------------------------
 
@@ -77,6 +79,25 @@ q_is_aggregate = pd.concat(income_statement_dict, ignore_index=True)
 # Import group name and number ----
 aggregate_income_statement = pd.merge(left=q_is_aggregate, right=entity_in.loc[:, ['profit_center', 'Group', 'MEntity']], on='profit_center', how='left')
 
+# Create Fiscal Year / Month column ----
+aggregate_income_statement['Year'] = aggregate_income_statement['date'].apply((lambda x: x.year))
+aggregate_income_statement['Month'] = aggregate_income_statement['date'].apply((lambda x: x.month))
+
+aggregate_income_statement['fiscal_year'] = np.where(aggregate_income_statement['Month'] <= 3,
+                                                     aggregate_income_statement['Year'],
+                                                     aggregate_income_statement['Year'] + 1)
+
+aggregate_income_statement['fiscal_month'] = np.where(aggregate_income_statement['Month'] >= 4,
+                                                      aggregate_income_statement['Month'] - 3,
+                                                      aggregate_income_statement['Month'] + 9)
+
+# Append group name ----
+aggregate_income_statement = pd.merge(left=aggregate_income_statement, right=quarter_grp_class_df, how='left', on='Group')
+
+# Format Data for Upload ----
+aggregate_income_statement = aggregate_income_statement.loc[:, ['date', 'profit_center', 'MEntity', 'line_item', 'value', 'grp_name', 'Group', 'Month', 'Year', 'fiscal_year', 'fiscal_month']]
+aggregate_income_statement.rename(columns={'Group': 'grp_num', 'Month':'month', 'Year':'year'}, inplace=True)
+
 #---------------
 # Upload to SQL
 # --------------
@@ -102,4 +123,3 @@ engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
 # Upload Code
 # -----------
 aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
-
