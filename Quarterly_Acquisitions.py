@@ -122,4 +122,4 @@ engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
 # -----------
 # Upload Code
 # -----------
-aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+# aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')

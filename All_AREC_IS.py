@@ -106,3 +106,4 @@ aggregate_df = pd.concat(income_statement_dict)
 
 # Upload To SQL ----
 # aggregate_df.to_sql('Center_IS', engine, index=False, if_exists='replace')
+
