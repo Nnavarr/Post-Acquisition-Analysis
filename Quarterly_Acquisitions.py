@@ -122,4 +122,18 @@ engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
 # -----------
 # Upload Code
 # -----------
-# aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+date_filter = aggregate_income_statement['date'] == '2019-06-01'
+test_1 = aggregate_income_statement[date_filter]
+
+line_item_filter = aggregate_income_statement['line_item'] == 'LIABILITY INSURANCE'
+test_2 = test_1[line_item_filter]
+
+pc_filter = test_2['profit_center'] == '7000010604'
+test_3 = test_2[pc_filter]
+
+
+
+
+
+

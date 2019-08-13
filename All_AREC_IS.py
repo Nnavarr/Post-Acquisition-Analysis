@@ -51,6 +51,7 @@ graph_entity_list = pd.merge(left=entity_info_db, right=index_match_db.loc[:, ['
                              how='left', on='MEntity')
 
 graph_entity_list.rename(columns={'Cost Center': 'Profit_Center'}, inplace=True)
+
 """
 Unique "Simple Owner" within the graph file includes:
 
@@ -89,6 +90,11 @@ income_statement_dict = dict(zip(arec_pc_list, arec_income_statement_list))
 
 # Concatenate into a single data frame for SQL upload ----
 aggregate_df = pd.concat(income_statement_dict)
+
+
+# -----------
+# SQL Upload
+# -----------
 
 # Split into Separate (smaller DF)
 # upload1 = aggregate_df.iloc[0:500000,:]
