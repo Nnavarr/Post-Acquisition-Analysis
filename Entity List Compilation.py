@@ -5,6 +5,8 @@ import os
 from getpass import getuser, getpass
 import re
 
+user = '1217543'
+
 # SQL Connection Function ----
 def create_connection(database):
     #load password from env, entry if not available
@@ -16,7 +18,7 @@ def create_connection(database):
     cnxn_str = ((r'Driver={{SQL Server}};'
     r'Server=OPSReport02.uhaul.amerco.org;'
     r'Database='+database+';'
-    r'UID={};PWD={};').format(getuser(), pwd))
+    r'UID={};PWD={};').format(user, pwd))
 
     #return connection object
     return(pyodbc.connect(cnxn_str))
@@ -27,10 +29,10 @@ finaccounting_engine = create_connection(database='FinAccounting')
 finanalysis_engine = create_connection(database='FINANALYSIS')
 rea_val_engine = create_connection(database='RealEstateValuation')
 
-# STEP 1: Import Previous ----
-# Import Existing Quarterly Acquisitions List ----
-existing_list = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\Acq List\Master_Acquisitions_List.xlsx',
-                              sheet_name='Master_List')
+# ----------------------------------
+# Step 1: Import Previous List
+# ----------------------------------
+existing_list = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\Acq List\Master_Acquisitions_List.xlsx')
 
 existing_mentity = existing_list["MEntity"]  # Extract MEntity column
 
@@ -55,11 +57,18 @@ else:
 
 
 #  -------------------------------------------------------------
-#  Step 2: Import Newly Closed Acquisitions for the Quarter ----
+#  Step 2: Import New Closed Acquisitions for the Quarter ----
 #  -------------------------------------------------------------
 # Import New Acquisitions List ----
-closed_acquisitions_f19 = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\F19 Q4\New Acquisitions List\Closed Acquisitions FY19.xlsx',
-                                        sheet_name='Closed Acquisitions FY 19')
+
+# ----------------
+# Fields to update
+# ------------------------------------------------------------------
+new_file_path = r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\F19 Q4\New Acquisitions List\Closed Acquisitions FY19.xlsx'
+excel_sheet_name = 'Closed Acquisitions FY 19'
+# ------------------------------------------------------------------
+closed_acquisitions_f19 = pd.read_excel(new_file_path,
+                                        sheet_name=excel_sheet_name)
 
 # Process imported data frame to match "existing_list" format ----
 closed_acquisitions_f19 = closed_acquisitions_f19.sort_values(by=['Close of Escrow'])
@@ -103,15 +112,7 @@ cols_new = list(new_additions.columns.values)
 print(cols_existing)  # Existing column structure
 print(cols_new)  # New column structure
 
-# # Rename new additions columns to match existing ----
-# dlr01_new_acquisitions.info(verbose=True)
-
-# # Column Search Code ----
-# column_search = dlr01_new_acquisitions.loc[:, dlr01_new_acquisitions.columns.str.contains(".Area")]
-# column_search.info(verbose=True)
-
 # Left Join required DLR01 columns on New Acquisitions list ----
-# new_additions_unique.Entity = new_additions_unique.loc[:, "Entity"].astype(str)
 new_additions_unique = new_additions.merge(dlr01_new_acquisitions.loc[:, ["Entity", "ENTITY_NAME", "MEntity", "MCO_NUM", "DISTRICT_NO", "ENTITY_TYPE", "DATE_OPENED", "DATE_CLOSED", "STATUS"]], how='left', on='Entity')
 
 # Re-format new additions column to match existing list ----
@@ -121,7 +122,6 @@ new_additions_unique.MEntity.nunique()
 #  ---------------------------------------------------------------
 #  Step 3: Import Profit Center, Owner, and Construction_Type ----
 #  ---------------------------------------------------------------
-
 sap_hierarchy_query = "SELECT * FROM SAP_Cost_Center_Hierarchy WHERE MEntity in {} ORDER BY [MEntity]".format(tuple(new_additions_unique.MEntity))
 sap_hierarchy = pd.read_sql_query(sap_hierarchy_query, finaccounting_engine)
 
@@ -145,20 +145,15 @@ rea_val_engine.close()  # Close the SQL Connection
 
 # Extract "Construction_Type" from DB ----
 new_additions3 = new_additions2.merge(rea_val_db.loc[:, ["MEntity", "Parent_MEntity", "Property_Type", "Construction_Type"]], how='left', on='MEntity')
-# new_additions3.rename(columns={'ENTITY_NAME':'Entity_Name', 'Cost Center':'Profit_Center', 'ENTITY_TYPE':'Entity_Type', 'DATE_OPENED':'Date_Opened', 'DATE_CLOSED':'Date_Closed', 'STATUS':'Status', 'Purchase Price':'Purchase', 'Hierarchy Area':'Owner'}, inplace=True)
 
 # Create DF of missing profit centers (to be exported separately) ----
 missing_profit_center_df = new_additions3[pd.isnull(new_additions3['Cost Center'])]
-# new_additions3 = new_additions3[-pd.isnull(new_additions3.Profit_Center)]
 
 # Explore the Hierarchy / Owner column ----
 new_additions3['Hierarchy Area'] = new_additions3['Hierarchy Area'].str[3:7]
 
 # Create separate DF for non UHI owners ----
 not_UHI = new_additions3[new_additions3['Hierarchy Area'] != 'UHI']
-
-# Remove Non-UHI from the list and continue aggregation ----
-# new_additions4 = new_additions3[-new_additions3.MEntity.isin(not_UHI.MEntity)]
 
 # --------------------
 # Step 5: Graph Import
@@ -243,5 +238,5 @@ final_list = existing_list.append(new_additions4, ignore_index=True, sort=False)
 # ------------------------------------
 # Final Step: Export List to Directory
 # ------------------------------------
-final_list.to_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\F19 Q4\New Acquisitions List\Master_Acquisitions_List.xlsx',
-                    index=False)
+# final_list.to_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Report\Quarterly Acquisitions\F19 Q4\New Acquisitions List\Master_Acquisitions_List.xlsx',
+#                     index=False)

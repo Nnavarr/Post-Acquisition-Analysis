@@ -11,8 +11,6 @@ library(rjson)
 library(RCurl)
 
 
-
-
 # Data Import
   
    # Aggregate Income Statement Data
@@ -23,8 +21,6 @@ library(RCurl)
            
         
         
-        
-      
 # Dashboard Architecture ----
   header <- dashboardHeader(
     title = "U-Haul Dashboard"
@@ -47,8 +43,6 @@ library(RCurl)
   
         
               
-
-  
   # Body ----
   body <- dashboardBody(
     
