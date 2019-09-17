@@ -40,10 +40,16 @@ arec_smartsheet.rename(
 arec_smartsheet.sort_values("close_of_escrow", inplace=True)
 
 # Update 'Entity' to object type ----
-arec_smartsheet["Entity"] = arec_smartsheet["Entity"].astype(str).str[:-2]
+arec_smartsheet["Entity"] = arec_smartsheet["Entity"].astype(str)
 arec_smartsheet["Entity"] = np.where(
-    arec_smartsheet["Entity"].str.len() < 6, np.nan, arec_smartsheet["Entity"]
+    arec_smartsheet["Entity"].str.len() < 6, False, arec_smartsheet["Entity"]
 )
+
+# Identify missing Entity number entries in the AREC Smarsheet ----
+missing_entity_smartsheet = arec_smartsheet[arec_smartsheet["Entity"] == False]
+
+# # Export missing entity smartsheet to excel ----
+# missing_entity_smartsheet.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_entity_smartsheet_2_09162019.csv')
 
 # Update Entity Column ----
 """
@@ -62,6 +68,25 @@ yrs_dif = max_coe - min_coe
 print("approx " + str(yrs_dif / 365))
 
 
+#%%
+
+# Export duplicate AREC smartsheet entity numbers ----
+smartsheet_duplicates = arec_smartsheet["Entity"].value_counts()[
+    arec_smartsheet["Entity"].value_counts() > 1
+]
+smartsheet_duplicates = pd.DataFrame(smartsheet_duplicates)
+dup_smartsheet = arec_smartsheet[
+    arec_smartsheet["Entity"].isin(smartsheet_duplicates.index)
+]
+
+# Export smartsheet duplicates to csv ----
+# dup_smartsheet.to_csv(
+#     r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\duplicate_from_smartsheet_09132019.csv"
+# )
+
+# TODO: Create flag for uplicate Entity numbers. Duplicate Entity numbers are a signal that one acquisition is an expansion of current operations ----
+
+
 #%% Graph Data Compilation ----
 
 """
@@ -75,8 +100,8 @@ such, the DLR01 process will work nicely.
 For the initial SQL upload, we will use Graph file data to import MEntity
 
 Process 1: Import MEntity number from Graph file (using Entity)
-Process 2: Import MEntity number from DLR01 using "ENTITY_6NO"
-                The column name will need to be updated to match graph
+Process 2: Import DLR01 using "ENTITY_6NO". The column name will need to be
+           updated to match graph
 
 """
 
@@ -171,13 +196,24 @@ except AssertionError:
     # Duplicate due to merge ----
     duplicate_mask = merge_comp["delta"] >= 1
     duplicate_graph_merge = merge_comp[duplicate_mask]
+
+    # Filter Graph to examine duplicate Entity numbers ----
+    duplicate_graph_mask = graph_db["Entity"].isin(duplicate_graph_merge.index)
+    duplicate_graph_when_merge_arec = graph_db[duplicate_graph_mask]
+
     print(duplicate_graph_merge)
 
-# Filter Graph to examine duplicate Entity numbers ----
-duplicate_graph_mask = graph_db["Entity"].isin(duplicate_graph_merge.index)
-duplicate_graph_when_merge_arec = graph_db[duplicate_graph_mask]
+"""
+Explore Graph & AREC Merge Duplicates
+--------------------------------
+With duplicates found within the initial merge, it would be worth understanding
+where these duplicates are coming from
 
-# TODO: Export Duplicate Entity when merging Graph and Smartsheet into Excel
+"""
+
+# # Explore Dupplicte entries when merging graph and AREC smartsheet ----
+# duplicate_graph_when_merge_arec.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\duplicate_arec_graph09132019.csv')
+
 
 """
 Change to MEntity as Primary Key
@@ -187,13 +223,34 @@ With the Graph data / AREC Smartsheet successfully merged, we can now begin step
 
 a) Use MEntity as the primary key
 b) Check for centers already present within the Graph File
-    If a center is already present within the Graph process, we can simply
-    revert to this for tracking purposes.
+    If a center is already present within the Graph process, we can create a flag
+    to easily see the
 
 """
 
+
 #%% Filter Missing MEntity numbers ----
 
+# Convert Mentity to string ----
+arec_smartsheet_updated["MEntity"] = arec_smartsheet_updated["MEntity"].astype(str)
+
+# Check for MEntity presence ----
+arec_smartsheet_updated["MEntity_present"] = arec_smartsheet_updated["MEntity"].apply(
+    lambda x: False if len(x) < 11 else True
+)
+
+# Determine whether 1 id (Entity / MEntity) is missing ----
+arec_smartsheet_updated["missing_ids"] = np.where(
+    (arec_smartsheet_updated["Entity"] == False)
+    | (arec_smartsheet_updated["MEntity_present"] == False),
+    True,
+    False,
+)
+
+# Checkpoint: At this point, we have determined what locations are missing Entity/MEntity ID.
+# We can begin analyzing missing values to determine an appropriate course of action.
+
+# arec_smartsheet_updated.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_id_09162019.csv')
 
 #%%
 
@@ -208,8 +265,6 @@ SQL Connection: mentity_engine
 """
 
 # Import DLR01 Data ----
-# Filters on existing MEntity numbers --> will require MEntity numbers to begin wtih
-
 dlr01_query = "SELECT * FROM ENTITY_DLR01 WHERE MEntity in {} AND [STATUS] = 'O' ORDER BY [ID] ASC, [MEntity]".format(
     tuple(existing_mentity)
 )
