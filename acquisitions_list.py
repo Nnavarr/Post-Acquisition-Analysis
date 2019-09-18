@@ -250,9 +250,38 @@ arec_smartsheet_updated["missing_ids"] = np.where(
 # Checkpoint: At this point, we have determined what locations are missing Entity/MEntity ID.
 # We can begin analyzing missing values to determine an appropriate course of action.
 
-# arec_smartsheet_updated.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_id_09162019.csv')
+# Missing id DF ----
+missing_id_mask = arec_smartsheet_updated["missing_ids"] == True
+missing_ent_mask = arec_smartsheet_updated["Entity"] == False
 
-#%%
+# missing MEntity but not Entity ----
+missing_mentity_arec_updated = arec_smartsheet_updated[
+    missing_id_mask & ~missing_ent_mask
+]
+missing_entity_arec_updated = arec_smartsheet_updated[
+    missing_id_mask & missing_ent_mask
+]
+
+# missing_mentity_arec_updated.to_csv(
+#     r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_mentity_09172019.csv"
+# )
+# missing_entity_arec_updated.to_csv(
+#     r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_entity_09172019.csv"
+# )
+
+"""
+Missing Entity Number:
+    Properties that are missing Entity numbers appear to be **Vacant Land**
+
+Missing MEntity Number:
+    Merge against DLR01 to determine if MEntity number is present there.
+        209 Missing MEntity
+"""
+
+missing_mentity_arec_updated["Entity"].nunique()
+
+
+#%% Import DLR01 DB
 
 """
 DLR01 DB Specs
@@ -262,12 +291,94 @@ Table: ENTITY_DLR01
 
 Python Variable Names
 SQL Connection: mentity_engine
+
+Why?
+Graph data is sourced from this DLR01 table. It can provide an earlier sign of a locations presence
+
+However, we can't simply merge on Entity or MEntity due to the re-usage of these numbers.
+As additional layer, we will match the location city in order to ensure the accurate MEntity number is pulled
+
+Lastly, due to the squirrely nature of these numbers, we will check whether the MEntity number associated with
+the specific location is still active using the 'STATUS' column.
+
 """
 
-# Import DLR01 Data ----
-dlr01_query = "SELECT * FROM ENTITY_DLR01 WHERE MEntity in {} AND [STATUS] = 'O' ORDER BY [ID] ASC, [MEntity]".format(
-    tuple(existing_mentity)
+# DLR01 Query ----
+dlr01_query = "SELECT * FROM ENTITY_DLR01 WHERE ENTITY_6NO in {} ORDER BY [ID] ASC, ENTITY_6NO".format(
+    tuple(missing_mentity_arec_updated["Entity"])
 )
+
+dlr01_initial = pd.read_sql(dlr01_query, mentity_engine)
+
+# dlr01_initial.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\dlr01_missing_mentity.csv',
+# index=False)
+
+# Check for single address in returned DF ----
+missing_entity_number = list(missing_mentity_arec_updated["Entity"])
+missing_entity_city = list(missing_mentity_arec_updated["City"])
+missing_dictionary = dict(zip(missing_entity_number, missing_entity_city))
+
+unique_city_entity_list = []
+unique_city_mentity_list = []
+
+for entity, city in missing_dictionary.items():
+    temp_mask = dlr01_initial["ENTITY_6NO"] == entity
+    mentity = dlr01_initial[temp_mask]["MEntity"]
+
+    # Single MEntity Number Case ----
+    if len(mentity) == 1:
+        temp_dlr01_query = "SELECT * FROM ENTITY_DLR01 WHERE MEntity = '{}'".format(
+            mentity
+        )
+        temp_dlr01 = pd.read_sql(temp_dlr01_query, mentity_engine)
+
+        # Match location City to determine appropriate MEntity number ----
+        # This step is due to re-usage of MEntity numbers ----
+        match_loc_city_mask = temp_dlr01["LOC_CITY"] == city
+        matched_dlr01 = temp_dlr01[match_loc_city_mask]
+        correct_mentity = matched_dlr01["MEntity"]
+        unique_city_mentity_list.append(correct_mentity)
+        unique_city_entity_list.append(entity)
+
+    # Multiple MEntity Number Case ----
+    elif len(mentity) > 1:
+        temp_dlr01_query = "SELECT * FROM ENTITY_DLR01 WHERE MEntity in {}".format(
+            tuple(mentity)
+        )
+        temp_dlr01 = pd.read_sql(temp_dlr01_query, mentity_engine)
+        match_loc_city_mask = temp_dlr01["LOC_CITY"] == city
+        matched_dlr01 = temp_dlr01[match_loc_city_mask]
+        correct_mentity = matched_dlr01["MEntity"]
+        unique_city_mentity_list.append(correct_mentity)
+        unique_city_entity_list.append(entity)
+
+    # No MEntity number case ----
+    else:
+        next
+
+# Correct MEntity Dictionary ----
+missing_mentity_dict = dict(zip(unique_city_entity_list, unique_city_mentity_list))
+
+# Collapse missing MEntity dictionary into pandas DF ----
+missing_mentity_df = pd.DataFrame(pd.concat(missing_mentity_dict))
+missing_mentity_df.reset_index(inplace=True)
+missing_mentity_df.rename(columns={"level_0": "Entity"}, inplace=True)
+missing_mentity_df.drop(columns=["level_1"], inplace=True)
+
+unique_mentity = missing_mentity_df.groupby("Entity")["MEntity"].unique()
+unique_mentity_df = pd.DataFrame(unique_mentity)
+
+# Export Missing MEntity to Excel ----
+# unique_mentity_df.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\found_missing_mentity_09172019.csv')
+
+# Append newly found MEntity numbers against ""
+
+# TODO: Merge newly found MEntity numbers with the updated version of the arec smartsheet.
+for entity in missing_df:
+
+
+
+#%%
 
 
 #%%
