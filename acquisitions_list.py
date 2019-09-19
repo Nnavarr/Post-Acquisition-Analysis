@@ -254,6 +254,11 @@ arec_smartsheet_updated["missing_ids"] = np.where(
 missing_id_mask = arec_smartsheet_updated["missing_ids"] == True
 missing_ent_mask = arec_smartsheet_updated["Entity"] == False
 
+"""
+3 locations are missing entity numbers ----
+
+"""
+
 # missing MEntity but not Entity ----
 missing_mentity_arec_updated = arec_smartsheet_updated[
     missing_id_mask & ~missing_ent_mask
@@ -277,9 +282,6 @@ Missing MEntity Number:
     Merge against DLR01 to determine if MEntity number is present there.
         209 Missing MEntity
 """
-
-missing_mentity_arec_updated["Entity"].nunique()
-
 
 #%% Import DLR01 DB
 
@@ -365,17 +367,50 @@ missing_mentity_df.reset_index(inplace=True)
 missing_mentity_df.rename(columns={"level_0": "Entity"}, inplace=True)
 missing_mentity_df.drop(columns=["level_1"], inplace=True)
 
-unique_mentity = missing_mentity_df.groupby("Entity")["MEntity"].unique()
+unique_mentity = missing_mentity_df.groupby("Entity")["MEntity"].unique().str
 unique_mentity_df = pd.DataFrame(unique_mentity)
+unique_mentity_df = unique_mentity_df.iloc[:1, :]
+unique_mentity_df = unique_mentity_df.melt()
+unique_mentity_df.rename(columns={"value": "MEntity"}, inplace=True)
+
+# 788053 proper MEntity = M0000132644
+unique_mentity_df["MEntity"] = np.where(
+    unique_mentity_df["Entity"] == "788053", "M0000132644", unique_mentity_df["MEntity"]
+)
 
 # Export Missing MEntity to Excel ----
 # unique_mentity_df.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\found_missing_mentity_09172019.csv')
 
-# Append newly found MEntity numbers against ""
+# Merge newly found MEntity numbers from DLR01 ----
+arec_smartsheet_updated = pd.merge(
+    left=arec_smartsheet_updated, right=unique_mentity_df, how="left", on="Entity"
+)
 
-# TODO: Merge newly found MEntity numbers with the updated version of the arec smartsheet.
-for entity in missing_df:
+# Check for updated MEntity number MEntity_y ----
+arec_smartsheet_updated["MEntity_flag"] = arec_smartsheet_updated["MEntity_y"].apply(
+    lambda x: True if type(x) != float else False
+)
+arec_smartsheet_updated["MEntity_x"] = np.where(
+    arec_smartsheet_updated["MEntity_flag"] == True,
+    arec_smartsheet_updated["MEntity_y"],
+    arec_smartsheet_updated["MEntity_x"],
+)
 
+# Remove Excess MEntity numbers ----
+arec_smartsheet_updated.drop(columns=["MEntity_flag", "MEntity_y"], inplace=True)
+arec_smartsheet_updated.rename(columns={"MEntity_x": "MEntity"}, inplace=True)
+
+arec_smartsheet_updated["MEntity"] = arec_smartsheet_updated["MEntity"].apply(
+    lambda x: np.null if type(x) == float else x
+)
+
+# Extract centers where MEntity is still missing ----
+remaining_missing_mentity_mask = arec_smartsheet_updated["MEntity"] == "nan"
+missing_mentity_2 = arec_smartsheet_updated[remaining_missing_mentity_mask]
+missing_mentity_2.to_csv(
+    r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_mentity_after_dlr01_09182019.csv",
+    index=False,
+)
 
 
 #%%
