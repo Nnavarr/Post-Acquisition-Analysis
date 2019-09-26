@@ -8,7 +8,6 @@ import datetime
 
 from SAP_DB_Filter import line_items
 
-
 # -------------------------
 # Income Statement Function
 # -------------------------
@@ -29,7 +28,10 @@ def income_statement(profit_center, sap_data, line_item_dict):
     temp_sap = sap_data[pc_mask]
 
     # Chart of accounts into list ----
-    coa_acct_list = [n.Account.astype(str) for n in line_item_dict.values()]
+    if type(line_item_dict) = dict:
+        coa_acct_list = [n.Account.astype(str) for n in line_item_dict.values()]
+    else:
+        coa_acct_list = list(line_item_dict['Account'])
 
     # Individual Line Item DF Compilation ----
     line_item_db = []
