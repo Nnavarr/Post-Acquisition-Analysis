@@ -6,6 +6,9 @@ from getpass import getuser, getpass
 from SAP_DB_Filter import create_connection
 import re
 
+# SQL Alchemy ----
+import sqlalchemy, urllib
+
 
 #%% Initial Data imports ----
 
@@ -228,7 +231,6 @@ b) Check for centers already present within the Graph File
 
 """
 
-
 #%% Filter Missing MEntity numbers ----
 
 # Convert Mentity to string ----
@@ -279,8 +281,8 @@ Missing Entity Number:
     Properties that are missing Entity numbers appear to be **Vacant Land**
 
 Missing MEntity Number:
-    Merge against DLR01 to determine if MEntity number is present there.
-        209 Missing MEntity
+    Merge against DLR01 to determine if MEntity number is present there
+
 """
 
 #%% Import DLR01 DB
@@ -312,14 +314,40 @@ dlr01_query = "SELECT * FROM ENTITY_DLR01 WHERE ENTITY_6NO in {} ORDER BY [ID] A
 
 dlr01_initial = pd.read_sql(dlr01_query, mentity_engine)
 
-# dlr01_initial.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\dlr01_missing_mentity.csv',
-# index=False)
+
+"""
+Associated MEntity numbers for Entity number: 883017
+1) M0000001682
+2) M0000033895
+
+Conclusion: It turns out the LOC_CITY syntax is not matching the arec smartsheet syntax style.
+That is, there are situations where the same city is shown differently. For example:
+
+Nort Las Vegas vs N. Las Vegas.
+
+Solution: Eliminate the difference by matching the syntax of the other.
+"""
+
+"""
+Standardize Address Notation Process
+------------------------------------
+
+1) Determine whether notation is standardized within arec smartsheet
+2) Determine whether notation is standardized within DLR01
+3) Find appropriate standardization method
+    (merge methodologies)
+
+"""
+
+
+#%% Extract missing MEntity locations ----
 
 # Check for single address in returned DF ----
-missing_entity_number = list(missing_mentity_arec_updated["Entity"])
+missing_mentity_number = list(missing_mentity_arec_updated["Entity"])
 missing_entity_city = list(missing_mentity_arec_updated["City"])
-missing_dictionary = dict(zip(missing_entity_number, missing_entity_city))
+missing_dictionary = dict(zip(missing_mentity_number, missing_entity_city))
 
+# Results from Loop within script ----
 unique_city_entity_list = []
 unique_city_mentity_list = []
 
@@ -361,8 +389,10 @@ for entity, city in missing_dictionary.items():
 # Correct MEntity Dictionary ----
 missing_mentity_dict = dict(zip(unique_city_entity_list, unique_city_mentity_list))
 
+
 # Collapse missing MEntity dictionary into pandas DF ----
 missing_mentity_df = pd.DataFrame(pd.concat(missing_mentity_dict))
+
 missing_mentity_df.reset_index(inplace=True)
 missing_mentity_df.rename(columns={"level_0": "Entity"}, inplace=True)
 missing_mentity_df.drop(columns=["level_1"], inplace=True)
@@ -407,13 +437,71 @@ arec_smartsheet_updated["MEntity"] = arec_smartsheet_updated["MEntity"].apply(
 # Extract centers where MEntity is still missing ----
 remaining_missing_mentity_mask = arec_smartsheet_updated["MEntity"] == "nan"
 missing_mentity_2 = arec_smartsheet_updated[remaining_missing_mentity_mask]
-missing_mentity_2.to_csv(
-    r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_mentity_after_dlr01_09182019.csv",
-    index=False,
+
+# missing_mentity_2.to_csv(
+#     r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\missing_mentity_2_09242019.csv",
+#     index=False,
+# )
+
+# Import missing MEntity (Manually checked to ensure accuracy) ----
+final_missing_mentity_df = pd.read_excel(
+    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\Copy of missing_mentity_2_09242019.xlsx"
+)
+# final_missing_mentity_df['Entity'] = final_missing_mentity_df['Entity'].astype(object)
+final_missing_mentity_df["Entity"] = final_missing_mentity_df["Entity"].astype(str)
+
+# Merge found MEntity numbers into DF ----
+final_missing_cols = ["Entity", "MEntity"]
+f_final_missing_df = final_missing_mentity_df.loc[:, final_missing_cols]
+
+f_miss_entity = list(f_final_missing_df["Entity"])
+f_miss_mentity = list(f_final_missing_df["MEntity"])
+mentity_dict = dict(zip(f_miss_entity, f_miss_mentity))
+
+# Import newly found MEntity numbers into existing AREC Smartsheet dictionary ----
+for entity, mentity in mentity_dict.items():
+    arec_smartsheet_updated["MEntity"] = np.where(
+        arec_smartsheet_updated["Entity"] == entity,
+        mentity,
+        arec_smartsheet_updated["MEntity"],
+    )
+
+
+#%% Eliminate unnecessary columns and upload into SQL ----
+
+# Remove missing ids column ----
+arec_smartsheet_updated.drop(
+    columns=["missing_ids", "Unnamed: 13", "true_entity", "MEntity_present"],
+    inplace=True,
+)
+
+# Rename Existing Columns ----
+arec_smartsheet_updated.rename(
+    columns={"entity_description": "entity_num_text"}, inplace=True
 )
 
 
-#%%
+"""
+Initial AREC Smartsheet upload
 
+"""
+# Traditional SQL Connection protocol - this is still necessary
+base_con = (
+    "Driver={{ODBC DRIVER 17 for SQL Server}};"
+    "Server=OPSReport02.uhaul.amerco.org;"
+    "Database=DEVTEST;"
+    "UID={};"
+    "PWD={};"
+).format(user, os.environ.get("sql_pwd"))
+con = pyodbc.connect(base_con)
 
-#%%
+# URLLib finds the important information from our base connection
+params = urllib.parse.quote_plus(base_con)
+
+# SQLAlchemy takes all this info to create the engine
+engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
+
+# Upload ----
+arec_smartsheet_updated.to_sql(
+    "arec_smartsheet", engine, index=False, if_exists="replace"
+)
