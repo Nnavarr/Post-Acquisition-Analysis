@@ -11,12 +11,18 @@ In recent quarters, the R compilation has been shifted to Python. Currently, the
 
 Using the unique identifier "MEntity", we can link across occupancy and general ledger info.
 
+Before the shift to Python, the following steps were all compiled within a single R Script "**Quarterly Acquisitions Report.RMD**"
+1. Income Statement Compilation
+2. Occupancy Metrics
+3. Forecasted Occupancy Metrics
+
 ---
-#** General Ledger Income Statement**
+** General Ledger Income Statement**
 ---
 SAP info uses alternative identifier. First steps involve merging MEntity against SAP profit center number
  
 Process Code: "**Income_Statement_Compilation.py**"
+Language: Python
 Process:
 1. Connect to SAP SQL link
 2. Wrangle data into a usable format based on pre-determined chart of accounts (Excel Doc)
@@ -24,8 +30,15 @@ Process:
 4. Melt Table to create a "Tidy" version; this makes it easy to work with in Excel 
 
 ---
-#** Occupancy Aggregation**
+** Occupancy Aggregation**
 ---
+Process Code: "**Quarterly Acquisitions Report.RMD**"
+Language: R
+Process:
+1. Use MEntity number to filter WSS DB (SQL Table)
+2. Iterate process for relevant MEntity numbers
+3. Import Forecasted Occupancy metrics from a separate SQL Table 
+
 
 
 
