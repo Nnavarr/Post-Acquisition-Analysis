@@ -21,8 +21,8 @@ General Ledger Income Statement
 ---
 SAP info uses alternative identifier. First steps involve merging MEntity against SAP profit center number
  
-Process Code: "**Income_Statement_Compilation.py**"
-Language: Python
+*Process Code: "**Income_Statement_Compilation.py**"
+*Language: Python
 Process:
 1. Connect to SAP SQL link
 2. Wrangle data into a usable format based on pre-determined chart of accounts (Excel Doc)
@@ -32,8 +32,8 @@ Process:
 ---
 Occupancy Aggregation
 ---
-Process Code: "**Quarterly Acquisitions Report.RMD**"
-Language: R
+*Process Code: "**Quarterly Acquisitions Report.RMD**"
+*Language: R
 Process:
 1. Use MEntity number to filter WSS DB (SQL Table)
 2. Iterate process for relevant MEntity numbers
