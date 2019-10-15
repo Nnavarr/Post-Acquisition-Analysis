@@ -17,7 +17,7 @@ Before the shift to Python, the following steps were all compiled within a singl
 3. Forecasted Occupancy Metrics
 
 ---
-** General Ledger Income Statement**
+General Ledger Income Statement
 ---
 SAP info uses alternative identifier. First steps involve merging MEntity against SAP profit center number
  
@@ -30,7 +30,7 @@ Process:
 4. Melt Table to create a "Tidy" version; this makes it easy to work with in Excel 
 
 ---
-** Occupancy Aggregation**
+Occupancy Aggregation
 ---
 Process Code: "**Quarterly Acquisitions Report.RMD**"
 Language: R
@@ -40,7 +40,7 @@ Process:
 3. Import Forecasted Occupancy metrics from a separate SQL Table 
 
 ---
-** Dashboard Compilation**
+Dashboard Compilation
 ---
 Once the steps above are complete, export into csv/xlsx. From there, a dashboard template reads in the export using Excel's Power Pivot feature. The goal is to move away from Excel where possible. As such, Tableau and SQL will be used to replace the current reporting process. Executive buy in may not succeed, as such, both versions will be presented in parallel. 
 
