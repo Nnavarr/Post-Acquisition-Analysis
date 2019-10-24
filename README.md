@@ -39,11 +39,11 @@ Occupancy Aggregation
 Process:
 1. Use MEntity number to filter WSS DB (SQL Table)
 2. Iterate process for relevant MEntity numbers
-3. Import Forecasted Occupancy metrics from a separate SQL Table 
+3. Import Forecasted Occupancy data from a separate SQL Table 
 
 ---
 Dashboard Compilation
 ---
-Once the steps above are complete, export into csv/xlsx. From there, a dashboard template reads in the export using Excel's Power Pivot feature. The goal is to move away from Excel where possible. As such, Tableau and SQL will be used to replace the current reporting process. Executive buy in may not succeed, as such, both versions will be presented in parallel. 
+Once the steps above are complete, export into csv/xlsx. From there, a dashboard template reads in the export using Excel's Power Pivot feature. The goal is to move away from Excel where possible. As such, Tableau and SQL will be used to replace the current reporting process. Executive buy-in still required, as such, both versions will be presented in parallel. 
 
 
