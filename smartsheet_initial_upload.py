@@ -3,15 +3,13 @@ import pyodbc
 import numpy as np
 import os
 from getpass import getuser, getpass
-from SAP_DB_Filter import create_connection
+from sap_db_filter import create_connection
 import re
 
 # SQL Alchemy ----
 import sqlalchemy, urllib
 
-
 #%% Initial Data imports ----
-
 user = "1217543"
 
 # Create SQL Engines ----
@@ -87,7 +85,7 @@ dup_smartsheet = arec_smartsheet[
 #     r"Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\Compilation Log\duplicate_from_smartsheet_09132019.csv"
 # )
 
-# TODO: Create flag for uplicate Entity numbers. Duplicate Entity numbers are a signal that one acquisition is an expansion of current operations ----
+# TODO: Create flag for duplicate Entity numbers. Duplicate Entity numbers are a signal that one acquisition is an expansion of current operations ----
 
 
 #%% Graph Data Compilation ----
@@ -227,7 +225,6 @@ With the Graph data / AREC Smartsheet successfully merged, we can now begin step
 a) Use MEntity as the primary key
 b) Check for centers already present within the Graph File
     If a center is already present within the Graph process, we can create a flag
-    to easily see the
 
 """
 
@@ -284,9 +281,7 @@ Missing MEntity Number:
     Merge against DLR01 to determine if MEntity number is present there
 
 """
-
 #%% Import DLR01 DB
-
 """
 DLR01 DB Specs
 ---------------
@@ -331,12 +326,10 @@ Solution: Eliminate the difference by matching the syntax of the other.
 """
 Standardize Address Notation Process
 ------------------------------------
-
 1) Determine whether notation is standardized within arec smartsheet
 2) Determine whether notation is standardized within DLR01
 3) Find appropriate standardization method
     (merge methodologies)
-
 """
 
 
@@ -384,11 +377,10 @@ for entity, city in missing_dictionary.items():
 
     # No MEntity number case ----
     else:
-        next
+        continue
 
 # Correct MEntity Dictionary ----
 missing_mentity_dict = dict(zip(unique_city_entity_list, unique_city_mentity_list))
-
 
 # Collapse missing MEntity dictionary into pandas DF ----
 missing_mentity_df = pd.DataFrame(pd.concat(missing_mentity_dict))
@@ -466,7 +458,6 @@ for entity, mentity in mentity_dict.items():
         arec_smartsheet_updated["MEntity"],
     )
 
-
 #%% Eliminate unnecessary columns and upload into SQL ----
 
 # Remove missing ids column ----
@@ -481,7 +472,7 @@ arec_smartsheet_updated.rename(
 )
 
 
-"""
+"""`
 Initial AREC Smartsheet upload
 
 """
@@ -501,7 +492,9 @@ params = urllib.parse.quote_plus(base_con)
 # SQLAlchemy takes all this info to create the engine
 engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
-# Upload ----
-arec_smartsheet_updated.to_sql(
-    "arec_smartsheet", engine, index=False, if_exists="replace"
-)
+# ---------------------------------------------------------------------------------------------------------------------
+# # Upload ----
+# arec_smartsheet_updated.to_sql(
+#     "arec_smartsheet", engine, index=False, if_exists="replace"
+# )
+

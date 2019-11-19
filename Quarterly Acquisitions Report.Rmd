@@ -44,8 +44,9 @@ library("rbenchmark")
 ```{r Entity List}
 
 # Import Excel File ----
-acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Acq List\\f20_master_list.xlsx")
+acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q2\\acquisitions_list.xlsx")
         
+
 # Filter for Included properties (excludes remotes/abuttings) ----
 acq_list_final <- 
   acq_list_final %>%
@@ -87,7 +88,7 @@ if(length(acq_pc_check$Profit_Center) != 0) {
 ```{r Quarterly Group Updates}
 
 # The following variables will need to be updated every quarter ----
-Grp_Num <- c(1:18)
+Grp_Num <- c(1:19)
 Group <- c("FY15 Q4", 
               "FY16 Q1", 
               "FY16 Q2",
@@ -105,7 +106,8 @@ Group <- c("FY15 Q4",
               "FY19 Q2",
               "FY19 Q3",
               "FY19 Q4",
-              "FY20 Q1")
+              "FY20 Q1",
+              "FY20 Q2")
 
 ```
 
@@ -161,7 +163,7 @@ mondf <- function(d1, d2) { monnb(d2) - monnb(d1) }
 
 ```
 
-```{r Line Item Function}
+```{r Line Item Function, eval=FALSE, include=FALSE}
 
 # Step by Step TEst of Line Item Function ----
 line_item_function <- function(x, df){
@@ -174,7 +176,7 @@ line_item_function <- function(x, df){
      
      # Date Range for missing line items ----
      min_is_month <- min(df$MONTH)
-     max_is_month <- as.Date('2019-06-01')
+     max_is_month <- as.Date('2019-09-01')
      
      # Line Item IS compilation ----
      line_item_is <- 
@@ -208,7 +210,7 @@ line_item_function <- function(x, df){
      # Filter for max date
      line_item_is <-
         line_item_is %>%
-        filter(MONTH <= '2019-06-01')
+        filter(MONTH <= '2019-09-01')
      
      
     } else if(date_diff > 0){
@@ -239,7 +241,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH <= '2019-06-01')
+        filter(MONTH <= '2019-09-01')
      
     } else if(date_diff == 0){
     
@@ -248,7 +250,7 @@ line_item_function <- function(x, df){
       # Filter for max date ----
       line_item_is <-
         line_item_is %>%
-        filter(MONTH <= '2019-06-01')
+        filter(MONTH <= '2019-09-01')
       
     }
   
@@ -259,7 +261,7 @@ line_item_function <- function(x, df){
 
 ```
 
-```{r Aggregate Income Statement}
+```{r Aggregate Income Statement, eval=FALSE, include=FALSE}
 
 income_statment_compilation <- function(x, accounts){
   
@@ -626,7 +628,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```
 
-```{r Individual Income Statement}
+```{r Individual Income Statement, eval=FALSE, include=FALSE}
 
 income_statment_compilation_append <- function(x, accounts){
   
@@ -1038,7 +1040,7 @@ for (i in 1:length(db$`PROFIT CENTER`)){
 
 ```
 
-```{r Minimum IS Trend Data}
+```{r Minimum IS Trend Data, eval=FALSE, include=FALSE}
 
 month_opertation_start <- function(x) {
   
@@ -1061,7 +1063,7 @@ month_opertation_start <- function(x) {
 
 ```
 
-```{r Income Statement Data Check}
+```{r Income Statement Data Check, eval=FALSE, include=FALSE}
 
 data_check_na <-
   function(x) {
@@ -1153,7 +1155,7 @@ data_check_center <-
 
 ```
 
-```{r Nested List Creation}
+```{r Nested List Creation, include=FALSE}
 
 # Nested list creation
   nested_list_creation <-
@@ -1467,7 +1469,6 @@ Property_Owner = function (x){
   d = SAP.Hierarchy %>% filter(`Cost Center` == x)
 
   #%Create a local copy of the data frame
-  
   b = collect(d)
   c = b$`Hierarchy Area`
   return(c)
@@ -1582,7 +1583,7 @@ occ_compilation <- function(x){
 # Occ Data 
   occ_df =
     wss_data %>%
-      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2019-06-01') %>% 
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2019-09-01') %>% 
       group_by(MEntity,
                Date, 
                unm_product) %>%
@@ -1617,7 +1618,7 @@ occ_compilation <- function(x){
         }
     
   
-  names(y)[[5]] = "Unit_Mix"
+  names(y)[[4]] = "Unit_Mix"
   
   return(y)
   
@@ -1679,7 +1680,7 @@ db <-
     y =
       append(x, list(db_filtered))
   
-  names(y)[[6]] = "Forecasted_Occupancy"
+  names(y)[[5]] = "Forecasted_Occupancy"
   
   return(y)
   
@@ -1946,7 +1947,7 @@ q_acquisitions_list <-
   modify_depth(q_acquisitions_list, 2, occ_compilation)
 
 # Collapse Unit Mix Process ----
- unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = 5) 
+ unit_mix_list <- modify_depth(q_acquisitions_list, 2, nested_list_filter, z = 4) 
 
 unit_mix_collapsed <- 
   unlist(unit_mix_list, recursive = FALSE)
@@ -1975,6 +1976,13 @@ aggregate_occ <-
             summarise(Total_Rooms = sum(`Total_Rooms`),
             Occupied_Rooms = sum(`Occupied_Rooms`))
         
+  
+# MEntity Count by Group ----
+unit_mix_final %>%
+    group_by(Group) %>%
+    select(MEntity) %>%
+    summarise(n_distinct(MEntity))
+
 ```
 
 
@@ -2095,7 +2103,7 @@ na_fc_occupancy_profit_center_info <-
 
 ```{r Occupancy Metrics Export, eval=FALSE, include=FALSE}
 # 
-# xlsx::write.xlsx(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx', 
+# xlsx::write.xlsx(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\UnitMix.xlsx',
 #                   append = FALSE,
 #                   sheetName = "UnitMix",
 #                   col.names = TRUE,
@@ -2103,8 +2111,10 @@ na_fc_occupancy_profit_center_info <-
 #                   )
 
 
-# write.csv(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\unit_mix_final.csv') 
-# 
+write.csv(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q2\\Data\\unitmix.csv')
+
+
+# Aggregate Export ----
 # write.csv(aggregate_occ, "\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\Aggregate_Occupancy.csv", 
 #           row.names = FALSE)
 
@@ -2119,13 +2129,10 @@ na_fc_occupancy_profit_center_info <-
 #   col.names = TRUE, 
 #   row.names = FALSE)
 
-
 # Export to CSV to be pasted into XLSX ----
-write.csv(fc_occ_df_2, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\forecasted_occ.csv')
+write.csv(fc_occ_df_2, '')
+
+# Previously Used File path (before 10/29/2019)
+# 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\forecasted_occ.csv'
 
 ```
-  
-
-
-
-
