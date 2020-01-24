@@ -28,7 +28,6 @@ def create_connection(database):
     # return connection object
     return pyodbc.connect(cnxn_str)
 
-
 # -----------------------------
 # Data Processing: SAP_Accounts
 # -----------------------------

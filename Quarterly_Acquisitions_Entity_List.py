@@ -226,3 +226,4 @@ new_list = new_list.loc[:, ['Group',
 final_list = master_list.append(new_list, ignore_index=True, sort=False)
 final_list.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Acq List\f20_master_list.csv',
                   index=False)
+

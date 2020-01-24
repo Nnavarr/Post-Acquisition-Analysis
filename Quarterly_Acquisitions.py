@@ -6,15 +6,6 @@ from getpass import getuser, getpass
 import re
 import datetime
 
-
-"""
-Test commmit
-
-
-test
-"""
-
-
 from income_statement_compilation import income_statement
 from sap_db_filter import chart_of_accounts, sap_db_query, create_connection
 
@@ -67,20 +58,17 @@ quarter_grp_class_df.rename(columns={0: "grp_name", 1: "Group"}, inplace=True)
 # entity_list = pd.read_excel(
 #     r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\Master_Acquisitions_List.xlsx')
 
-
-# Entity list F20 Q2 ----
+# Entity list F20 Q3 ----
 entity_list = pd.read_excel(
-    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q2\acquisitions_list.xlsx"
-)
+    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\acquisitions_list_q3.xlsx")
 
 # ----------------------------
 # Data Processing: Entity List
 # ----------------------------
-entity_list["Profit_Center"] = entity_list["Profit_Center"].fillna(0).astype("int64")
-entity_list["Profit_Center"] = entity_list["Profit_Center"].astype("object")
-entity_list.rename(columns={"Profit_Center": "profit_center"}, inplace=True)
+entity_list.rename(columns={'Profit_Center': 'profit_center'}, inplace=True)
 entity_list["profit_center"] = entity_list["profit_center"].astype(str)
-entity_in = entity_list[entity_list["Include?"] == "Yes"]
+include_mask = entity_list.include == True
+entity_in = entity_list[include_mask]
 
 # Duplicate Profit Center Check ----
 assert (
@@ -90,10 +78,9 @@ assert (
 # List of Profit Centers ----
 quarter_acq_pc_list = list(entity_in["profit_center"].unique())
 
-# -----------------------------
-# Income Statement Compilation
-# -----------------------------
-
+"""
+Income Statement Compilation 
+"""
 # Filter SAP DB for relevant profit centers and account numbers ----
 sap_engine = create_connection(database="SAP_Data")
 
@@ -119,6 +106,8 @@ income_statement_dict = dict(zip(quarter_acq_pc_list, q_acq_is_list))
 
 # Concatenate into a single data frame for SQL upload ----
 q_is_aggregate = pd.concat(income_statement_dict, ignore_index=True)
+max_date_mask = q_is_aggregate.date <= pd.to_datetime('2019-12-01')
+q_is_aggregate = q_is_aggregate[max_date_mask]
 
 # Import group name and number ----
 aggregate_income_statement = pd.merge(
@@ -195,20 +184,15 @@ params = urllib.parse.quote_plus(base_con)
 # SQLAlchemy takes all this info to create the engine
 engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
-# -----------
-# Upload Code
-# -----------
-# max_date = '2019-09-01'
-# max_date_mask = aggregate_income_statement['date'] <= max_date
-# aggregate_income_statement = aggregate_income_statement[max_date_mask]
-
-# aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+"""
+Upload Code
+"""
+aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
 
 
 # ------------------------------
 # Aggregate by Quarterly Report
 # ------------------------------
-
 q_acq_db = create_connection(database="DEVTEST")
 acq_query = "SELECT * FROM [DEVTEST].[dbo].[Quarterly_Acquisitions_IS]"
 acq_df = pd.read_sql_query(acq_query, q_acq_db)
@@ -234,6 +218,9 @@ line_item_dict = {
 aggregate_df.line_item.replace(line_item_dict, inplace=True)
 
 # # Export to CSV ----
+# F20 Q2 Export
 # aggregate_df.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q2\Data\aggregate_is.csv',
 #                     index=False)
-# acq_df.groupby('grp_name')['MEntity'].nunique()
+
+aggregate_df.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\Data\aggregate_is.csv',
+                    index=False)

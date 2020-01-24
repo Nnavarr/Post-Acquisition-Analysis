@@ -188,5 +188,23 @@ f20_q1_list.rename(columns={'Abutting_x': 'Abutting',
 f20_q1_list.drop(['Abutting_y'], axis=1, inplace=True)
 entity_list_current = pd.concat([f20_q1_list, f20_q2_above_3], axis=0)
 
-#TODO: Check "Include?" column once more against duplicate MEntity. Once complete, remove all nans and nulls from this column
-# Run Income Statement Function for the list ----
+# Missing "simple owner" observations merge (older than F20_Q2) ----
+# entity_list_current = pd.merge(left=entity_list_current, right=graph_df.loc[:, ['MEntity', 'Simple Owner']],
+#                                on='MEntity', how='left')
+# entity_list_current.Simple_Owner = np.where(entity_list_current.Simple_Owner.isna(),
+#                                             entity_list_current['Simple Owner'],
+#                                             entity_list_current.Simple_Owner)
+# entity_list_current.drop(['Simple Owner'], axis=1, inplace=True)
+
+# Check final filters for inclusion in list (only retain True)----
+not_duplicate_pc = ~entity_list_current.duplicated('Profit_Center')
+owner_uhi = entity_list_current.Simple_Owner == 'UHI'
+remote_center = entity_list_current.Remote == 'No'
+abutting_center = entity_list_current.Abutting != 'True'
+entity_list_current['include'] = not_duplicate_pc & owner_uhi & remote_center & abutting_center
+entity_list_current['Include?'] = entity_list_current['include']
+entity_list_current.drop(['Include?'], axis=1, inplace=True)
+
+# Export to csv ----
+entity_list_current.to_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\acquisitions_list_q3.xlsx',
+                             index=False)
