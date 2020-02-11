@@ -40,6 +40,7 @@ sap_accounts.rename(
     columns={"SAP ACC. Number": "Account", "Lender Trend Line Item": "line_item"},
     inplace=True,
 )
+
 sap_accounts["Account"] = sap_accounts["Account"].astype("object")
 
 # Retain relevant accounts ----
@@ -74,68 +75,69 @@ chart_of_accounts = dict(zip(line_items, separate_df_container))
 # SAP Data Connection ----
 sap_engine = create_connection(database="SAP_Data")
 
+def sap_db_query(profit_center_list, fiscal_yr=False, lender_reporting=False):
 
-def sap_db_query(profit_center_list, fiscal_yr):
+    # Unadjusted GL figures ----
+    if lender_reporting is False:
+        sap_db_query = "SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {} AND [GL_ACCOUNT] in {} AND [FISCAL_YEAR] = {}".format(
+            tuple(profit_center_list), tuple(sap_accounts["Account"]), fiscal_yr
+        )
+        sap_db = pd.read_sql_query(sap_db_query, sap_engine)
 
-    sap_db_query = "SELECT * FROM [SAP_Data].[dbo].[FAGLFLEXT] WHERE [PROFIT_CENTER] in {} AND [GL_ACCOUNT] in {} AND [FISCAL_YEAR] = {}".format(
-        tuple(profit_center_list), tuple(sap_accounts["Account"]), fiscal_yr
-    )
-    sap_db = pd.read_sql_query(sap_db_query, sap_engine)
+        # Remove LC from column based ----
+        col_names = sap_db.columns
+        col_name_with_lc = ~col_names.str.contains("LC")
+        col_names_f = col_names[col_name_with_lc]
+        sap_db = sap_db.loc[:, col_names_f]
 
-    # Remove LC from column based ----
-    col_names = sap_db.columns
-    col_name_with_lc = ~col_names.str.contains("LC")
-    col_names_f = col_names[col_name_with_lc]
-    sap_db = sap_db.loc[:, col_names_f]
+        sap_db.rename(
+            columns={
+                "GC_PER_1": "04",
+                "GC_PER_2": "05",
+                "GC_PER_3": "06",
+                "GC_PER_4": "07",
+                "GC_PER_5": "08",
+                "GC_PER_6": "09",
+                "GC_PER_7": "10",
+                "GC_PER_8": "11",
+                "GC_PER_9": "12",
+                "GC_PER_10": "01",
+                "GC_PER_11": "02",
+                "GC_PER_12": "03",
+                "PROFIT_CENTER": "Profit_Center",
+                "GL_ACCOUNT": "Account",
+                "FISCAL_YEAR": "Fiscal_Year",
+            },
+            inplace=True,
+        )
 
-    sap_db.rename(
-        columns={
-            "GC_PER_1": "04",
-            "GC_PER_2": "05",
-            "GC_PER_3": "06",
-            "GC_PER_4": "07",
-            "GC_PER_5": "08",
-            "GC_PER_6": "09",
-            "GC_PER_7": "10",
-            "GC_PER_8": "11",
-            "GC_PER_9": "12",
-            "GC_PER_10": "01",
-            "GC_PER_11": "02",
-            "GC_PER_12": "03",
-            "PROFIT_CENTER": "Profit_Center",
-            "GL_ACCOUNT": "Account",
-            "FISCAL_YEAR": "Fiscal_Year",
-        },
-        inplace=True,
-    )
+        # Date column creation ----
+        sap_db = sap_db.melt(
+            id_vars=[
+                "Fiscal_Year",
+                "Profit_Center",
+                "Account",
+                "CO_AREA",
+                "TRANS_CURR",
+                "COMPANY_CODE",
+                "SEGMENT",
+                "COST_CENTER",
+            ]
+        )
+        sap_db.rename(columns={"variable": "month"}, inplace=True)
 
-    # Date column creation ----
-    sap_db = sap_db.melt(
-        id_vars=[
-            "Fiscal_Year",
-            "Profit_Center",
-            "Account",
-            "CO_AREA",
-            "TRANS_CURR",
-            "COMPANY_CODE",
-            "SEGMENT",
-            "COST_CENTER",
-        ]
-    )
-    sap_db.rename(columns={"variable": "month"}, inplace=True)
-
-    # Create a function to generate Date Column based on
-    sap_db["month"] = sap_db["month"].astype("int64")
-    sap_db["Fiscal_Year"] = sap_db["Fiscal_Year"].astype("int64")
-    sap_db["year"] = np.where(
-        (sap_db["month"] >= 4) & (sap_db["month"] <= 12),
-        sap_db["Fiscal_Year"] - 1,
-        sap_db["Fiscal_Year"],
-    )
-    sap_db["month"] = sap_db["month"].astype("object")
-    sap_db["year"] = sap_db["year"].astype("object")
-    sap_db["Date"] = sap_db["year"].map(str) + "-" + sap_db["month"].map(str) + "-01"
-    sap_db["Date"] = pd.to_datetime(sap_db["Date"], format="%Y-%m-%d")
+        # Create a function to generate Date Column based on
+        sap_db["month"] = sap_db["month"].astype("int64")
+        sap_db["Fiscal_Year"] = sap_db["Fiscal_Year"].astype("int64")
+        sap_db["year"] = np.where(
+            (sap_db["month"] >= 4) & (sap_db["month"] <= 12),
+            sap_db["Fiscal_Year"] - 1,
+            sap_db["Fiscal_Year"],
+        )
+        sap_db["month"] = sap_db["month"].astype("object")
+        sap_db["year"] = sap_db["year"].astype("object")
+        sap_db["Date"] = sap_db["year"].map(str) + "-" + sap_db["month"].map(str) + "-01"
+        sap_db["Date"] = pd.to_datetime(sap_db["Date"], format="%Y-%m-%d")
 
     return sap_db
 

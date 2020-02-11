@@ -2,18 +2,15 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/acq_report.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/robs_adjustments.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/R_User_Library.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/Post-Acquisition-Analysis.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Post-Acquisition-Analysis.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Income_Statement_Compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/Income_Statement_Compilation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Quarterly Acquisitions Report.Rmd" beforeDir="false" afterPath="$PROJECT_DIR$/Quarterly Acquisitions Report.Rmd" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Quarterly_Acquisitions.py" beforeDir="false" afterPath="$PROJECT_DIR$/Quarterly_Acquisitions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/all_arec_upload.py" beforeDir="false" afterPath="$PROJECT_DIR$/all_arec_upload.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/repair_maintenance_volatility.py" beforeDir="false" afterPath="$PROJECT_DIR$/repair_maintenance_volatility.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/smartsheet_initial_upload.py" beforeDir="false" afterPath="$PROJECT_DIR$/smartsheet_initial_upload.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/to_sql_example.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/SAP_DB_Filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/SAP_DB_Filter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ls_samestore.py" beforeDir="false" afterPath="$PROJECT_DIR$/ls_samestore.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/smartsheet_api_integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/smartsheet_api_integration.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -29,12 +26,18 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProjectId" id="1S4GWesYctyMkHZLe42qiP3x0F7" />
   <component name="PropertiesComponent">
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="preferences.keymap" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -87,6 +90,42 @@
       <option name="presentableId" value="Default" />
       <updated>1568312527797</updated>
     </task>
+    <task id="LOCAL-00001" summary="Test">
+      <created>1574186215199</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1574186215199</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Created new script to import smart-sheet api property information. This will now become the main property list.">
+      <created>1579566589191</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1579566589191</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Nearly finalized integration of smartsheet API. Once complete, we can begin the income statement process and ensuring all adjustments are taken into account correctly.">
+      <created>1579825478277</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1579825478277</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Smartsheet integration complete. Will need to validate the inclusion of new centers. SAP data has been uploaded into SQL and ready for download/presentation">
+      <created>1579907141820</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1579907141820</updated>
+    </task>
+    <task id="LOCAL-00005" summary="With the adjusted data uploaded to SQL, we can now pull trends for any split we deisire. The new trend script is called &quot;ls_samestore&quot; and will be run on a monthly basis.">
+      <created>1580776808842</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1580776808842</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -101,5 +140,13 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Test" />
+    <MESSAGE value="Created new script to import smart-sheet api property information. This will now become the main property list." />
+    <MESSAGE value="Nearly finalized integration of smartsheet API. Once complete, we can begin the income statement process and ensuring all adjustments are taken into account correctly." />
+    <MESSAGE value="Smartsheet integration complete. Will need to validate the inclusion of new centers. SAP data has been uploaded into SQL and ready for download/presentation" />
+    <MESSAGE value="With the adjusted data uploaded to SQL, we can now pull trends for any split we deisire. The new trend script is called &quot;ls_samestore&quot; and will be run on a monthly basis." />
+    <option name="LAST_COMMIT_MESSAGE" value="With the adjusted data uploaded to SQL, we can now pull trends for any split we deisire. The new trend script is called &quot;ls_samestore&quot; and will be run on a monthly basis." />
   </component>
 </project>

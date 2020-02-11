@@ -111,6 +111,8 @@ Import previously used entity list
 """
 entity_list = pd.read_excel(r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q2\acquisitions_list.xlsx")
 
+# entity_list[entity_list.Profit_Center == 7000010948]
+
 # Update nan profit_center values to 0 and convert to string ----
 entity_list.Profit_Center = entity_list.Profit_Center.apply(lambda x: 0 if np.isnan(x) else x)
 entity_list.Profit_Center = entity_list.Profit_Center.astype(str)
@@ -119,13 +121,15 @@ entity_list.Profit_Center = entity_list.Profit_Center.astype(object)
 entity_list.Entity = entity_list.Entity.astype(str)
 prev_used_cols = ['MEntity', 'Profit_Center', 'Simple Owner', 'Include?', 'Type', 'Parent MEntity',
                   'Abutting', 'Remote']
+entity_list['Include?'] = entity_list['Include?'].apply(lambda x: True if x == 'Yes' else False)
+
+#TODO: When merging on the new acquisitons list, the previously used center in question is dropped because it is not matched against the MEntity.
+# We will need to simply append to the existing list to ensure centers are taken into account correctly.
 
 # Merge and filter relevant grps ----
 entity_list_merge = pd.merge(left=close_acq_df, right=entity_list[prev_used_cols], on='MEntity', how='left')
 entity_list_merge.dropna(subset=['Group'], inplace=True)
 entity_list_merge.Group = entity_list_merge.Group.astype(int)
-
-#TODO: Incoroporate missing profit center observations ----
 
 # Exclude previously un-used acquisitions F20_Q1 ----
 grp_18_below_mask = entity_list_merge.Group <= 18
@@ -178,15 +182,30 @@ f20_q2_above_3.rename(columns={'Simple Owner_x': 'Simple_Owner'}, inplace=True)
 # Classify as remote if parent MEntity is present & inclusion in the list ----
 f20_q2_above_3['Parent MEntity'] = f20_q2_above_3['Parent MEntity'].apply(lambda x: 'No' if (x is None) | (x is np.nan) else x)
 f20_q2_above_3.Remote = f20_q2_above_3['Parent MEntity'].apply(lambda x: 'Yes' if len(x) > 4 else x)
-f20_q2_above_3['Include?'] = np.where((f20_q2_above_3['Parent MEntity'] != 'No') | (f20_q2_above_3.Remote == 'Yes'),
-                                      'No',
-                                      f20_q2_above_3['Include?'])
+
+# Inclusion filters ----
+not_duplicate_pc = ~f20_q2_above_3.duplicated('Profit_Center')
+owner_uhi = f20_q2_above_3.Simple_Owner == 'UHI'
+remote_center = f20_q2_above_3.Remote == 'No'
+abutting_center = f20_q2_above_3.Abutting != True
+f20_q2_above_3['Include?'] = not_duplicate_pc & owner_uhi & remote_center & abutting_center
 
 # Update Columns from existing & concatenate into single DF ----
 f20_q1_list.rename(columns={'Abutting_x': 'Abutting',
                             'Simple Owner': 'Simple_Owner'}, inplace=True)
 f20_q1_list.drop(['Abutting_y'], axis=1, inplace=True)
 entity_list_current = pd.concat([f20_q1_list, f20_q2_above_3], axis=0)
+
+# Check for duplicate profit_centers ----
+entity_list_current['dup_pc'] = entity_list_current.duplicated('Profit_Center')
+entity_list_current['include'] = np.where(entity_list_current.dup_pc == True,
+                                           False,
+                                           entity_list_current['Include?'])
+
+# Manual Exclusion after research and reference with cross-contact silverlight map / property.com ----
+
+
+#entity_list_current.drop(['dup_pc', 'Include?'], axis=1, inplace=True)
 
 # Missing "simple owner" observations merge (older than F20_Q2) ----
 # entity_list_current = pd.merge(left=entity_list_current, right=graph_df.loc[:, ['MEntity', 'Simple Owner']],
@@ -197,14 +216,15 @@ entity_list_current = pd.concat([f20_q1_list, f20_q2_above_3], axis=0)
 # entity_list_current.drop(['Simple Owner'], axis=1, inplace=True)
 
 # Check final filters for inclusion in list (only retain True)----
-not_duplicate_pc = ~entity_list_current.duplicated('Profit_Center')
-owner_uhi = entity_list_current.Simple_Owner == 'UHI'
-remote_center = entity_list_current.Remote == 'No'
-abutting_center = entity_list_current.Abutting != 'True'
-entity_list_current['include'] = not_duplicate_pc & owner_uhi & remote_center & abutting_center
-entity_list_current['Include?'] = entity_list_current['include']
-entity_list_current.drop(['Include?'], axis=1, inplace=True)
+# not_duplicate_pc = ~entity_list_current.duplicated('Profit_Center')
+# owner_uhi = entity_list_current.Simple_Owner == 'UHI'
+# remote_center = entity_list_current.Remote == 'No'
+# abutting_center = entity_list_current.Abutting != 'True'
+# entity_list_current['include'] = not_duplicate_pc & owner_uhi & remote_center & abutting_center
+# entity_list_current['Include?'] = entity_list_current['include']
+# entity_list_current.drop(['Include?'], axis=1, inplace=True)
 
 # Export to csv ----
-entity_list_current.to_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\acquisitions_list_q3.xlsx',
-                             index=False)
+#TODO: Do not overwrite existing list ----
+#entity_list_current.to_excel(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\acquisitions_list_q3.xlsx',
+                            # index=False)

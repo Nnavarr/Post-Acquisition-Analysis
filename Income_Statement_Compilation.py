@@ -8,12 +8,17 @@ import datetime
 
 from sap_db_filter import line_items
 
-# -------------------------
-# Income Statement Function
-# -------------------------
+# ##### Test Environment for Walker to SAP conversion ----
+# account_df = pd.read_csv(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\walker_to_sap_dict.csv')
+# walker_list = list(account_df.walker_acct)
+# sap_list = list(account_df.sap_account)
+# account_conversion_dict = dict(zip(walker_list, sap_list))
+#
 
-
-def income_statement(profit_center, sap_data, line_item_dict):
+"""
+Income Statement Function 
+"""
+def income_statement(profit_center, sap_data, line_item_dict, lender_reporting=False):
 
     """
     The function will compile an income statement based on a list of profit center numbers
@@ -23,6 +28,22 @@ def income_statement(profit_center, sap_data, line_item_dict):
     :param line_item_dict: Chart of Accounts Dictionary
     :return: Income Statement DF for individual profit center
     """
+
+    # Check for lender reporting ----
+    if lender_reporting is True:
+        sap_data.rename(columns={'SAP': 'Profit_Center',
+                                 'Account_Number': 'Account',
+                                 'Line Item': 'lineitem',
+                                 'Amount': 'value'},
+                        inplace=True)
+
+        # convert walker accounts to SAP ----
+        account_df = pd.read_csv(
+            r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\walker_to_sap_dict.csv')
+        walker_list = list(account_df.walker_acct)
+        sap_list = list(account_df.sap_account)
+        account_conversion_dict = dict(zip(walker_list, sap_list))
+        sap_data.Account = sap_data.Account.map(account_conversion_dict)
 
     # Step 1: Filter SAP DB  ----
     pc_mask = sap_data["Profit_Center"] == profit_center
@@ -180,7 +201,6 @@ def income_statement(profit_center, sap_data, line_item_dict):
     )
 
     return income_statement_df
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Income Statement Use Example ----

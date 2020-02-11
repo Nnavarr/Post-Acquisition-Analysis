@@ -44,7 +44,7 @@ library("rbenchmark")
 ```{r Entity List}
 
 # Import Excel File ----
-acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q2\\acquisitions_list.xlsx")
+acq_list_final <- readxl::read_excel("\\\\adfs01.uhi.amerco\\departments\\mia\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q3\\center_list\\acquisitions_list_final.xlsx")
         
 
 # Filter for Included properties (excludes remotes/abuttings) ----
@@ -88,7 +88,7 @@ if(length(acq_pc_check$Profit_Center) != 0) {
 ```{r Quarterly Group Updates}
 
 # The following variables will need to be updated every quarter ----
-Grp_Num <- c(1:19)
+Grp_Num <- c(1:20)
 Group <- c("FY15 Q4", 
               "FY16 Q1", 
               "FY16 Q2",
@@ -107,7 +107,8 @@ Group <- c("FY15 Q4",
               "FY19 Q3",
               "FY19 Q4",
               "FY20 Q1",
-              "FY20 Q2")
+              "FY20 Q2",
+              "FY20 Q3")
 
 ```
 
@@ -1583,7 +1584,7 @@ occ_compilation <- function(x){
 # Occ Data 
   occ_df =
     wss_data %>%
-      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2019-09-01') %>% 
+      filter(`MEntity` %in% x[["MEntity"]] & unm_product != 'UBOX' & Date <= '2019-12-01') %>% 
       group_by(MEntity,
                Date, 
                unm_product) %>%
@@ -1860,6 +1861,8 @@ Process
 ```{r Quarter Acquisition List Creation}
 
 # Split Data Frame into Elements within a list ----
+acq_list_final$Group <- as.numeric(acq_list_final$Group)
+
 q_list_container <- 
   split(acq_list_final, f = acq_list_final$Group)
 
@@ -1893,7 +1896,7 @@ for (i in seq_along(q_acquisitions_list)) {
 ##**Income Statement Compilation**
 ---
 
-```{r Aggregate Income Statement Process Complete 1 4 2019}
+```{r Aggregate Income Statement Process Complete 1 4 2019, eval=FALSE, include=FALSE}
 
 # Income statement compilation ----
 q_acquisitions_list <-
@@ -2059,11 +2062,24 @@ colnames(fc_occ_df_2)[6] <- "Forecasted_Rooms"
 
 fc_occ_df_2 <- fc_occ_df_2[, c('ID', 'MEntity', 'MONTH', 'Forecasted_Rooms', 'Group', 'FY', 'FM', 'Quarter', 'Month', 'Total_Rooms')]
   colnames(fc_occ_df_2)[9] <- 'Month1'
+  
+  
+# Forecasted Occ count ----
+fc_occ_df_2 %>%
+    group_by(Group) %>%
+    select(MEntity) %>%
+    summarize(n_distinct(MEntity))
+
+    
+unit_mix_final %>%
+    group_by(Group) %>%
+    select(MEntity) %>%
+    summarise(n_distinct(MEntity))
 
 ```
 
 
-```{r NA Forecasted OCC centers}
+```{r NA Forecasted OCC centers, eval=FALSE, include=FALSE}
 
 # Extract Observations with NA Occupancy Metrics ----
 na_fc_occupancy_list <-
@@ -2111,7 +2127,7 @@ na_fc_occupancy_profit_center_info <-
 #                   )
 
 
-write.csv(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q2\\Data\\unitmix.csv')
+write.csv(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q3\\Data\\unitmix.csv')
 
 
 # Aggregate Export ----
@@ -2129,8 +2145,14 @@ write.csv(unit_mix_final, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quar
 #   col.names = TRUE, 
 #   row.names = FALSE)
 
+
+# 1/28/2020 ----
+write.csv(fc_occ_df_2, 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\F20 Q3\\Data\\forecasted_occ.csv')
+
+
+
+
 # Export to CSV to be pasted into XLSX ----
-write.csv(fc_occ_df_2, '')
 
 # Previously Used File path (before 10/29/2019)
 # 'Z:\\group\\MIA\\Noe\\Projects\\Post Acquisition\\Quarterly Acquisitions\\Dashboard Connections\\forecasted_occ.csv'

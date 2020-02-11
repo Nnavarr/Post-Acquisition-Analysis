@@ -60,15 +60,19 @@ quarter_grp_class_df.rename(columns={0: "grp_name", 1: "Group"}, inplace=True)
 
 # Entity list F20 Q3 ----
 entity_list = pd.read_excel(
-    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\acquisitions_list_q3.xlsx")
+    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\acquisitions_list_final.xlsx")
 
 # ----------------------------
 # Data Processing: Entity List
 # ----------------------------
 entity_list.rename(columns={'Profit_Center': 'profit_center'}, inplace=True)
 entity_list["profit_center"] = entity_list["profit_center"].astype(str)
-include_mask = entity_list.include == True
+include_mask = entity_list['Include?'] == 'Yes'
 entity_in = entity_list[include_mask]
+
+# Export included list for analysis ----
+# entity_in.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\center_list\included_q3.csv',
+#                  index=False)
 
 # Duplicate Profit Center Check ----
 assert (
@@ -189,7 +193,6 @@ Upload Code
 """
 aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
 
-
 # ------------------------------
 # Aggregate by Quarterly Report
 # ------------------------------
@@ -213,14 +216,39 @@ line_item_dict = {
     "TOTAL OPERATING EXPENSE": "TOTAL_OP_EXPENSE",
     "NET OPERATING INCOME": "NOI",
 }
-
 # Update line item names ----
 aggregate_df.line_item.replace(line_item_dict, inplace=True)
-
 # # Export to CSV ----
 # F20 Q2 Export
 # aggregate_df.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q2\Data\aggregate_is.csv',
 #                     index=False)
 
+# updated labels ----
+updated_names = ['FY15 Q4',
+                 'FY16 Q1',
+                 'FY16 Q2',
+                 'FY16 Q3',
+                 'FY16 Q4',
+                 'FY17 Q1',
+                 'FY17 Q2',
+                 'FY17 Q3',
+                 'FY17 Q4',
+                 'FY18 Q1',
+                 'FY18 Q2',
+                 'FY18 Q3',
+                 'FY18 Q4',
+                 'FY19 Q1',
+                 'FY19 Q2',
+                 'FY19 Q3',
+                 'FY19 Q4',
+                 'FY20 Q1',
+                 'FY20 Q2',
+                 'FY20 Q3',
+                 'FY20 Q4']
+
+updated_dict = dict(zip(grp_names, updated_names))
+aggregate_df.grp_name = aggregate_df.grp_name.map(updated_dict)
+aggregate_df.sort_values(['date', 'grp_name'], inplace=True)
 aggregate_df.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\Data\aggregate_is.csv',
                     index=False)
+

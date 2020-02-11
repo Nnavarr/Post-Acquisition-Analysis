@@ -39,6 +39,18 @@ trend_adj = wb.sheets('trend_adj')
 trend_ubox = wb.sheets('trend_ubox_adj')
 
 """
+Connect to Graph DB  
+"""
+entity_info_con = create_connection(database="FINANALYSIS")
+graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
+graph_entity_info_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_ENTITY_INFO]"
+
+# Import Graph Entity List ----
+index_match_df = pd.read_sql_query(graph_index_query, entity_info_con)
+entity_info_df = pd.read_sql_query(graph_entity_info_query, entity_info_con)
+entity_info_con.close()
+
+"""
 Life Storage Same Store List
 """
 same_store_list = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Report Scripts\Storage\scenario_tool\same_store_centers_F20Q3.xlsx')
@@ -51,6 +63,8 @@ merged_df.rename(columns={'Cost Center': 'profit_center'}, inplace=True)
 merged_df['dup_pc'] = merged_df.profit_center.duplicated()
 assert sum(merged_df.dup_pc) == 0, print('duplicate pc detected, do not proceed')
 pc_list = list(merged_df.profit_center)
+
+sum(merged_df.profit_center == '7000006377')
 
 # export profit centers to excel workbook ----
 pc_sheet.range('A1').options(index=False).value = merged_df.profit_center
@@ -133,3 +147,6 @@ trend_ubox.range('A1').options(index=False).value = ubox_query
 
 # close sql connection ----
 sap_engine.close()
+
+# Determine Life Storage center inclusion ----
+
