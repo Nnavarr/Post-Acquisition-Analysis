@@ -2,15 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/R_User_Library.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/Post-Acquisition-Analysis.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Post-Acquisition-Analysis.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/center_list_update.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/center_list_upload.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ss_api_validation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Income_Statement_Compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/Income_Statement_Compilation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Quarterly Acquisitions Report.Rmd" beforeDir="false" afterPath="$PROJECT_DIR$/Quarterly Acquisitions Report.Rmd" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Quarterly_Acquisitions.py" beforeDir="false" afterPath="$PROJECT_DIR$/Quarterly_Acquisitions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SAP_DB_Filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/SAP_DB_Filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ls_samestore.py" beforeDir="false" afterPath="$PROJECT_DIR$/ls_samestore.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/repair_maintenance_volatility.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/smartsheet_api_integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/smartsheet_api_integration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/smartsheet_initial_upload.py" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -125,7 +123,14 @@
       <option name="project" value="LOCAL" />
       <updated>1580776808842</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Final push from Q3 f20. The repository is in need of a cleansing. There are too many old files hanging around that could provide consfusion. In the next iteration, these older files and processes will be removed.">
+      <created>1581459338155</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1581459338155</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -147,6 +152,7 @@
     <MESSAGE value="Nearly finalized integration of smartsheet API. Once complete, we can begin the income statement process and ensuring all adjustments are taken into account correctly." />
     <MESSAGE value="Smartsheet integration complete. Will need to validate the inclusion of new centers. SAP data has been uploaded into SQL and ready for download/presentation" />
     <MESSAGE value="With the adjusted data uploaded to SQL, we can now pull trends for any split we deisire. The new trend script is called &quot;ls_samestore&quot; and will be run on a monthly basis." />
-    <option name="LAST_COMMIT_MESSAGE" value="With the adjusted data uploaded to SQL, we can now pull trends for any split we deisire. The new trend script is called &quot;ls_samestore&quot; and will be run on a monthly basis." />
+    <MESSAGE value="Final push from Q3 f20. The repository is in need of a cleansing. There are too many old files hanging around that could provide consfusion. In the next iteration, these older files and processes will be removed." />
+    <option name="LAST_COMMIT_MESSAGE" value="Final push from Q3 f20. The repository is in need of a cleansing. There are too many old files hanging around that could provide consfusion. In the next iteration, these older files and processes will be removed." />
   </component>
 </project>
