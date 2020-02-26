@@ -193,4 +193,3 @@ con = pyodbc.connect(base_con)
 params = urllib.parse.quote_plus(base_con)
 engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 final_list.to_sql('Quarterly_Acquisitions_List', engine, index=False, if_exists='append')
-
