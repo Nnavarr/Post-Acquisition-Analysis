@@ -88,9 +88,6 @@ def new_acquisitions():
 
     return new_acq
 
-# import relevant lists ----
-new_list, q_acquisitions = new_acquisitions(), quarter_acq_import()
-
 # data prep from individual sources ----
 def dlr01_prep():
 
@@ -175,21 +172,33 @@ def final_col_rename(df):
                                'Construction_Type': 'Type'}, inplace=True)
     return df
 
-# function application & aggregation ----
-df1 = dlr01_prep()
-df2 = graph_prep(df1)
-df3 = real_add_prep(df2)
-final_list = final_col_rename(df3)
+# update quarter acquisitions list ----
+if __name__ == '__main__':
 
-# upload to SQL ----
-base_con = (
-    "Driver={{ODBC DRIVER 17 for SQL Server}};"
-    "Server=OPSReport02.uhaul.amerco.org;"
-    "Database=DEVTEST;"
-    "UID={};"
-    "PWD={};"
-).format(user, os.environ.get("sql_pwd"))
-con = pyodbc.connect(base_con)
-params = urllib.parse.quote_plus(base_con)
-engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
-final_list.to_sql('Quarterly_Acquisitions_List', engine, index=False, if_exists='append')
+    try:
+        new_list, q_acquisitions = new_acquisitions(), quarter_acq_import()
+        df1 = dlr01_prep()
+        df2 = graph_prep(df1)
+        df3 = real_add_prep(df2)
+        final_list = final_col_rename(df3)
+
+        # upload to SQL ----
+        base_con = (
+            "Driver={{ODBC DRIVER 17 for SQL Server}};"
+            "Server=OPSReport02.uhaul.amerco.org;"
+            "Database=DEVTEST;"
+            "UID={};"
+            "PWD={};"
+        ).format(user, os.environ.get("sql_pwd"))
+        # conn = pyodbc.connect(base_con)
+        params = urllib.parse.quote_plus(base_con)
+        engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
+        final_list.to_sql('Quarterly_Acquisitions_List', engine, index=False, if_exists='append')
+        # conn.close()
+        print("The quarterly acquisitions list has been updated successfully")
+
+    except:
+        print("There are no new entries within the smarthsheet acquisitions list")
+
+
+
