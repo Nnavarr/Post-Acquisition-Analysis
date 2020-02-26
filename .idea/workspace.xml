@@ -2,13 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/center_list_update.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/center_list_upload.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ss_api_validation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/repair_maintenance_volatility.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/smartsheet_api_integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/smartsheet_api_integration.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/smartsheet_initial_upload.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/center_list_update.py" beforeDir="false" afterPath="$PROJECT_DIR$/center_list_update.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/center_list_upload.py" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -130,7 +126,14 @@
       <option name="project" value="LOCAL" />
       <updated>1581459338155</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Re-work of acquisition list inclusion. This time around, we are going for full automation.">
+      <created>1582592660453</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1582592660453</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -153,6 +156,7 @@
     <MESSAGE value="Smartsheet integration complete. Will need to validate the inclusion of new centers. SAP data has been uploaded into SQL and ready for download/presentation" />
     <MESSAGE value="With the adjusted data uploaded to SQL, we can now pull trends for any split we deisire. The new trend script is called &quot;ls_samestore&quot; and will be run on a monthly basis." />
     <MESSAGE value="Final push from Q3 f20. The repository is in need of a cleansing. There are too many old files hanging around that could provide consfusion. In the next iteration, these older files and processes will be removed." />
-    <option name="LAST_COMMIT_MESSAGE" value="Final push from Q3 f20. The repository is in need of a cleansing. There are too many old files hanging around that could provide consfusion. In the next iteration, these older files and processes will be removed." />
+    <MESSAGE value="Re-work of acquisition list inclusion. This time around, we are going for full automation." />
+    <option name="LAST_COMMIT_MESSAGE" value="Re-work of acquisition list inclusion. This time around, we are going for full automation." />
   </component>
 </project>
