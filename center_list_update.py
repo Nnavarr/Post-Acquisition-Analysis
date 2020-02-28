@@ -195,7 +195,7 @@ if __name__ == '__main__':
         engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
         final_list.to_sql('Quarterly_Acquisitions_List', engine, index=False, if_exists='append')
         # conn.close()
-        print("The quarterly acquisitions list has been updated successfully")
+        print(f"The quarterly acquisitions list has been updated successfully. \n There were {new_list.shape[0]} new acquisitions added.")
 
     except:
         print("There are no new entries within the smarthsheet acquisitions list")

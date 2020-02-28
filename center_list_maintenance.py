@@ -121,13 +121,10 @@ def real_add_source_update():
 
 # run update ----
 if __name__ == '__main__':
-    dlr01_source_update()
-    graph_source_update()
-    real_add_source_update()
-print('All updates ran successfully')
-
-
-
-
-
-
+    try:
+        dlr01_source_update()
+        graph_source_update()
+        real_add_source_update()
+        print("All maintenance source code ran successfully.")
+    except:
+        print('An error occurred when running the maintenance.')

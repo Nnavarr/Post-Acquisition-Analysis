@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="center update script finalized. The SQL table update for out-dated info will be run from SQL itself.">
-      <change afterPath="$PROJECT_DIR$/center_list_maintenance.py" afterDir="false" />
+    <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Acquisition List Retro.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Entity List Compilation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Entity List.Rmd" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Income Statement Compilation.Rmd" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Master_Acquisition_List.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Occupancy_Compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/occupancy_compilation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Quarterly_Acquisitions.py" beforeDir="false" afterPath="$PROJECT_DIR$/Quarterly_Acquisitions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Quarterly_Acquisitions_Entity_List.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/acq_report.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/center_list_maintenance.py" beforeDir="false" afterPath="$PROJECT_DIR$/center_list_maintenance.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/center_list_update.py" beforeDir="false" afterPath="$PROJECT_DIR$/center_list_update.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ss_api_validation.py" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -148,7 +158,14 @@
       <option name="project" value="LOCAL" />
       <updated>1582678802359</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Finalized center list update scripts. These can now be called via PowerShell.">
+      <created>1582758027625</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1582758027625</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -174,6 +191,7 @@
     <MESSAGE value="Re-work of acquisition list inclusion. This time around, we are going for full automation." />
     <MESSAGE value="&quot;center_list_update&quot; script is up and running. This will be used to import and append new acquisitons on a monthly basis." />
     <MESSAGE value="center update script finalized. The SQL table update for out-dated info will be run from SQL itself." />
-    <option name="LAST_COMMIT_MESSAGE" value="center update script finalized. The SQL table update for out-dated info will be run from SQL itself." />
+    <MESSAGE value="Finalized center list update scripts. These can now be called via PowerShell." />
+    <option name="LAST_COMMIT_MESSAGE" value="Finalized center list update scripts. These can now be called via PowerShell." />
   </component>
 </project>

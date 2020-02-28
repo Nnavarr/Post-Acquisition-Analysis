@@ -191,7 +191,7 @@ engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 """
 Upload Code
 """
-aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+# aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
 
 # ------------------------------
 # Aggregate by Quarterly Report
@@ -199,6 +199,7 @@ aggregate_income_statement.to_sql('Quarterly_Acquisitions_IS', engine, index=Fal
 q_acq_db = create_connection(database="DEVTEST")
 acq_query = "SELECT * FROM [DEVTEST].[dbo].[Quarterly_Acquisitions_IS]"
 acq_df = pd.read_sql_query(acq_query, q_acq_db)
+q_acq_db.close()
 
 # Aggregate IS ----
 aggregate_is = acq_df.groupby(
