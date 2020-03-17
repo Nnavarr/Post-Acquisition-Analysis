@@ -1,19 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="Developed occupancy metric download / export depending on user needs. The source code currently asks for user input. This may need to change to achieve a more automated run.">
-      <change afterPath="$PROJECT_DIR$/IS_compilation.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/arec_upload.py" afterDir="false" />
+    <list default="true" id="a13f091d-6ee4-4944-8444-59dc3957d62b" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Income_Statement_Compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/IS_function.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Quarterly_Acquisitions.py" beforeDir="false" afterPath="$PROJECT_DIR$/quarterly_acquisitions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SAP_DB_Filter.py" beforeDir="false" afterPath="$PROJECT_DIR$/sap_db_filter.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/all_arec_upload.py" beforeDir="false" afterPath="$PROJECT_DIR$/all_arec_upload.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/center_list_update.py" beforeDir="false" afterPath="$PROJECT_DIR$/center_list_update.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lender_trend_compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/lender_trend_compilation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ls_samestore.py" beforeDir="false" afterPath="$PROJECT_DIR$/ls_samestore.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/occupancy_compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/occupancy_compilation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/robs_adjustments_exploration.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IS_compilation.py" beforeDir="false" afterPath="$PROJECT_DIR$/IS_compilation.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -87,6 +77,14 @@
       <option name="presentableId" value="Default" />
       <updated>1568312527797</updated>
     </task>
+    <task id="LOCAL-00001" summary="Updating income statement compilation script to be friendly with powershell. The goal is to have the entire process capable of running off powershell.">
+      <created>1584405419611</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1584405419611</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -101,5 +99,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Updating income statement compilation script to be friendly with powershell. The goal is to have the entire process capable of running off powershell." />
+    <option name="LAST_COMMIT_MESSAGE" value="Updating income statement compilation script to be friendly with powershell. The goal is to have the entire process capable of running off powershell." />
   </component>
 </project>

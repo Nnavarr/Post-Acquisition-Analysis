@@ -3,8 +3,7 @@ import pyodbc
 import numpy as np
 import os
 from getpass import getuser, getpass
-import re
-import datetime
+from datetime import datetime
 
 from IS_function import income_statement
 from sap_db_filter import chart_of_accounts, sap_db_query, create_connection
@@ -43,32 +42,32 @@ def center_list_import():
     # establish SQL connection, import, and close
     engine = create_connection(database='Devtest')
     center_list_query = "SELECT * FROM [DEVTEST].[dbo].[Quarterly_Acquisitions_List]"
-    center_list = pd.read_sql_query(center_list_query, engine)
+    center_df = pd.read_sql_query(center_list_query, engine)
     engine.close()
 
     # retain included centers
-    include_mask = center_list['Include?'] == True
-    center_list = center_list[include_mask].copy()
+    include_mask = center_df['Include?'] == True
+    center_df = center_df[include_mask].copy()
 
     # convert profit center to object
-    center_list.Profit_Center = center_list.Profit_Center.astype(str).str[:-2]
+    center_df.Profit_Center = center_df.Profit_Center.astype(str).str[:-2]
 
     # assert statement to ensure no duplicate profit centers & return complete list
-    assert (sum(center_list.duplicated(subset="Profit_Center")) == 0), "Duplicate Profit Centers Present, DO NO PROCEED"
-    center_df = list(center_list.Profit_Center.unique())
+    assert (sum(center_df.duplicated(subset="Profit_Center")) == 0), "Duplicate Profit Centers Present, DO NO PROCEED"
+    center_list = list(center_df.Profit_Center.unique())
 
     final_list = []
-    for pc in center_df:
+    for pc in center_list:
         if len(pc) > 3:
             final_list.append(pc)
             continue
 
     return center_df, final_list
 
-def IS_compilation(center_df, center_list):
+def IS_compilation(center_df, center_list, classification_df):
 
     # import sap data
-    fy_list = [2015, 2016, 2017, 2018, 2019, 2020]
+    fy_list = [2019, 2020]
     is_container = []
 
     for i in fy_list:
@@ -91,15 +90,104 @@ def IS_compilation(center_df, center_list):
 
     # Concatenate into a single data frame for SQL upload ----
     q_is_aggregate = pd.concat(income_statement_dict, ignore_index=True)
-    max_date_mask = q_is_aggregate.date <= pd.to_datetime('2019-12-01')
+    month_start = datetime.today().replace(day=1).date()
+    max_date_mask = q_is_aggregate.date <= str(month_start)
     q_is_aggregate = q_is_aggregate[max_date_mask]
 
     # Import group name and number ----
+    center_df.rename(columns={'Profit_Center': 'profit_center'}, inplace=True)
+
     aggregate_income_statement = pd.merge(
         left=q_is_aggregate,
-        right=center_df.loc[:, ["Profit_Center", "Group", "MEntity"]],
+        right=center_df.loc[:, ["profit_center", "Group", "MEntity"]],
         on="profit_center",
         how="left",
     )
 
+    # create fiscal month and year calculation
+    aggregate_income_statement["Year"] = aggregate_income_statement["date"].apply(
+        (lambda x: x.year)
+    )
+    aggregate_income_statement["Month"] = aggregate_income_statement["date"].apply(
+        (lambda x: x.month)
+    )
 
+    aggregate_income_statement["fiscal_year"] = np.where(
+        aggregate_income_statement["Month"] <= 3,
+        aggregate_income_statement["Year"],
+        aggregate_income_statement["Year"] + 1,
+    )
+
+    aggregate_income_statement["fiscal_month"] = np.where(
+        aggregate_income_statement["Month"] >= 4,
+        aggregate_income_statement["Month"] - 3,
+        aggregate_income_statement["Month"] + 9,
+    )
+
+    # append group name
+    aggregate_income_statement = pd.merge(
+        left=aggregate_income_statement, right=classification_df, how="left", on="Group"
+    )
+
+    # Format Data for Upload ----
+    aggregate_income_statement = aggregate_income_statement.loc[
+                                 :,
+                                 [
+                                     "date",
+                                     "profit_center",
+                                     "MEntity",
+                                     "line_item",
+                                     "value",
+                                     "grp_name",
+                                     "Group",
+                                     "Month",
+                                     "Year",
+                                     "fiscal_year",
+                                     "fiscal_month",
+                                 ],
+                                 ]
+    aggregate_income_statement.rename(
+        columns={"Group": "grp_num", "Month": "month", "Year": "year"}, inplace=True
+    )
+
+    return aggregate_income_statement
+
+def upload_is_sql(df):
+
+    # establish SQL connection
+    user = '1217543'
+    base_con = (
+        "Driver={{ODBC DRIVER 17 for SQL Server}};"
+        "Server=OPSReport02.uhaul.amerco.org;"
+        "Database=DEVTEST;"
+        "UID={};"
+        "PWD={};"
+    ).format(user, os.environ.get("sql_pwd"))
+
+    # URLLib finds the important information from our base connection
+    params = urllib.parse.quote_plus(base_con)
+    engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
+
+    print("Uploading income statement data to SQL ...")
+    df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='append')
+
+    print(f"Data was uploaded successfully")
+
+
+# CMD line process
+if __name__ == '__main__':
+
+    try:
+        grp_class = grp_classification()
+        center_df, center_list = center_list_import()
+
+        print("Starting income statement compilation...")
+        income_statmenet_df = IS_compilation(center_df, center_list, grp_class)
+
+        print("Income statement aggregation complete. Starting SQL Upload...")
+        upload_is_sql(income_statmenet_df)
+
+        print("The upload is complete. Quarterly acquisitions income statement data is up-to-date.")
+
+    except:
+        print("An error accured within the aggregation")
