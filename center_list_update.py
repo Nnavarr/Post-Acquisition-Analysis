@@ -5,6 +5,11 @@ import os
 from getpass import getpass
 import sqlalchemy, urllib
 
+"""
+The script can be called in order to import any new acquisitions that may have occured between the last run-time. 
+They will be uploaded into an existing SQL database.
+"""
+
 user = '1217543'
 
 # group dictionary ----
@@ -195,6 +200,7 @@ if __name__ == '__main__':
         engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
         final_list.to_sql('Quarterly_Acquisitions_List', engine, index=False, if_exists='append')
         # conn.close()
+        engine.close()
         print(f"The quarterly acquisitions list has been updated successfully. \n There were {new_list.shape[0]} new acquisitions added.")
 
     except:

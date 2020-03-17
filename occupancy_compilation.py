@@ -97,6 +97,7 @@ def data_export(df):
             params = urllib.parse.quote_plus(base_con)
             engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
             df.to_sql('Quarterly_Acquisitions_Occ', engine, index=False, if_exists='append')
+            engine.close()
             print("The quarterly acquisitions occupancy was uploaded successfully")
         except:
             print("An erorr occurred with the occupancy aggregation and upload ")

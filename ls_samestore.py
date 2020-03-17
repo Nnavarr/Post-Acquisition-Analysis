@@ -8,7 +8,7 @@ import datetime
 import xlwings as xl
 
 
-from income_statement_compilation import income_statement
+from IS_function import income_statement
 from sap_db_filter import chart_of_accounts, create_connection
 
 # SQL Upload Packages ----

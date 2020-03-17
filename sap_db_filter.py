@@ -72,10 +72,11 @@ chart_of_accounts = dict(zip(line_items, separate_df_container))
 # -------------
 # SAP DB Query
 # -------------
-# SAP Data Connection ----
-sap_engine = create_connection(database="SAP_Data")
 
 def sap_db_query(profit_center_list, fiscal_yr=False, lender_reporting=False):
+
+    # sap connection
+    sap_engine = create_connection(database="SAP_Data")
 
     # Unadjusted GL figures ----
     if lender_reporting is False:
@@ -138,7 +139,7 @@ def sap_db_query(profit_center_list, fiscal_yr=False, lender_reporting=False):
         sap_db["year"] = sap_db["year"].astype("object")
         sap_db["Date"] = sap_db["year"].map(str) + "-" + sap_db["month"].map(str) + "-01"
         sap_db["Date"] = pd.to_datetime(sap_db["Date"], format="%Y-%m-%d")
-
+        sap_engine.close()
     return sap_db
 
 

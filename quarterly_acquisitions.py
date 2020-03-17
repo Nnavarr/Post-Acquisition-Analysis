@@ -6,7 +6,7 @@ from getpass import getuser, getpass
 import re
 import datetime
 
-from income_statement_compilation import income_statement
+from IS_function import income_statement
 from sap_db_filter import chart_of_accounts, sap_db_query, create_connection
 
 # SQL Upload Packages ----
@@ -86,7 +86,8 @@ quarter_acq_pc_list = list(entity_in["profit_center"].unique())
 Income Statement Compilation 
 """
 # Filter SAP DB for relevant profit centers and account numbers ----
-sap_engine = create_connection(database="SAP_Data")
+# TODO: Replace this engine creation with the sap_db_query ----
+# sap_engine = create_connection(database="SAP_Data")
 
 # Compile individual fiscal year data ----
 fy_list = [2015, 2016, 2017, 2018, 2019, 2020]
