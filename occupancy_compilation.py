@@ -13,10 +13,10 @@ Author: Noe Navarro
 SQL DB: Storage
 Table: WSS_UnitMixUHI_Monthly_Archive
 
-Objective: Occupancy metric compilation based on MEntity number. 
+Objective: Occupancy metric compilation based on MEntity number.
 Methodology:
     1) Excludes U-Box
-    
+
 """
 
 user = '1217543'
@@ -80,11 +80,12 @@ def occupancy_compilation(df):
 
     return occ_df
 
-def data_export(df):
+def occ_upload(df):
 
     if aggregation_type == 'True':
 
         try:
+            user = '1217543'
             # upload to SQL ----
             base_con = (
                 "Driver={{ODBC DRIVER 17 for SQL Server}};"
@@ -96,8 +97,7 @@ def data_export(df):
 
             params = urllib.parse.quote_plus(base_con)
             engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
-            df.to_sql('Quarterly_Acquisitions_Occ', engine, index=False, if_exists='append')
-            engine.close()
+            df.to_sql('Quarterly_Acquisitions_Occ', engine, index=False, if_exists='replace')
             print("The quarterly acquisitions occupancy was uploaded successfully")
         except:
             print("An erorr occurred with the occupancy aggregation and upload ")
@@ -113,16 +113,8 @@ def data_export(df):
 
 if __name__ == '__main__':
 
-    aggregation_type = input("Is this the quarterly acquisitions aggregation? (True or False)")
+    # if aggregation type == "True"; quarterly acquisitions
+    aggregation_type = 'True'
     center_list = center_list_import()
     aggregation = occupancy_compilation(center_list)
-    export = data_export(aggregation)
-
-
-
-
-
-
-
-
-
+    occ_upload(aggregation)

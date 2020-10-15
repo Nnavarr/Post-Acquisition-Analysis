@@ -32,8 +32,10 @@ def create_connection(database):
 # Data Processing: SAP_Accounts
 # -----------------------------
 # SAP Chart of Accounts ----
+
+#TODO: Make the SAP account reference the SAP SQL server directly.
 sap_accounts = pd.read_csv(
-    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv"
+    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv"
 )
 
 sap_accounts.rename(
@@ -65,6 +67,18 @@ for category in line_items:
 
 # Create Dictionary of Income Statement Line Items ----
 chart_of_accounts = dict(zip(line_items, separate_df_container))
+
+# chart_of_accounts.keys()
+#
+# ubox_line_items = ['U-BOX STORAGE INCOME', 'U-BOX OTHER INCOME', 'U-BOX DELIVERY INCOME']
+# chart_of_accounts['U-BOX STORAGE INCOME']
+# chart_of_accounts['U-BOX OTHER INCOME']
+# chart_of_accounts['U-BOX DELIVERY INCOME']
+#
+# ubox = pd.concat([chart_of_accounts['U-BOX STORAGE INCOME'], chart_of_accounts['U-BOX OTHER INCOME'] ,
+#                   chart_of_accounts['U-BOX DELIVERY INCOME']], axis=0)
+#
+# ubox.to_csv(r'C:\Users\Noe_N\Desktop\ubox_accts.csv', index=False)
 
 # Checkpoint: Chart of Accounts Complete
 # ---------------------------------------

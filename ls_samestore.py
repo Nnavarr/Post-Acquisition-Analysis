@@ -7,7 +7,6 @@ import re
 import datetime
 import xlwings as xl
 
-
 from IS_function import income_statement
 from sap_db_filter import chart_of_accounts, create_connection
 
@@ -15,10 +14,10 @@ from sap_db_filter import chart_of_accounts, create_connection
 import sqlalchemy, urllib
 
 """
-Chart of Accounts Creation 
+Chart of Accounts Creation
 """
 sap_accounts = pd.read_csv(
-    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv"
+    r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv"
 )
 
 sap_accounts.rename(
@@ -28,22 +27,20 @@ sap_accounts.rename(
 
 sap_accounts["Account"] = sap_accounts["Account"].astype("object")
 
-
 """
-Set XLWings WB 
+Set XLWings WB
 """
-wb = xl.Book(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\Lender Trend\LS_Samestore.xlsx')
-pc_sheet = wb.sheets('pc_list')
+wb = xl.Book(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Spreadsheet Templates\LS_samestore_IS.xlsx')
 trend_sheet = wb.sheets('trend_is')
 trend_adj = wb.sheets('trend_adj')
 trend_ubox = wb.sheets('trend_ubox_adj')
 
 """
-Connect to Graph DB  
+Connect to Graph DB
 """
-entity_info_con = create_connection(database="FINANALYSIS")
-graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
-graph_entity_info_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_ENTITY_INFO]"
+entity_info_con = create_connection(database="Graph")
+graph_index_query = "SELECT * FROM [Graph].[dbo].[Index Match]"
+graph_entity_info_query = "SELECT * FROM [Graph].[dbo].[Entity Info]"
 
 # Import Graph Entity List ----
 index_match_df = pd.read_sql_query(graph_index_query, entity_info_con)
@@ -53,21 +50,11 @@ entity_info_con.close()
 """
 Life Storage Same Store List
 """
-same_store_list = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Report Scripts\Storage\scenario_tool\same_store_centers_F20Q3.xlsx')
-same_store_list.rename(columns={'Mentity': 'MEntity'}, inplace=True)
-merged_df = pd.merge(left=same_store_list, right=entity_info_df.loc[:, ['MEntity', 'Cost Center']],
-                     on='MEntity', how='left')
-merged_df.rename(columns={'Cost Center': 'profit_center'}, inplace=True)
+same_store_list = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Script_Inputs\life_storage_samestore.xlsx')
 
-# Check for duplicate profit_centers and create list of PC ----
-merged_df['dup_pc'] = merged_df.profit_center.duplicated()
-assert sum(merged_df.dup_pc) == 0, print('duplicate pc detected, do not proceed')
-pc_list = list(merged_df.profit_center)
-
-sum(merged_df.profit_center == '7000006377')
-
-# export profit centers to excel workbook ----
-pc_sheet.range('A1').options(index=False).value = merged_df.profit_center
+# check for duplicate profit center numbers
+assert same_store_list.profit_center.nunique() == same_store_list.shape[0]
+pc_list = list(same_store_list.profit_center)
 
 """
 Trend Data
@@ -93,6 +80,7 @@ lender_trend_query = "SELECT " \
 
 # query and export to excel ----
 sap_db = pd.read_sql_query(lender_trend_query, sap_engine)
+trend_sheet.range('A1:E1').value = "" #clear existing data
 trend_sheet.range('A1').options(index=False).value = sap_db
 
 """
@@ -100,7 +88,7 @@ Total Adjustments
 """
 adjustment_query = "SELECT " \
                    "sub.[Date], " \
-                   "sub.[Account_Description], " \ 
+                   "sub.[Account_Description], " \
                    "SUM(sub.[Total_Adjustment]) as [total_adjustment] " \
                    "FROM " \
                    "(" \
@@ -120,6 +108,7 @@ adjustment_query = "SELECT " \
 
 # query and export to excel ----
 adjustment_results = pd.read_sql_query(adjustment_query, sap_engine)
+trend_adj.range('A1:E1').value = ""
 trend_adj.range('A1').options(index=False).value = adjustment_results
 
 """
@@ -143,10 +132,8 @@ ubox_adj_query = "SELECT " \
                  "GROUP BY sub.[Date], sub.[Account_Description]".format(tuple(pc_list))
 
 ubox_query = pd.read_sql_query(ubox_adj_query, sap_engine)
+trend_ubox.range('A1:E1').value = ""
 trend_ubox.range('A1').options(index=False).value = ubox_query
 
 # close sql connection ----
 sap_engine.close()
-
-# Determine Life Storage center inclusion ----
-

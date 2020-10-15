@@ -22,6 +22,7 @@ def grp_classification():
         "F18_Q1", "F18_Q2", "F18_Q3", "F18_Q4",
         "F19_Q1", "F19_Q2", "F19_Q3", "F19_Q4",
         "F20_Q1", "F20_Q2", "F20_Q3", "F20_Q4",
+        'F21_Q1'
         ]
 
     # Group Numbers
@@ -67,7 +68,7 @@ def center_list_import():
 def IS_compilation(center_df, center_list, classification_df):
 
     # import sap data
-    fy_list = [2019, 2020]
+    fy_list = [2015, 2016, 2017, 2018, 2019, 2020, 2021]
     is_container = []
 
     for i in fy_list:
@@ -169,7 +170,7 @@ def upload_is_sql(df):
     engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
     print("Uploading income statement data to SQL ...")
-    df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='append')
+    df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
 
     print(f"Data was uploaded successfully")
 

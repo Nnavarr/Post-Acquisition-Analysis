@@ -26,7 +26,6 @@ base_con = (
     "UID={};"
     "PWD={};"
 ).format(user, os.environ.get("sql_pwd"))
-con = pyodbc.connect(base_con)
 
 # URLLib finds the important information from our base connection
 params = urllib.parse.quote_plus(base_con)
@@ -105,7 +104,7 @@ income_statement_dict = dict(zip(arec_pc_list, arec_income_statement_list))
 aggregate_df = pd.concat(income_statement_dict)
 
 # # Upload To SQL ----
-# aggregate_df.to_sql('Center_IS', engine, index=False, if_exists='append')
+# aggregate_df.to_sql('Center_IS', engine, index=False, if_exists='replace')
 
 
 # """

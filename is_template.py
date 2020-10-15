@@ -100,7 +100,7 @@ def export_excel(df):
 
     # connect to excel workbook
     wb = xw.Book(
-        r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Spreadsheet Templates\IS_template.xlsx"
+        r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\F21 Q1\Final Spreadsheets\F21Q1 Quarterly Acquisition IS.xlsx"
     )
 
     data_sheet = wb.sheets["Data"]
