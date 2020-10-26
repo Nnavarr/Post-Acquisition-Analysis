@@ -14,7 +14,7 @@ import sqlalchemy, urllib
 
 
 """
-Connect to Graph DB  
+Connect to Graph DB
 """
 entity_info_con = create_connection(database="FINANALYSIS")
 graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
@@ -24,6 +24,7 @@ graph_entity_info_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_ENTITY_INFO]
 index_match_df = pd.read_sql_query(graph_index_query, entity_info_con)
 entity_info_df = pd.read_sql_query(graph_entity_info_query, entity_info_con)
 entity_info_con.close()
+
 
 """
 Life Storage Same Store List
@@ -41,7 +42,7 @@ Life Storage Same Store List
 
 
 """
-Chart of Accounts Creation 
+Chart of Accounts Creation
 """
 sap_accounts = pd.read_csv(
     r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv"
@@ -78,7 +79,7 @@ for category in line_items:
 chart_of_accounts = dict(zip(line_items, separate_df_container))
 
 """
-Rob's All Arec Trend Center List 
+Rob's All Arec Trend Center List
 """
 all_arec_list = pd.read_csv(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\Lender Trend\all_arec.csv')
 all_arec_list.Profit_Center = all_arec_list.Profit_Center.astype(str)
@@ -141,11 +142,11 @@ ubox_query.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisi
                   index=False)
 
 """
-All Adjustments 
+All Adjustments
 """
 adjustment_query = "SELECT " \
                    "sub.[Date], " \
-                   "sub.[Account_Description], " \ 
+                   "sub.[Account_Description], " \
                    "SUM(sub.[Total_Adjustment]) as [total_adjustment] " \
                    "FROM " \
                    "(" \
@@ -167,4 +168,3 @@ adjustment_query = "SELECT " \
 adjustment_results = pd.read_sql_query(adjustment_query, sap_engine)
 adjustment_results.to_csv(r'Z:\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\F20 Q3\Lender Trend\all_arec_total_adj.csv',
                   index=False)
-

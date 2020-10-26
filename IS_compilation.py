@@ -4,6 +4,7 @@ import numpy as np
 import os
 from getpass import getuser, getpass
 from datetime import datetime
+from textwrap import dedent
 
 from IS_function import income_statement
 from sap_db_filter import chart_of_accounts, sap_db_query, create_connection
@@ -22,7 +23,7 @@ def grp_classification():
         "F18_Q1", "F18_Q2", "F18_Q3", "F18_Q4",
         "F19_Q1", "F19_Q2", "F19_Q3", "F19_Q4",
         "F20_Q1", "F20_Q2", "F20_Q3", "F20_Q4",
-        'F21_Q1'
+        "F21_Q1", "F21_Q2", "F21_Q3", "F21_Q4"
         ]
 
     # Group Numbers
@@ -42,13 +43,17 @@ def center_list_import():
 
     # establish SQL connection, import, and close
     engine = create_connection(database='Devtest')
-    center_list_query = "SELECT * FROM [DEVTEST].[dbo].[Quarterly_Acquisitions_List]"
+    center_list_query = dedent("""
+        SELECT
+            *
+        FROM [DEVTEST].[dbo].[Quarterly_Acquisitions_List]
+        WHERE
+            Profit_Center IS NOT NULL
+            AND [Include?] = 1
+        """)
+
     center_df = pd.read_sql_query(center_list_query, engine)
     engine.close()
-
-    # retain included centers
-    include_mask = center_df['Include?'] == True
-    center_df = center_df[include_mask].copy()
 
     # convert profit center to object
     center_df.Profit_Center = center_df.Profit_Center.astype(str).str[:-2]
@@ -171,7 +176,6 @@ def upload_is_sql(df):
 
     print("Uploading income statement data to SQL ...")
     df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
-
     print(f"Data was uploaded successfully")
 
 

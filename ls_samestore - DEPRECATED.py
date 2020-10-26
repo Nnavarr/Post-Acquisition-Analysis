@@ -6,6 +6,7 @@ from getpass import getuser, getpass
 import re
 import datetime
 import xlwings as xl
+from textwrap import dedent
 
 from IS_function import income_statement
 from sap_db_filter import chart_of_accounts, create_connection
@@ -19,12 +20,10 @@ Chart of Accounts Creation
 sap_accounts = pd.read_csv(
     r"\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Script_Inputs\sap_accounts.csv"
 )
-
 sap_accounts.rename(
     columns={"SAP ACC. Number": "Account", "Lender Trend Line Item": "line_item"},
     inplace=True,
 )
-
 sap_accounts["Account"] = sap_accounts["Account"].astype("object")
 
 """
@@ -60,26 +59,29 @@ pc_list = list(same_store_list.profit_center)
 Trend Data
 """
 sap_engine = create_connection(database='SAP_Data')
-lender_trend_query = "SELECT " \
-               "sub.[Date], " \
-               "sub.[Line_Item] as [Line_Item], " \
-               "SUM(sub.[Amount]) as [value] " \
-               "FROM " \
-               "(" \
-               "SELECT " \
-               "[SAP_Number], " \
-               "[Account_Number], " \
-               "[Line_Item], " \
-               "[Date], " \
-               "[Amount] " \
-               "FROM [SAP_Data].[dbo].[Lender_Financing_Trends] " \
-               ") sub " \
-               "WHERE sub.[Account_Number] in {} " \
-               "AND sub.[SAP_Number] in {} " \
-               "GROUP BY sub.[Date], sub.[Line_Item]".format(tuple(sap_accounts['Walker Account Number']), tuple(pc_list))
+lender_trend_query = dedent("""
 
-# query and export to excel ----
+    SELECT
+       sub.[Date],
+       sub.[Line_Item] as [Line_Item],
+       SUM(sub.[Amount]) as [value]
+    FROM
+       (
+       SELECT
+           [SAP_Number],
+           [Account_Number],
+           [Line_Item],
+           [Date],
+           [Amount]
+       FROM [SAP_Data].[dbo].[Lender_Financing_Trends]
+       ) sub 
+    WHERE sub.[Account_Number] in {}
+    AND sub.[SAP_Number] in {}
+    GROUP BY sub.[Date],
+    sub.[Line_Item]""".format(tuple(sap_accounts['Walker Account Number']), tuple(pc_list))
+
 sap_db = pd.read_sql_query(lender_trend_query, sap_engine)
+# query and export to excel ----
 trend_sheet.range('A1:E1').value = "" #clear existing data
 trend_sheet.range('A1').options(index=False).value = sap_db
 

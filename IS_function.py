@@ -16,7 +16,7 @@ from sap_db_filter import line_items
 #
 
 """
-Income Statement Function 
+Income Statement Function
 """
 def income_statement(profit_center, sap_data, line_item_dict, lender_reporting=False):
 

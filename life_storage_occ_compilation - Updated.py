@@ -9,22 +9,6 @@ from textwrap import dedent
 
 import xlwings as xl
 
-# import data from Excel
-# TODO: Update to reference SQL Graph DB directly. Not an Excel output.
-tot_rooms = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Spreadsheet Templates\LS_Occ.xlsx',
-                          sheet_name='Tot')
-
-occ_rooms = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Spreadsheet Templates\LS_Occ.xlsx',
-                          sheet_name='occ')
-
-# import life storage centers
-ls_centers = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Script_Inputs\life_storage_samestore.xlsx')
-
-ls_centers.profit_center = ls_centers.profit_center.astype(str)
-exlude_centers = np.array(['7000007077', '7000006191', '7000006431'])
-mask = ~ls_centers.profit_center.isin(exlude_centers)
-ls_centers = ls_centers[mask]
-
 # SQL connection
 user = '1217543'
 def create_connection(database):
@@ -44,49 +28,67 @@ def create_connection(database):
     # return connection object
     return pyodbc.connect(cnxn_str)
 
+# import life storage centers
+ls_centers = pd.read_excel(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Script_Inputs\life_storage_samestore.xlsx')
+
+ls_centers.profit_center = ls_centers.profit_center.astype(str)
+exlude_centers = np.array(['7000007077', '7000006191', '7000006431'])
+mask = ~ls_centers.profit_center.isin(exlude_centers)
+ls_centers = ls_centers[mask]
+
 # Import graph data
-engine = create_connection(database='Graph')
+con = create_connection(database='Graph')
 query = dedent("""
-    SELECT *
-    FROM [Graph].[dbo].[Entity Info]
-    WHERE [Cost Center] in {}
 
-""".format(tuple(ls_centers.profit_center)))
-graph_df = pd.read_sql_query(query, engine)
-engine.close()
+    SELECT
+    	tot.Entity,
+        tot.MEntity,
+        tot.Date,
+        tot.[Amount] as total,
+    	graph.[Simple Owner]
+    FROM [Graph].[dbo].[Tot] as tot
+    LEFT JOIN [Graph].[dbo].[Index Match] as graph
+    ON tot.MEntity = graph.MEntity
+    WHERE  graph.MEntity in (
+        -- filter for Cost centers present within the life storage same store
+        SELECT
+            MEntity
+        FROM [Graph].[dbo].[Entity Info]
+        WHERE [Cost Center] in {})""".format(tuple(ls_centers.profit_center)))
+tot_rooms = pd.read_sql(query, con)
 
-# compile occ metrics
-tot_melt = tot_rooms.melt(id_vars=['Entity', 'MEntity', 'Simple Owner'], var_name='Date', value_name='total')
-tot_melt.Date = pd.to_datetime(tot_melt.Date, format='%Y-%m-%d')
+query = dedent("""
 
-occ_melt = occ_rooms.melt(id_vars=['Entity', 'MEntity', 'Simple Owner'], var_name='Date', value_name='occ')
-occ_melt.Date = pd.to_datetime(occ_melt.Date, format='%Y-%m-%d')
+    SELECT
+    	occ.Entity,
+        occ.MEntity,
+        occ.Date,
+        occ.[Amount] as occ,
+    	graph.[Simple Owner]
+    FROM [Graph].[dbo].[Occ] as occ
+    LEFT JOIN [Graph].[dbo].[Index Match] as graph
+    ON occ.MEntity = graph.MEntity
+    WHERE  graph.MEntity in (
+        -- filter for Cost centers present within the life storage same store
+        SELECT
+            MEntity
+        FROM [Graph].[dbo].[Entity Info]
+        WHERE [Cost Center] in {})""".format(tuple(ls_centers.profit_center)))
+occ_rooms = pd.read_sql(query, con)
+
+# close connection
+con.close()
 
 # merge dataframes ----
-merge_df = pd.merge(left=occ_melt, right=tot_melt.loc[:, ['MEntity', 'Date', 'total']], how='left', on=['MEntity', 'Date'])
-merge_df['occupancy'] = merge_df.occ / merge_df.total
-merge_df.fillna(0, inplace=True)
-
-
-"""
-Workbook connections
-"""
-wb = xl.Book(r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\2020\Post Acquisition\Quarterly Acquisitions\Spreadsheet Templates\LS Occ.xlsx')
-graphs = wb.sheets('LifeStorage')
-output_sheet = wb.sheets('Graph Output')
-
-"""
-Calculate Metrics
-"""
-# filter for profit centers
-ls_center_mask = merge_df.MEntity.isin(graph_df.MEntity)
-ls_df = merge_df[ls_center_mask]
+ls_df = pd.merge(left=occ_rooms, right=tot_rooms.loc[:, ['MEntity', 'Date', 'total']], how='left', on=['MEntity', 'Date'])
+ls_df['occupancy'] = ls_df.occ / ls_df.total
+ls_df.fillna(0, inplace=True)
 
 """
 Current Month
 """
 # single month snapshot CY
-month_date = pd.to_datetime('2020-06-01') #TODO Update back to March
+month_date = pd.to_datetime('2020-09-01')
 month_mask = ls_df.Date == month_date
 month_df = ls_df[month_mask]
 month_df.occupancy.median()
@@ -116,7 +118,7 @@ cy_m_dict.values()
 """
 Current Month LY
 """
-month_date_ly = pd.to_datetime('2019-06-01')
+month_date_ly = pd.to_datetime('2019-09-01')
 month_mask_ly = ls_df.Date == month_date_ly
 month_df_ly = ls_df[month_mask_ly]
 
@@ -141,7 +143,7 @@ print(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth)
 """
 Quarter Aggregation
 """
-q_start = month_date.replace(month=4) # TTM
+q_start = month_date.replace(month=7) # TTM
 q_mask = (ls_df.Date >= q_start) & (ls_df.Date <= month_date)
 q_df = ls_df[q_mask]
 
@@ -170,7 +172,7 @@ print(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth)
 """
 Quarter Agg Last Year
 """
-q_start_ly = month_date.replace(month=4, year=2019) # TTM
+q_start_ly = month_date.replace(month=7, year=2019) # TTM
 q_mask = (ls_df.Date >= q_start_ly) & (ls_df.Date <= month_date_ly)
 q_df_ly = ls_df[q_mask]
 
@@ -200,7 +202,7 @@ print(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth)
 """
 TTM
 """
-ttm_start = month_date.replace(month=7, year=2019) # TTM
+ttm_start = month_date.replace(month=10, year=2019) # TTM
 ttm_mask = (ls_df.Date >= ttm_start) & (ls_df.Date <= month_date)
 ttm_df = ls_df[ttm_mask]
 

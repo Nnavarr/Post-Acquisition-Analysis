@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+venv/
+rsconnect/
+.ipynb_checkpoints
+__pycache__

@@ -44,7 +44,6 @@ def create_connection(database):
     # return connection object
     return pyodbc.connect(cnxn_str)
 
-
 # connect to existing smartsheet api ----
 def smart_sheet_import():
 
