@@ -12,6 +12,13 @@ user = "1217543"
 
 # SQL Connection Function ----
 def create_connection(database):
+
+    # load user
+    if len(getuser()) < 7:
+        user = '1217543'
+    else:
+        user = getuser()
+    
     # load password from env, entry if not available
     pwd = os.environ.get("sql_pwd")
     if pwd is None:
@@ -67,21 +74,6 @@ for category in line_items:
 
 # Create Dictionary of Income Statement Line Items ----
 chart_of_accounts = dict(zip(line_items, separate_df_container))
-
-# chart_of_accounts.keys()
-#
-# ubox_line_items = ['U-BOX STORAGE INCOME', 'U-BOX OTHER INCOME', 'U-BOX DELIVERY INCOME']
-# chart_of_accounts['U-BOX STORAGE INCOME']
-# chart_of_accounts['U-BOX OTHER INCOME']
-# chart_of_accounts['U-BOX DELIVERY INCOME']
-#
-# ubox = pd.concat([chart_of_accounts['U-BOX STORAGE INCOME'], chart_of_accounts['U-BOX OTHER INCOME'] ,
-#                   chart_of_accounts['U-BOX DELIVERY INCOME']], axis=0)
-#
-# ubox.to_csv(r'C:\Users\Noe_N\Desktop\ubox_accts.csv', index=False)
-
-# Checkpoint: Chart of Accounts Complete
-# ---------------------------------------
 
 # -------------
 # SAP DB Query
@@ -155,51 +147,3 @@ def sap_db_query(profit_center_list, fiscal_yr=False, lender_reporting=False):
         sap_db["Date"] = pd.to_datetime(sap_db["Date"], format="%Y-%m-%d")
         sap_engine.close()
     return sap_db
-
-
-# # Test SAP DB Function ----
-# # Profit Center List ----
-# entity_info_con = create_connection(database="FINANALYSIS")
-# graph_index_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_INDEX_MATCH]"
-# graph_entity_info_query = "SELECT * FROM [FINANALYSIS].[dbo].[GRAPH_ENTITY_INFO]"
-#
-# # Import Graph Entity List ----
-# index_match_db = pd.read_sql_query(graph_index_query, entity_info_con)
-# entity_info_db = pd.read_sql_query(graph_entity_info_query, entity_info_con)
-# entity_info_con.close()
-#
-# # Import Owner to Entity Info ----
-# graph_entity_list = pd.merge(
-#     left=entity_info_db,
-#     right=index_match_db.loc[
-#         :, ["MEntity", "Simple Owner", "SAC or Galaxy or PMSR", "Owned"]
-#     ],
-#     how="left",
-#     on="MEntity",
-# )
-#
-# graph_entity_list.rename(columns={"Cost Center": "Profit_Center"}, inplace=True)
-# """
-# Unique "Simple Owner" within the graph file includes:
-#
-# 1) UHI: 1577
-# 2) SAC: 425
-# 3) Mercury: 78
-# 4) Galaxy: 16
-# 5) DLR: 1
-# 6) Closed: 34
-# 7) None
-#
-# For AREC, we are interested in UHI Centers
-# """
-#
-# # Extract UHI Centers ----
-# arec_mask = graph_entity_list["Simple Owner"] == "UHI"
-# arec_entity = graph_entity_list[arec_mask]
-# arec_pc = arec_entity["Profit_Center"].unique()
-# arec_pc = arec_pc[arec_pc != None]
-# arec_pc = arec_pc[arec_pc != "0"]
-# arec_pc_list = list(arec_pc)
-#
-# # Example Use of Profit Center list with SAP_DB_Query Function ----
-# test_function = sap_db_query(arec_pc_list)

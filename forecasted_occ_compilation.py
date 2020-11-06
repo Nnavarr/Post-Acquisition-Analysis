@@ -14,9 +14,7 @@ Creation: 4/21/2020
 Author: Noe Navarro
 SQL DB: Storage
 Table: [FINANALYSIS].[dbo].[Storage_Forecast]
-
 """
-
 
 def create_connection(database):
     # load password from env, entry if not available
@@ -49,14 +47,12 @@ def forecast_data_aggregation():
 
     # forecasted data import
     engine = create_connection(database="FINANALYSIS")
-    query = dedent(
-        """
+    query = dedent("""
 
         SELECT *
         FROM [FINANALYSIS].[dbo].[Storage_Forecast]
 
-    """
-    )
+    """)
     forecast_df = pd.read_sql_query(query, engine)
     engine.close()
 
@@ -68,9 +64,7 @@ def forecast_data_aggregation():
     engine = create_connection(database="Storage")
     query = dedent(
         """
-
         SELECT
-
         	sub.Date,
         	sub.MEntity,
         	sub.unm_product [product],
@@ -79,10 +73,7 @@ def forecast_data_aggregation():
         	ROUND(SUM(sub.unm_numunits),2) [total units],
         	ROUND(SUM(sub.unm_occunits),2) [occ units],
         	ROUND(SUM(sub.unm_occunits)/SUM(sub.unm_numunits) ,2) [occ %]
-
-
         FROM
-
         	(
         	SELECT [ID]
         		  ,[MEntity]
@@ -182,11 +173,7 @@ def sql_upload(df):
     df.to_sql("Quarterly_Acquisitions_F_Occ", engine, index=False, if_exists="replace")
 
 
-"""
-Run from command line
-"""
-
-if __name__ == "__main__":
+def main():
 
     data_df = forecast_data_aggregation()
     print(
@@ -194,3 +181,8 @@ if __name__ == "__main__":
     )
     sql_upload(data_df)
     print("The SQL upload is complete. Previous data was overwritten.")
+
+
+# Run from the command line
+if __name__ == "__main__":
+    main()

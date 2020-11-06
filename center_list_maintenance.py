@@ -5,9 +5,15 @@ import os
 from getpass import getpass
 import sqlalchemy, urllib
 
-user = '1217543'
 
 def create_connection(database):
+
+    # load user
+    if len(getuser()) < 7:
+        user = '1217543'
+    else:
+        user = getuser()
+
     # load password from env, entry if not available
     pwd = os.environ.get("sql_pwd")
     if pwd is None:
@@ -32,19 +38,19 @@ def dlr01_source_update():
     conn = create_connection(database='DEVTEST')
     cursor = conn.cursor()
     cursor.execute('''
-    UPDATE 
+    UPDATE
         q_acq
-    SET 
+    SET
         ENTITY_NAME = dlr01.ENTITY_NAME,
         LOC_LATITUDE = dlr01.LOC_LATITUDE,
         LOC_LONGITUDE = dlr01.LOC_LONGITUDE
-    
-    FROM 
+
+    FROM
         [DEVTEST].[dbo].[Quarterly_Acquisitions_List] q_acq
         LEFT JOIN [MEntity].[dbo].[ENTITY_DLR01] dlr01
         ON q_acq.MEntity = dlr01.MEntity
         WHERE q_acq.MEntity = dlr01.MEntity
-        AND dlr01.STATUS = 'O' 
+        AND dlr01.STATUS = 'O'
     ''')
     conn.commit()
     conn.close()
@@ -60,12 +66,12 @@ def graph_source_update():
 
     # Index Match update ----
     cursor.execute('''
-    
-    UPDATE 
+
+    UPDATE
         q_acq
     SET
         [Simple Owner] = graph.[Simple Owner]
-    FROM 
+    FROM
         [DEVTEST].[dbo].[Quarterly_Acquisitions_List] q_acq
         LEFT JOIN [Graph].[dbo].[Index Match] graph
         ON q_acq.MEntity = graph.MEntity
@@ -77,13 +83,13 @@ def graph_source_update():
 
     # Entity info update ----
     cursor.execute('''
-    
+
     UPDATE
         q_acq
     SET
         [CBSA] = graph.[CBSA],
         [Profit_Center] = graph.[Cost Center]
-    FROM 
+    FROM
         [DEVTEST].[dbo].[Quarterly_Acquisitions_List] q_acq
         LEFT JOIN [Graph].[dbo].[Entity Info] graph
         ON q_acq.MEntity = graph.MEntity
@@ -97,30 +103,28 @@ def graph_source_update():
 """
 Real Additions Update
 """
-
 def real_add_source_update():
 
     conn = create_connection(database='RealEstateValuation')
     cursor = conn.cursor()
     cursor.execute('''
-    
+
     UPDATE
         q_acq
     SET
         [Type] = real_add.[Construction_Type]
-    
-    FROM 
+
+    FROM
         [DEVTEST].[dbo].[Quarterly_Acquisitions_List] q_acq
         LEFT JOIN [RealEstateValuation].[dbo].[REV_REAL_ADDITIONS] real_add
         ON q_acq.MEntity = real_add.MEntity
-        WHERE q_acq.MEntity = real_add.MEntity    
+        WHERE q_acq.MEntity = real_add.MEntity
     ''')
     cursor.commit()
     conn.close()
     print('Real estate valuations construction type has been updated')
 
-# run update ----
-if __name__ == '__main__':
+def main():
     try:
         dlr01_source_update()
         graph_source_update()
@@ -128,3 +132,7 @@ if __name__ == '__main__':
         print("All maintenance source code ran successfully.")
     except:
         print('An error occurred when running the maintenance.')
+
+# calling from command line
+if __name__ == '__main__':
+    main()

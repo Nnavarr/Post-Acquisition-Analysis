@@ -38,6 +38,7 @@ def income_statement(profit_center, sap_data, line_item_dict, lender_reporting=F
                         inplace=True)
 
         # convert walker accounts to SAP ----
+        #TODO: Update account list reference to a dynamic feed or continue updating this existing source
         account_df = pd.read_csv(
             r'\\adfs01.uhi.amerco\departments\mia\group\MIA\Noe\Projects\Post Acquisition\Quarterly Acquisitions\Script_Inputs\walker_to_sap_dict.csv')
         walker_list = list(account_df.walker_acct)

@@ -2,15 +2,13 @@ import numpy as np
 import pandas as pd
 import pyodbc
 import os
-from getpass import getpass
+from getpass import getpass, getuser
 import sqlalchemy, urllib
 
 """
 The script can be called in order to import any new acquisitions that may have occured between the last run-time.
 They will be uploaded into an existing SQL database.
 """
-
-user = "1217543"
 
 # group dictionary ----
 grp_dict = {
@@ -24,10 +22,21 @@ grp_dict = {
     "2022-2": 27,
     "2022-3": 28,
     "2022-4": 29,
+    "2023-1": 30,
+    "2023-2": 31,
+    "2023-3": 32,
+    "2023-4": 33
 }
 
 # establish slq connection ----
 def create_connection(database):
+
+    # load user
+    if len(getuser()) < 7:
+        user = '1217543'
+    else:
+        user = getuser()
+
     # load password from env, entry if not available
     pwd = os.environ.get("sql_pwd")
     if pwd is None:
@@ -247,9 +256,11 @@ def final_col_rename(df):
     return df
 
 
-# update quarter acquisitions list ----
-if __name__ == "__main__":
+def main():
 
+    """
+    Main process to be called from master script
+    """
     try:
         new_list, q_acquisitions = new_acquisitions(), quarter_acq_import()
         df1 = dlr01_prep()
@@ -258,6 +269,11 @@ if __name__ == "__main__":
         final_list = final_col_rename(df3)
 
         # upload to SQL ----
+        if len(getuser()) < 7:
+            user = '1217543'
+        else:
+            user = getuser()
+
         base_con = (
             "Driver={{ODBC DRIVER 17 for SQL Server}};"
             "Server=OPSReport02.uhaul.amerco.org;"
@@ -270,7 +286,6 @@ if __name__ == "__main__":
         engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
         final_list.to_sql(
             "Quarterly_Acquisitions_List", engine, index=False, if_exists="append")
-        # conn.close()
         engine.close()
         print(
             f"The quarterly acquisitions list has been updated successfully. \n There were {new_list.shape[0]} new acquisitions added."
@@ -278,3 +293,8 @@ if __name__ == "__main__":
 
     except:
         print("There are no new entries within the smarthsheet acquisitions list")
+
+
+# calling from command line
+if __name__ == "__main__":
+    main()

@@ -1,4 +1,4 @@
-import pandas as pd
+mport pandas as pd
 import pyodbc
 import numpy as np
 import os
@@ -117,20 +117,3 @@ if __name__ == '__main__':
 
     except:
         print("There was an issue with the all AREC upload. Please review and try again.")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

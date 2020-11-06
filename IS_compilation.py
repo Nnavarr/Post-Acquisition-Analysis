@@ -15,6 +15,8 @@ import sqlalchemy, urllib
 # create quarterly acquisitions grp
 def grp_classification():
 
+    #TODO: Create a dynamically generated grp classification
+
     # grp labels
     grp_names = [
         "F15_Q4",
@@ -23,7 +25,9 @@ def grp_classification():
         "F18_Q1", "F18_Q2", "F18_Q3", "F18_Q4",
         "F19_Q1", "F19_Q2", "F19_Q3", "F19_Q4",
         "F20_Q1", "F20_Q2", "F20_Q3", "F20_Q4",
-        "F21_Q1", "F21_Q2", "F21_Q3", "F21_Q4"
+        "F21_Q1", "F21_Q2", "F21_Q3", "F21_Q4",
+        "F22_Q1", "F22_Q2", "F22_Q3", "F22_Q4",
+        "F23_Q1", "F23_Q2", "F23_Q3", "F23_Q4"
         ]
 
     # Group Numbers
@@ -70,10 +74,25 @@ def center_list_import():
 
     return center_df, final_list
 
+
+# calculate fiscal_year
+today = datetime.today()
+
+fy_list = []
+if today.month >= 4:
+    fy_current = today.year + 1
+    fy_last = fy_current - 1
+else:
+    fy_current = today.year
+    fy_last = fy_current - 1
+
+fy_list.extend([fy_last, fy_current])
+
+
+
 def IS_compilation(center_df, center_list, classification_df):
 
     # import sap data
-    fy_list = [2015, 2016, 2017, 2018, 2019, 2020, 2021]
     is_container = []
 
     for i in fy_list:
@@ -175,13 +194,22 @@ def upload_is_sql(df):
     engine = sqlalchemy.create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
     print("Uploading income statement data to SQL ...")
-    df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='replace')
+
+    # remove existing data (for previous fiscal years)
+    del_query = dedent("""
+        DELETE FROM  DEVTEST.dbo.Quarterly_Acquisitions_IS
+        WHERE fiscal_year BETWEEN {} AND {}
+    """).format("'" + str(fy_list[0]) + "'", "'" + str(fy_list[1]) + "'")
+
+    # commit delete
+    engine.execute(del_query)
+
+    # uplaod new data
+    df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='append')
     print(f"Data was uploaded successfully")
 
 
-# CMD line process
-if __name__ == '__main__':
-
+def main():
     try:
         grp_class = grp_classification()
         center_df, center_list = center_list_import()
@@ -196,3 +224,8 @@ if __name__ == '__main__':
 
     except:
         print("An error accured within the aggregation")
+
+
+# calling from command line
+if __name__ == '__main__':
+    main()
