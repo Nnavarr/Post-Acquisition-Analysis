@@ -15,12 +15,13 @@ Process in order
     1) Center list update
     2) Center list maintenance
     3) Income statement compilation
-    4)
-
+    4) Forecasted occupancy compilation
 """
 
-# New acquisitions process
-center_list_update.main()
-center_list_maintenance.main()
-IS_compilation.main()
-forecasted_occ_compilation.main()
+if __name__ == '__main__':
+
+    # New acquisitions process
+    center_list_update.main()
+    center_list_maintenance.main()
+    IS_compilation.main()
+    forecasted_occ_compilation.main()
