@@ -74,23 +74,40 @@ def center_list_import():
 
     return center_df, final_list
 
-
-# calculate fiscal_year
-today = datetime.today()
-
-fy_list = []
-if today.month >= 4:
-    fy_current = today.year + 1
-    fy_last = fy_current - 1
-else:
-    fy_current = today.year
-    fy_last = fy_current - 1
-
-fy_list.extend([fy_last, fy_current])
-
-
-
 def IS_compilation(center_df, center_list, classification_df):
+
+    """
+    Author: Noe Navarro
+    Date: sometime 2019
+
+    param1: center_df; pandas DF of new acquisitions
+    param2: center_list; list of profit centers associated with included new acquisitions
+        **Important**
+        Included is defined as 'standalone' centers. That is NOT remote, abutting, non UHI owned (SAC)
+    param3: classification_df; pandas dataframe of grp_name to group number (can be redeveloped as dictionary)
+    return: aggregated pandas dataframe of each center and their associated income statement.
+            This then gets uploaded into SQL
+    """
+
+    # calculate fiscal_year
+    today = datetime.today()
+
+    fy_list = []
+    if today.month >= 4:
+        fy_current = today.year + 1
+        fy_last = fy_current - 1
+    else:
+        fy_current = today.year
+        fy_last = fy_current - 1
+
+    fy_list.extend([fy_last, fy_current])
+
+    """
+    Why include 2 years? Well, often the best check to ensure a 'standalone' center is to
+    look at the trends (rev & expenses). A 2 year trend is included to ensure any new acquisitons
+    are in fact, new. This part of the process remains somewhat manual with the opportunity to check
+    individually before being tagged as "included".
+    """
 
     # import sap data
     is_container = []
@@ -179,6 +196,17 @@ def IS_compilation(center_df, center_list, classification_df):
 
 def upload_is_sql(df):
 
+    """
+    Author: Noe Navarro
+    Date: sometime 2019
+
+    param1: df; pandas DF of center with their associated income statements. This is
+                the output from the "IS_compilation" function.
+
+    return: NA; Uploads SQL data and re-aggregates the past 2 years to check any new
+                acquisitions for true 'standalone' status.
+    """
+
     # establish SQL connection
     user = '1217543'
     base_con = (
@@ -208,7 +236,6 @@ def upload_is_sql(df):
     df.to_sql('Quarterly_Acquisitions_IS', engine, index=False, if_exists='append')
     print(f"Data was uploaded successfully")
 
-
 def main():
     try:
         grp_class = grp_classification()
@@ -219,12 +246,10 @@ def main():
 
         print("Income statement aggregation complete. Starting SQL Upload...")
         upload_is_sql(income_statmenet_df)
-
         print("The upload is complete. Quarterly acquisitions income statement data is up-to-date.")
 
     except:
         print("An error accured within the aggregation")
-
 
 # calling from command line
 if __name__ == '__main__':
